@@ -67,37 +67,67 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* 2. RED CONTOUR VEHICLE SELECTOR */}
-      <div className="relative px-5 my-3">
-        {/* Red horizontal accent bar */}
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-[#dc2626] z-0" />
+      {/* 2. RED CONTOUR VEHICLE SELECTOR - Reduced width, matching search bar */}
+      <div className="relative w-full my-2 px-8 flex items-center justify-center">
+        {/* Left Downward Curved Line in margin */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-9 overflow-hidden flex items-center pointer-events-none z-0">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 32 36"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              d="M 0,28 Q 18,12 32,12"
+              stroke="#dc2626"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
 
-        {/* Central Vehicle Pill with Red Border */}
-        <div className="relative z-10 flex justify-center">
-          <div className="inline-flex items-center bg-white border border-[#dc2626] rounded-full px-4 py-1.5 shadow-sm gap-3">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-[var(--text-main)] cursor-pointer"
+        {/* Central Vehicle Dropdown Pill - Same width & roundness as search bar */}
+        <div className="relative z-10 w-full">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full bg-white border border-[#dc2626] rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-red-50/20 active:scale-98 transition-all"
+          >
+            <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight">
+              {currentVehicle}
+            </span>
+            <svg
+              className={`w-2.5 h-2.5 text-gray-900 transition-transform duration-200 ${
+                isDropdownOpen ? 'rotate-180' : ''
+              }`}
+              viewBox="0 0 8 6"
+              fill="currentColor"
             >
-              <span>{currentVehicle}</span>
-              <span className="material-symbols-outlined text-[18px] text-gray-600">
-                {isDropdownOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
-              </span>
-            </button>
+              <path d="M0 0 L8 0 L4 5 Z" />
+            </svg>
+          </button>
+        </div>
 
-            {/* Red Circle Plus Button */}
-            <button
-              onClick={onAddCar}
-              className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center hover:bg-[var(--color-primary-hover)] active:scale-90 transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[15px]">add</span>
-            </button>
-          </div>
+        {/* Right Downward Curved Line in margin */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-9 overflow-hidden flex items-center pointer-events-none z-0">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 32 36"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              d="M 0,12 Q 14,12 32,28"
+              stroke="#dc2626"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
         </div>
 
         {/* Dropdown Menu for Saved Vehicles */}
         {isDropdownOpen && (
-          <div className="absolute left-6 right-6 top-12 z-30 bg-white rounded-2xl border border-gray-200 shadow-xl p-4 flex flex-col gap-2.5 animate-in fade-in duration-150">
+          <div className="absolute left-8 right-8 top-12 z-30 bg-white rounded-2xl border border-gray-200 shadow-xl p-4 flex flex-col gap-2.5 animate-in fade-in duration-150">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               YOUR VEHICLES
             </span>
@@ -109,21 +139,36 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     onSelectVehicle(v)
                     setIsDropdownOpen(false)
                   }}
-                  className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                  className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
+                    v === currentVehicle
+                      ? 'bg-red-50 text-[#dc2626] font-bold'
+                      : 'hover:bg-gray-50 text-gray-800 font-medium'
+                  }`}
                 >
-                  <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
-                  <span className="text-xs sm:text-sm font-semibold text-gray-800">
-                    {v}
-                  </span>
+                  <span className="text-xs sm:text-sm">{v}</span>
+                  {v === currentVehicle && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#dc2626]" />
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Option to Add New Car */}
+            <button
+              onClick={() => {
+                setIsDropdownOpen(false)
+                onAddCar()
+              }}
+              className="mt-2 w-full py-2 rounded-xl border border-dashed border-[#dc2626] text-[#dc2626] hover:bg-red-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span> Add another car</span>
+            </button>
           </div>
         )}
       </div>
 
-      {/* 3. SEARCH BAR */}
-      <div className="px-5 mt-2">
+      {/* 3. SEARCH BAR - Reduced width, matching vehicle selector */}
+      <div className="px-8 mt-2">
         <div className="relative w-full">
           <input
             type="text"
@@ -139,7 +184,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* 4. "FOR YOU" SERVICE CARDS SECTION */}
-      <section className="px-5 mt-6 flex flex-col gap-3.5">
+      <section className="px-6 mt-6 flex flex-col gap-3.5">
         <h2 className="text-lg font-bold text-[var(--text-main)] tracking-tight">
           For You
         </h2>

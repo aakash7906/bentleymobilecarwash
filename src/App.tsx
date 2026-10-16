@@ -89,6 +89,7 @@ export const App: React.FC = () => {
               onSelectService={handleSelectService}
               onAddCar={() => setIsAddCarOpen(true)}
               currentVehicle={currentVehicle}
+              onSelectVehicle={setCurrentVehicle}
             />
           )}
 

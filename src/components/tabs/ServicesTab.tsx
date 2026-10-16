@@ -1,18 +1,21 @@
 import React, { useState } from 'react'
 import { ServiceItem } from '@/types'
-import { SERVICES_CATALOG } from '@/data/mockData'
+import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
 
 interface ServicesTabProps {
   onSelectService: (service: ServiceItem) => void
   onAddCar: () => void
   currentVehicle: string
+  onSelectVehicle: (vehicle: string) => void
 }
 
 export const ServicesTab: React.FC<ServicesTabProps> = ({
   onSelectService,
   onAddCar,
   currentVehicle,
+  onSelectVehicle,
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
 
@@ -34,44 +37,114 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
   })
 
   return (
-    <div className="flex flex-col w-full pb-28 px-5">
+    <div className="flex flex-col w-full pb-28">
       {/* 1. Header Title */}
-      <div className="py-2 text-center">
+      <div className="py-2 text-center px-5">
         <h1 className="text-lg font-bold text-[var(--text-main)]">Services</h1>
       </div>
 
-      {/* 2. "My Vehicle" Selector Bar */}
-      <div className="mt-3 flex flex-col gap-1.5">
-        <span className="text-xs text-gray-500 font-medium">My Vehicle</span>
-
-        <div className="relative w-full">
-          {/* Red horizontal accent bar */}
-          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-[#dc2626] z-0" />
-
-          {/* Central Pill with Red Border */}
-          <div className="relative z-10 flex justify-center">
-            <div className="inline-flex items-center bg-white border border-[#dc2626] rounded-full px-4 py-1.5 shadow-sm gap-3">
-              <span className="text-xs sm:text-sm font-semibold text-[var(--text-main)]">
-                {currentVehicle}
-              </span>
-              <span className="material-symbols-outlined text-[18px] text-gray-500">
-                arrow_drop_down
-              </span>
-
-              {/* Red Circle Plus Button */}
-              <button
-                onClick={onAddCar}
-                className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center hover:bg-[var(--color-primary-hover)] active:scale-90 transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[15px]">add</span>
-              </button>
-            </div>
-          </div>
+      {/* 2. RED CONTOUR VEHICLE SELECTOR - Same as HomeTab */}
+      <div className="relative w-full my-2 px-8 flex items-center justify-center">
+        {/* Left Downward Curved Line in margin */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-9 overflow-hidden flex items-center pointer-events-none z-0">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 32 36"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              d="M 0,28 Q 18,12 32,12"
+              stroke="#dc2626"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
         </div>
+
+        {/* Central Vehicle Dropdown Pill */}
+        <div className="relative z-10 w-full">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full bg-white border border-[#dc2626] rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-red-50/20 active:scale-98 transition-all"
+          >
+            <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight">
+              {currentVehicle}
+            </span>
+            <svg
+              className={`w-2.5 h-2.5 text-gray-900 transition-transform duration-200 ${
+                isDropdownOpen ? 'rotate-180' : ''
+              }`}
+              viewBox="0 0 8 6"
+              fill="currentColor"
+            >
+              <path d="M0 0 L8 0 L4 5 Z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Right Downward Curved Line in margin */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-9 overflow-hidden flex items-center pointer-events-none z-0">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 32 36"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              d="M 0,12 Q 14,12 32,28"
+              stroke="#dc2626"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+
+        {/* Dropdown Menu for Saved Vehicles */}
+        {isDropdownOpen && (
+          <div className="absolute left-8 right-8 top-12 z-30 bg-white rounded-2xl border border-gray-200 shadow-xl p-4 flex flex-col gap-2.5 animate-in fade-in duration-150">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+              YOUR VEHICLES
+            </span>
+            <div className="flex flex-col gap-2">
+              {USER_SAVED_VEHICLES.map((v, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    onSelectVehicle(v)
+                    setIsDropdownOpen(false)
+                  }}
+                  className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
+                    v === currentVehicle
+                      ? 'bg-red-50 text-[#dc2626] font-bold'
+                      : 'hover:bg-gray-50 text-gray-800 font-medium'
+                  }`}
+                >
+                  <span className="text-xs sm:text-sm">{v}</span>
+                  {v === currentVehicle && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#dc2626]" />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Option to Add New Car */}
+            <button
+              onClick={() => {
+                setIsDropdownOpen(false)
+                onAddCar()
+              }}
+              className="mt-2 w-full py-2 rounded-xl border border-dashed border-[#dc2626] text-[#dc2626] hover:bg-red-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>+ Add another car</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 3. Search Bar + Red Filter Button */}
-      <div className="mt-5 flex items-center gap-2.5">
+      <div className="mt-4 flex items-center gap-2.5 px-6">
         <div className="relative flex-1">
           <input
             type="text"
@@ -95,7 +168,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       </div>
 
       {/* 4. Category Pills */}
-      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none px-6">
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id
           return (
@@ -115,7 +188,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       </div>
 
       {/* 5. "Recommended" Section */}
-      <section className="mt-6 flex flex-col gap-4">
+      <section className="mt-6 flex flex-col gap-4 px-6">
         <h2 className="text-lg font-bold text-[var(--text-main)] tracking-tight">
           Recommended
         </h2>
