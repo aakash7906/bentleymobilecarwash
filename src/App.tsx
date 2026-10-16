@@ -182,6 +182,10 @@ export const App: React.FC = () => {
               // Redirect to home when confirmed
               setCurrentTab('home')
             }}
+            onTrackOrder={() => {
+              setIsBookingOpen(false)
+              setCurrentTab('bookings')
+            }}
           />
         )}
 

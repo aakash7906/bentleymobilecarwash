@@ -21,6 +21,7 @@ interface BookingPageProps {
   currentVehicle: string
   onBack: () => void
   onBookingComplete?: (bookingDetails: any) => void
+  onTrackOrder?: () => void
 }
 
 interface AddOnOption {
@@ -91,6 +92,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   currentVehicle,
   onBack,
   onBookingComplete,
+  onTrackOrder,
 }) => {
   // Service selection
   const [selectedService, setSelectedService] = useState<ServiceItem>(
@@ -221,8 +223,20 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         {/* Bottom Actions */}
         <div className="mt-8 flex flex-col gap-2.5 pb-6">
           <button
-            onClick={onBack}
+            onClick={() => {
+              if (onTrackOrder) {
+                onTrackOrder()
+              } else {
+                onBack()
+              }
+            }}
             className="w-full py-3.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer text-center"
+          >
+            Track Order &gt;
+          </button>
+          <button
+            onClick={onBack}
+            className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold active:scale-98 transition-all cursor-pointer text-center"
           >
             Back to Home
           </button>
