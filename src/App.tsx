@@ -8,9 +8,13 @@ import { NotificationsTab } from '@/components/tabs/NotificationsTab'
 import { ProfileTab } from '@/components/tabs/ProfileTab'
 import { ServiceDetailModal } from '@/components/tabs/ServiceDetailModal'
 import { AddVehicleModal } from '@/components/tabs/AddVehicleModal'
+import { SplashScreen } from '@/components/SplashScreen'
+import { OnboardingScreen } from '@/components/OnboardingScreen'
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('home')
+  const [showSplash, setShowSplash] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentVehicle, setCurrentVehicle] = useState('Audi R8 GT')
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
   const [isAddCarOpen, setIsAddCarOpen] = useState(false)
@@ -29,6 +33,25 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-[var(--bg-canvas)] flex justify-center selection:bg-[#dc2626] selection:text-white">
+      {/* 1. Launch Splash Screen (Fixed 375x812 iPhone Layout) */}
+      {showSplash && (
+        <SplashScreen
+          onFinish={() => {
+            setShowSplash(false)
+            setShowOnboarding(true)
+          }}
+          duration={2800}
+          dismissible={true}
+        />
+      )}
+
+      {/* 2. Launch Onboarding Screen (Drag-to-Right Next Slider) */}
+      {showOnboarding && (
+        <OnboardingScreen
+          onNext={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* Mobile & Tablet App Canvas */}
       <main className="w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100">
         {/* Top Header */}
@@ -46,6 +69,8 @@ export const App: React.FC = () => {
               : undefined
           }
           onBack={() => setCurrentTab('home')}
+          onReplaySplash={() => setShowSplash(true)}
+          onReplayOnboarding={() => setShowOnboarding(true)}
         />
 
         {/* Tab Content */}

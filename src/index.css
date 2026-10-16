@@ -172,3 +172,45 @@ html, body {
   background: #cbd5e1;
   border-radius: var(--radius-pill);
 }
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ==========================================================================
+   SPLASH SCREEN FIGMA SPECIFICATION STYLES
+   ========================================================================== */
+.splash-logo-glow {
+  filter: drop-shadow(0px 0px 40px rgba(255, 255, 255, 0.75))
+          drop-shadow(0px 0px 111.2px rgba(255, 255, 255, 0.68));
+}
+
+@keyframes ios-spinner-step {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-ios-spinner {
+  animation: ios-spinner-step 1s steps(8, end) infinite;
+}
+
+/* ==========================================================================
+   ONBOARDING FIGMA SPECIFICATION STYLES
+   ========================================================================== */
+.font-urbanist {
+  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@keyframes chevron-pulse {
+  0%, 100% { opacity: 0.35; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(3px); }
+}
+
+.animate-chevron-1 {
+  animation: chevron-pulse 1.4s ease-in-out infinite;
+}
+.animate-chevron-2 {
+  animation: chevron-pulse 1.4s ease-in-out 0.2s infinite;
+}
+.animate-chevron-3 {
+  animation: chevron-pulse 1.4s ease-in-out 0.4s infinite;
+}
