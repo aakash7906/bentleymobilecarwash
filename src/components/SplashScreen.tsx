@@ -73,28 +73,24 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       title={dismissible ? 'Tap anywhere to continue' : undefined}
     >
       {/* 
-        Mobile-Friendly Screen Container:
-        - 100dvh (dynamic viewport height) ensures no tearing, overflowing or clipping on real phones
-        - w-full on mobile, max-w-md on tablet/desktop with smooth centering
+        Responsive Mobile App Container matching the main application canvas.
+        Full viewport on mobile (100dvh), framed smartphone view on desktop.
       */}
-      <div className="relative w-full max-w-md h-[100dvh] overflow-hidden select-none bg-black cursor-pointer flex flex-col justify-between shadow-2xl">
-        {/* Clean Background Image (Status bar removed from top) */}
+      <div className="relative w-full max-w-md h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] sm:max-h-[92vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none bg-black cursor-pointer flex flex-col justify-end">
+        {/* Base Image: Cockpit POV, Speed Tunnel, Bentley Emblem */}
         <img
           src={splashExactBg}
           alt="Bentley Mobile Wash Splash Screen"
           className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
         />
 
-        {/* Top spacer (Status bar removed - native device status bar displays naturally) */}
-        <div className="relative z-10 w-full h-12" />
-
         {/* 
-          Bottom: Live Animated 8-Spoke Activity Indicator (Loader)
-          Positioned adaptively in the lower cockpit area between the driver's knees
+          Live Animated 8-Spoke Activity Indicator (Loader)
+          Cleanly positioned in lower cockpit dashboard center, always perfectly aligned
         */}
-        <div className="relative z-20 pb-20 sm:pb-24 flex items-center justify-center pointer-events-none w-full">
+        <div className="relative z-20 pointer-events-none flex items-center justify-center pb-16 sm:pb-20">
           <svg
-            className="w-9 h-9 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+            className="w-[36px] h-[36px] drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]"
             viewBox="0 0 36 36"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -124,9 +120,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             </g>
           </svg>
         </div>
-
-        {/* Bottom subtle home indicator */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 w-32 h-1 bg-white/70 rounded-full pointer-events-none" />
       </div>
     </div>
   )

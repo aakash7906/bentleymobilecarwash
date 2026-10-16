@@ -24,15 +24,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   const trackRef = useRef<HTMLDivElement>(null)
   const startXRef = useRef(0)
   const currentDragXRef = useRef(0)
-  const maxDragRef = useRef(260)
+  const maxDragRef = useRe  const maxDragRef = useRef(268)
 
-  // Calculate available drag width adaptively on mount and window resize
+  // Calculate available drag width on mount and resize
   useEffect(() => {
     const updateMaxDrag = () => {
       if (trackRef.current) {
         const trackWidth = trackRef.current.clientWidth
         // 48px handle + 4px padding each side = 56px
-        maxDragRef.current = Math.max(80, trackWidth - 56)
+        maxDragRef.current = Math.max(100, trackWidth - 56)
       }
     }
     updateMaxDrag()
@@ -77,8 +77,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     if (!isDragging || isCompleted) return
     setIsDragging(false)
     const max = maxDragRef.current
-    // Threshold: 68% of slider distance
-    if (currentDragXRef.current >= max * 0.68) {
+    // Threshold: 70% of slider distance
+    if (currentDragXRef.current >= max * 0.7) {
       setDragX(max)
       triggerNext()
     } else {
@@ -117,35 +117,94 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[9998] flex items-center justify-center bg-black transition-opacity duration-350 ease-out ${
-        isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
+      className={`fixed inset-0 z-[9998] flex items-center justify-center bg-black transition-opacity duration-350 ease-out ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
     >
       {/* 
-        Mobile-First Screen Container:
-        - h-[100dvh] (dynamic viewport height) prevents browser address bar tearing / overflow
-        - w-full on mobile, max-w-md on tablet/desktop
-        - flex flex-col justify-between provides natural, responsive vertical spacing on any phone
+        Standard 375px x 812px iPhone Container
+        Matches exact Figma specification
       */}
-      <div className="relative w-full max-w-md h-[100dvh] overflow-hidden select-none bg-black flex flex-col justify-between p-6 sm:p-8 shadow-2xl">
-        {/* Background: Cinematic Porsche Sports Car with reflections (top status bar removed) */}
+      <div
+        className="relative w-full max-w-[375px] h-[812px] max-h-screen overflow-hidden shadow-2xl select-none bg-black flex flex-col"
+        style={{
+          aspectRatio: '375 / 812',
+        }}
+      >
+        {/* Background: Cinematic Porsche Sports Car with reflections */}
         <img
           src={onboardingBg}
           alt="Bentley Mobile Wash Onboarding"
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
 
-        {/* Subtle Dark Vignette at Top and Bottom for Text & Slider Readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/75 pointer-events-none" />
+        {/* Subtle Dark Vignette at Top for Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/75 pointer-events-none" />
 
         {/* =========================================================================
-            TOP: HEADING TYPOGRAPHY
-            Fluid, responsive typography in Google Font 'Urbanist'
-            Adapts smoothly to small and large mobile viewports without collision
+            TOP: IPHONE STATUS BAR (Top: 0px, Height: 44px)
             ========================================================================= */}
-        <div className="relative z-20 pt-10 sm:pt-14 max-w-[310px] pointer-events-none">
+        <div
+          className="absolute top-0 left-0 right-0 h-[44px] z-30 flex items-center justify-between px-6 pointer-events-none"
+          style={{ width: '100%' }}
+        >
+          {/* Time: 9:41 */}
+          <span className="text-[15px] font-semibold tracking-tight text-white font-sans drop-shadow-sm">
+            9:41
+          </span>
+
+          {/* Right: Cellular, Wi-Fi, Battery */}
+          <div className="flex items-center gap-1.5 text-white">
+            {/* 4 stepped cellular bars */}
+            <div className="flex items-end gap-[1.5px] h-[10.67px] mr-0.5">
+              <span className="w-[3px] h-[4px] bg-white rounded-[0.5px]" />
+              <span className="w-[3px] h-[6px] bg-white rounded-[0.5px]" />
+              <span className="w-[3px] h-[8.33px] bg-white rounded-[0.5px]" />
+              <span className="w-[3px] h-[10.67px] bg-white rounded-[0.5px]" />
+            </div>
+
+            {/* Wi-Fi Icon */}
+            <svg
+              className="w-[15.3px] h-[11px] fill-current"
+              viewBox="0 0 16 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8 12C9.10457 12 10 11.1046 10 10C10 8.89543 9.10457 8 8 8C6.89543 8 6 8.89543 6 10C6 11.1046 6.89543 12 8 12ZM12.7279 6.2721C11.4721 5.0163 9.7721 4.228 7.99997 4.228C6.22784 4.228 4.52784 5.0163 3.27204 6.2721C2.97915 6.565 2.50428 6.565 2.21138 6.2721C1.91849 5.97921 1.91849 5.50434 2.21138 5.21144C3.74317 3.67966 5.81934 2.7143 7.99997 2.7143C10.1806 2.7143 12.2568 3.67966 13.7886 5.21144C14.0815 5.50434 14.0815 5.97921 13.7886 6.2721C13.4957 6.565 13.0208 6.565 12.7279 6.2721ZM15.799 3.201C13.7313 1.13334 10.9313 0 7.99997 0C5.06864 0 2.26864 1.13334 0.200947 3.201C-0.0669824 3.46893 -0.0669824 3.9038 0.200947 4.17173C0.468877 4.43966 0.903748 4.43966 1.17168 4.17173C3.00067 2.34274 5.43867 1.4143 7.99997 1.4143C10.5613 1.4143 12.9993 2.34274 14.8283 4.17173C15.0962 4.43966 15.5311 4.43966 15.799 4.17173C16.0669 3.9038 16.0669 3.46893 15.799 3.201Z"
+                fill="white"
+              />
+            </svg>
+
+            {/* Battery Icon */}
+            <div className="relative flex items-center ml-0.5">
+              <div className="w-[22px] h-[11.33px] rounded-[2.67px] border border-white/40 p-[1.5px] flex items-center">
+                <div className="w-[15px] h-[6.5px] bg-white rounded-[1.33px]" />
+              </div>
+              <div className="w-[1.33px] h-[4px] bg-white/40 rounded-r-[1px] ml-[1px]" />
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            HEADING TYPOGRAPHY
+            Exact Figma Specification:
+            position: absolute; width: 260px; height: 172px; left: 26px; top: 87px;
+            font-family: 'Urbanist'; font-weight: 600; font-size: 36px; line-height: 43px;
+            color: #FFFFFF;
+            ========================================================================= */}
+        <div
+          className="absolute z-20 pointer-events-none flex flex-col justify-center animate-fade-in"
+          style={{
+            left: '26px',
+            top: '87px',
+            width: '260px',
+            height: '172px',
+          }}
+        >
           <h1
-            className="font-urbanist font-semibold text-[32px] sm:text-[36px] leading-[1.2] text-white tracking-[-0.02em] select-none drop-shadow-md"
+            className="font-urbanist font-semibold text-[36px] leading-[43px] text-white tracking-[-0.02em] select-none"
             style={{
               fontFamily: "'Urbanist', sans-serif",
             }}
@@ -162,9 +221,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* =========================================================================
             BOTTOM: INTERACTIVE DRAG-TO-RIGHT "NEXT" SLIDER
-            Adaptive width, smooth physics, touch & mouse drag
+            Where user drags red car circular button to the right to proceed
             ========================================================================= */}
-        <div className="relative z-30 pb-4 sm:pb-6 w-full max-w-[340px] mx-auto">
+        <div
+          className="absolute z-30 left-1/2 -translate-x-1/2 w-[324px]"
+          style={{
+            bottom: '52px',
+          }}
+        >
           {/* Slider Pill Track */}
           <div
             ref={trackRef}
@@ -213,9 +277,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               Contains sports car graphic
             */}
             <div
-              className={`relative z-10 w-[48px] h-[48px] rounded-full bg-red-600 shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing transform transition-transform ${
-                isDragging ? 'scale-105 shadow-red-500/50' : 'scale-100 hover:scale-102'
-              }`}
+              className={`relative z-10 w-[48px] h-[48px] rounded-full bg-red-600 shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing transform transition-transform ${isDragging ? 'scale-105 shadow-red-500/50' : 'scale-100 hover:scale-102'
+                }`}
               style={{
                 transform: `translateX(${dragX}px)`,
                 transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -242,11 +305,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           </div>
         </div>
 
-        {/* Bottom subtle home indicator */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 w-32 h-1 bg-white/70 rounded-full pointer-events-none" />
-      </div>
-    </div>
-  )
-}
-
-export default OnboardingScreen
+        {/* =========================================================================
+            BOTTOM: IPHONE HOME INDICATOR
+            width: 134px; height: 5px; bottom: 8px;
+            ========================================================================= */}
+        <div
+          className="absolute z-30 bg-white rounded-full pointer-events-none shadow-sm left-1/2 -translate-x-1/2"
+          style={{
+            width: '134px',
+            height: '5px',
+            bottom: '8px',
+          }}
+        />
