@@ -1,79 +1,91 @@
-export type VehicleCategory = 'sedan' | 'suv' | 'truck' | 'exotic' | 'fleet'
+export type TabType = 'services' | 'tracking' | 'garage' | 'ops'
 
-export interface ServicePackage {
+export interface DetailPackage {
   id: string
-  name: string
-  price: number
-  unit: string
-  popular?: boolean
-  features: string[]
-  excludedFeatures?: string[]
-  ctaText: string
-}
-
-export interface SpecialtyService {
-  name: string
+  title: string
   price: string
+  priceNumeric: number
+  badge: string
+  kelownaChoice?: boolean
+  image: string
   description: string
-}
-
-export interface MembershipPlan {
-  id: string
-  name: string
-  tier: string
-  price: string
-  duration: string
-  popular?: boolean
   features: string[]
   ctaText: string
+  highlighted?: boolean
+  category: 'all' | 'exterior' | 'interior' | 'ceramic' | 'specialty'
 }
 
-export interface Testimonial {
+export interface MembershipPass {
+  id: string
+  title: string
+  price: string
+  badge?: string
+  washesIncluded: string
+  features: string[]
+  ctaText: string
+  highlighted?: boolean
+}
+
+export interface ClientReview {
   id: string
   author: string
-  locationOrType: string
+  source: string
+  location: string
   rating: number
   comment: string
-  avatarInitial: string
+  verified?: boolean
 }
 
-export interface Treatment {
-  title: string
-  subtitle: string
-  icon: string
-}
-
-export interface CustomerDetails {
-  fullName: string
-  email: string
-  phone: string
-  address: string
-  city: string
-  zipCode: string
-  specialInstructions?: string
-}
-
-export interface VehicleDetails {
-  category: VehicleCategory
+export interface CustomerVehicle {
+  id: string
+  year: string
   make: string
   model: string
-  year: string
+  plate: string
   color: string
-  licensePlate?: string
+  lastWashDate?: string
+  recommendedPackage: string
+  reason: string
 }
 
-export interface Booking {
+export type BookingStatus =
+  | 'confirmed'
+  | 'on_the_way'
+  | 'arrived'
+  | 'in_progress'
+  | 'completed'
+
+export interface DispatchBooking {
   id: string
-  createdAt: string
-  customer: CustomerDetails
-  vehicle: VehicleDetails
-  packageId: string
-  packageName: string
-  selectedAddOns: string[]
-  date: string
-  timeSlot: string
-  totalPrice: number
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed'
-  technicianName?: string
-  paymentMethod: string
+  time: string
+  packageTitle: string
+  price: number
+  customerName: string
+  customerPhone: string
+  vehicle: string
+  address: string
+  status: BookingStatus
+  driverName?: string
+  driverVan?: string
+  driverEta?: string
+  unassigned?: boolean
+  notes?: string
+  immediateAction?: boolean
+  preAuthorized?: boolean
+  paidOnline?: boolean
+  paymentMethod?: string
+  photoVerified?: {
+    thumbnail: string
+    note: string
+    time: string
+  }
+}
+
+export interface TimelineStage {
+  id: number
+  title: string
+  time: string
+  subtitle: string
+  active?: boolean
+  completed?: boolean
 }
