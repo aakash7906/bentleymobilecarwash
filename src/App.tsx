@@ -54,24 +54,24 @@ export const App: React.FC = () => {
 
       {/* Mobile & Tablet App Canvas */}
       <main className="w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100">
-        {/* Top Header */}
-        <Header
-          currentTab={currentTab}
-          onTabChange={setCurrentTab}
-          showBack={currentTab === 'notifications' || currentTab === 'profile'}
-          title={
-            currentTab === 'notifications'
-              ? 'Notification'
-              : currentTab === 'profile'
-              ? 'Profile'
-              : currentTab === 'services'
-              ? 'Services'
-              : undefined
-          }
-          onBack={() => setCurrentTab('home')}
-          onReplaySplash={() => setShowSplash(true)}
-          onReplayOnboarding={() => setShowOnboarding(true)}
-        />
+        {/* Top Header (Rendered on non-home tabs; HomeTab integrates the logo seamlessly into the top blueprint grid) */}
+        {currentTab !== 'home' && (
+          <Header
+            currentTab={currentTab}
+            onTabChange={setCurrentTab}
+            showBack={currentTab === 'notifications' || currentTab === 'profile'}
+            title={
+              currentTab === 'notifications'
+                ? 'Notification'
+                : currentTab === 'profile'
+                ? 'Profile'
+                : currentTab === 'services'
+                ? 'Services'
+                : undefined
+            }
+            onBack={() => setCurrentTab('home')}
+          />
+        )}
 
         {/* Tab Content */}
         <div className="flex-1 w-full">

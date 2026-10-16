@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ServiceItem } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
 import heroSportsCar from '@/assets/hero-sports-car.png'
+import logoBentley from '@/assets/Logo_Bentley.png'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -27,8 +28,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="flex flex-col w-full pb-28">
-      {/* 1. HERO SECTION WITH BLUEPRINT GRID BACKGROUND */}
-      <section className="relative w-full bg-grid-blueprint pt-3 pb-8 px-5 overflow-hidden">
+      {/* 1. HERO SECTION WITH BLUEPRINT GRID BACKGROUND (Extends to top of page) */}
+      <section className="relative w-full bg-grid-blueprint pt-4 pb-12 px-5 overflow-hidden">
+        {/* Bentley Logo at Top */}
+        <div className="mb-5">
+          <img
+            src={logoBentley}
+            alt="Bentley Mobile Wash"
+            className="h-11 w-auto object-contain filter drop-shadow-sm cursor-pointer active:scale-95 transition-transform"
+          />
+        </div>
+
         <div className="relative z-10 flex flex-col items-start max-w-[65%]">
           {/* Main Headline */}
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-main)] tracking-tight leading-[1.15]">
@@ -40,7 +50,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* "+ Add Car" Red Pill Button */}
           <button
             onClick={onAddCar}
-            className="mt-4 px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-semibold shadow-md hover:bg-[var(--color-primary-hover)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="mt-5 px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-semibold shadow-md hover:bg-[var(--color-primary-hover)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[15px]">add</span>
             <span>Add Car</span>
@@ -48,7 +58,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
 
         {/* Hero Sports Car Cutout Graphic Overflowing on the Right */}
-        <div className="absolute -right-12 bottom-1 w-64 sm:w-72 pointer-events-none z-0">
+        <div className="absolute -right-10 bottom-2 w-64 sm:w-72 pointer-events-none z-0">
           <img
             src={heroSportsCar}
             alt="Custom Modified Sports Car"
