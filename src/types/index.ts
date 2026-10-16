@@ -1,91 +1,30 @@
-export type TabType = 'services' | 'tracking' | 'garage' | 'ops'
+export type TabType = 'home' | 'services' | 'notifications' | 'profile'
 
-export interface DetailPackage {
+export interface ServiceItem {
   id: string
   title: string
+  category: string
   price: string
   priceNumeric: number
-  badge: string
-  kelownaChoice?: boolean
+  estTime: string
+  vehicleModel: string
   image: string
   description: string
-  features: string[]
-  ctaText: string
-  highlighted?: boolean
-  category: 'all' | 'exterior' | 'interior' | 'ceramic' | 'specialty'
+  included: string[]
 }
 
-export interface MembershipPass {
+export interface VehicleOption {
   id: string
-  title: string
-  price: string
-  badge?: string
-  washesIncluded: string
-  features: string[]
-  ctaText: string
-  highlighted?: boolean
-}
-
-export interface ClientReview {
-  id: string
-  author: string
-  source: string
-  location: string
-  rating: number
-  comment: string
-  verified?: boolean
-}
-
-export interface CustomerVehicle {
-  id: string
-  year: string
-  make: string
+  brand: string
   model: string
-  plate: string
-  color: string
-  lastWashDate?: string
-  recommendedPackage: string
-  reason: string
+  year?: string
+  color?: string
 }
 
-export type BookingStatus =
-  | 'confirmed'
-  | 'on_the_way'
-  | 'arrived'
-  | 'in_progress'
-  | 'completed'
-
-export interface DispatchBooking {
+export interface ModificationNotification {
   id: string
+  date: string
   time: string
-  packageTitle: string
-  price: number
-  customerName: string
-  customerPhone: string
-  vehicle: string
-  address: string
-  status: BookingStatus
-  driverName?: string
-  driverVan?: string
-  driverEta?: string
-  unassigned?: boolean
-  notes?: string
-  immediateAction?: boolean
-  preAuthorized?: boolean
-  paidOnline?: boolean
-  paymentMethod?: string
-  photoVerified?: {
-    thumbnail: string
-    note: string
-    time: string
-  }
-}
-
-export interface TimelineStage {
-  id: number
   title: string
-  time: string
-  subtitle: string
-  active?: boolean
-  completed?: boolean
+  description: string
 }

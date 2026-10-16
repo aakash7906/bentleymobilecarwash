@@ -1,120 +1,99 @@
 import React, { useState } from 'react'
-import { TabType } from '@/types'
+import { TabType, ServiceItem } from '@/types'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
+import { HomeTab } from '@/components/tabs/HomeTab'
 import { ServicesTab } from '@/components/tabs/ServicesTab'
-import { TrackingTab } from '@/components/tabs/TrackingTab'
-import { GarageTab } from '@/components/tabs/GarageTab'
-import { OpsHubTab } from '@/components/tabs/OpsHubTab'
-import { BookingModal } from '@/components/BookingModal'
-import { BroadcastModal } from '@/components/BroadcastModal'
+import { NotificationsTab } from '@/components/tabs/NotificationsTab'
+import { ProfileTab } from '@/components/tabs/ProfileTab'
+import { ServiceDetailModal } from '@/components/tabs/ServiceDetailModal'
+import { AddVehicleModal } from '@/components/tabs/AddVehicleModal'
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<TabType>('services')
-  const [isBookingOpen, setIsBookingOpen] = useState(false)
-  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false)
-  const [bookingPackageId, setBookingPackageId] = useState('supreme-detail')
-  const [activeBookingId, setActiveBookingId] = useState('#BM-6492')
-  const [alertBannerVisible, setAlertBannerVisible] = useState(true)
+  const [currentTab, setCurrentTab] = useState<TabType>('home')
+  const [currentVehicle, setCurrentVehicle] = useState('Audi R8 GT')
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
+  const [isAddCarOpen, setIsAddCarOpen] = useState(false)
 
-  const handleOpenBooking = (pkgId: string = 'supreme-detail') => {
-    setBookingPackageId(pkgId)
-    setIsBookingOpen(true)
+  const handleSelectService = (service: ServiceItem) => {
+    setSelectedService(service)
   }
 
-  const handleConfirmBooking = (bookingData: {
-    packageId: string
-    packageName: string
-    price: number
-    date: string
-    timeSlot: string
-    vehicle: string
-    address: string
-    notes: string
-  }) => {
-    // Generate new unique booking ID
-    const newId = '#BM-' + Math.floor(1000 + Math.random() * 9000)
-    setActiveBookingId(newId)
-    // Automatically transition to Tracking tab to show live technician route
-    setCurrentTab('tracking')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const handleBookNow = (service: ServiceItem) => {
+    alert(`Booking confirmed for ${service.title} on ${currentVehicle}!`)
+  }
+
+  const handleVehicleAdded = (newVehicle: string) => {
+    setCurrentVehicle(newVehicle)
   }
 
   return (
-    <div className="min-h-screen w-full bg-[var(--bg-canvas)] flex justify-center selection:bg-[var(--color-primary)] selection:text-white">
+    <div className="min-h-screen w-full bg-[var(--bg-canvas)] flex justify-center selection:bg-[#dc2626] selection:text-white">
       {/* Mobile & Tablet App Canvas */}
-      <main className="w-full max-w-md md:max-w-xl min-h-screen bg-[var(--bg-app)] relative shadow-2xl flex flex-col border-x border-[var(--border-light)]">
-        {/* Sticky App Header */}
+      <main className="w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100">
+        {/* Top Header */}
         <Header
           currentTab={currentTab}
           onTabChange={setCurrentTab}
-          activeBookingId={activeBookingId}
+          showBack={currentTab === 'notifications' || currentTab === 'profile'}
+          title={
+            currentTab === 'notifications'
+              ? 'Notification'
+              : currentTab === 'profile'
+              ? 'Profile'
+              : currentTab === 'services'
+              ? 'Services'
+              : undefined
+          }
+          onBack={() => setCurrentTab('home')}
         />
 
-        {/* Global Dispatcher Live Alert Strip (Optional) */}
-        {currentTab === 'ops' && alertBannerVisible && (
-          <div className="bg-red-600 text-white text-[11px] font-bold px-4 py-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[14px]">warning</span>
-              <span>Lake Country: 1 unassigned VIP booking requires tech allocation</span>
-            </span>
-            <button
-              onClick={() => setAlertBannerVisible(false)}
-              className="text-white/80 hover:text-white cursor-pointer"
-            >
-              ×
-            </button>
-          </div>
-        )}
+        {/* Tab Content */}
+        <div className="flex-1 w-full">
+          {currentTab === 'home' && (
+            <HomeTab
+              onSelectService={handleSelectService}
+              onAddCar={() => setIsAddCarOpen(true)}
+              currentVehicle={currentVehicle}
+              onSelectVehicle={setCurrentVehicle}
+            />
+          )}
 
-        {/* Tab Content Container */}
-        <div className="flex-1 p-3.5 sm:p-4">
           {currentTab === 'services' && (
             <ServicesTab
-              onOpenBooking={handleOpenBooking}
-              onQuickInquiry={() => window.open('tel:+12503519155')}
+              onSelectService={handleSelectService}
+              onAddCar={() => setIsAddCarOpen(true)}
+              currentVehicle={currentVehicle}
             />
           )}
 
-          {currentTab === 'tracking' && (
-            <TrackingTab />
+          {currentTab === 'notifications' && (
+            <NotificationsTab onBack={() => setCurrentTab('home')} />
           )}
 
-          {currentTab === 'garage' && (
-            <GarageTab
-              onScheduleForVehicle={handleOpenBooking}
-            />
-          )}
-
-          {currentTab === 'ops' && (
-            <OpsHubTab
-              onSwitchToClient={() => setCurrentTab('services')}
-              onNewBooking={() => handleOpenBooking('supreme-detail')}
-              onBroadcastAlert={() => setIsBroadcastOpen(true)}
+          {currentTab === 'profile' && (
+            <ProfileTab
+              onBack={() => setCurrentTab('home')}
+              onOpenSavedVehicles={() => setIsAddCarOpen(true)}
             />
           )}
         </div>
 
-        {/* Bottom Navigation */}
-        <BottomNav
-          currentTab={currentTab}
-          onTabChange={setCurrentTab}
-          trackingActive={true}
-          pendingOpsCount={3}
+        {/* Curved Dark Bottom Navigation */}
+        <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />
+
+        {/* Full Service Detail & Order Summary Modal */}
+        <ServiceDetailModal
+          service={selectedService}
+          onClose={() => setSelectedService(null)}
+          onBookNow={handleBookNow}
         />
 
-        {/* Interactive Booking Modal */}
-        <BookingModal
-          isOpen={isBookingOpen}
-          onClose={() => setIsBookingOpen(false)}
-          initialPackageId={bookingPackageId}
-          onConfirmBooking={handleConfirmBooking}
-        />
-
-        {/* Fleet Broadcast Modal */}
-        <BroadcastModal
-          isOpen={isBroadcastOpen}
-          onClose={() => setIsBroadcastOpen(false)}
+        {/* Multi-Step Add Vehicle Flow */}
+        <AddVehicleModal
+          isOpen={isAddCarOpen}
+          onClose={() => setIsAddCarOpen(false)}
+          onVehicleAdded={handleVehicleAdded}
         />
       </main>
     </div>

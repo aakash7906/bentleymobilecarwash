@@ -2,71 +2,51 @@
 
 :root {
   /* ==========================================================================
-     COLOR THEME SYSTEM
-     Modify these variables to adjust the entire UI color scheme instantly
+     FIGMA DESIGN SYSTEM TOKENS
+     Matches the attached Figma design (Red: #dc2626, Charcoal Nav: #1e1e22)
      ========================================================================== */
-  --color-primary: #d31826;             /* Signature Bentley Crimson Red */
-  --color-primary-hover: #b5121f;       /* Darker Crimson on hover/press */
-  --color-primary-light: #fef2f2;       /* Ultra-soft Crimson background */
-  --color-primary-border: #fecaca;      /* Delicate Crimson border */
-  --color-primary-glow: rgba(211, 24, 38, 0.28);
+  --color-primary: #dc2626;             /* Signature Red (Add Car, Audi outline, Price) */
+  --color-primary-hover: #b91c1c;       /* Darker Red on hover */
+  --color-primary-light: #fef2f2;       /* Soft red tint */
+  --color-primary-border: #fca5a5;      /* Red contour line border */
+  --color-primary-glow: rgba(220, 38, 38, 0.25);
 
   /* Backgrounds & Canvas */
-  --bg-app: #f4f5f8;                   /* Mobile app body canvas */
-  --bg-canvas: #e9ecf0;                /* Tablet/Desktop outer viewport */
-  --surface-card: #ffffff;             /* Crisp white card surface */
-  --surface-subtle: #f9fafb;           /* Muted card inner section */
-  --surface-alt: #f1f3f6;              /* Tags, pills, chip backgrounds */
-  --surface-dark: #121316;             /* Dark hero & alert card background */
-  --surface-dark-card: #1c1f24;        /* Dark card nested elements */
-  --surface-dark-border: #2a2e36;      /* Dark borders */
+  --bg-app: #ffffff;                    /* Pure white app canvas */
+  --bg-canvas: #eceff3;                 /* Tablet/Desktop outer viewport */
+  --surface-card: #ffffff;              /* Crisp white cards */
+  --surface-subtle: #f8fafc;            /* Subtle card inner sections */
+  --surface-alt: #f1f3f5;               /* Pill, chip & button backgrounds */
+  --surface-dark-nav: #1e1e22;          /* Curved bottom navigation bar */
 
   /* Typography Colors */
-  --text-main: #111418;                /* Primary headings & dark labels */
-  --text-muted: #5e6673;               /* Secondary descriptions */
-  --text-light: #8c95a3;               /* Subtext, timestamps & placeholders */
-  --text-on-primary: #ffffff;          /* White text on red buttons/badges */
-  --text-on-dark: #ffffff;             /* White text on dark cards */
-  --text-on-dark-muted: #9ba3af;       /* Subtext on dark cards */
+  --text-main: #111418;                 /* Primary bold headings & titles */
+  --text-muted: #71717a;                /* Subtitles, "Starting at", descriptions */
+  --text-light: #a1a1aa;                /* Placeholders & timestamps */
+  --text-on-primary: #ffffff;           /* White text on red buttons/badges */
 
   /* Borders & Dividers */
-  --border-light: #e5e8ee;             /* Standard card & container borders */
-  --border-subtle: #edf0f5;            /* Internal row dividers */
-  
-  /* Status Colors */
-  --status-green: #10b981;             /* Live status, online, active GPS */
-  --status-green-light: #ecfdf5;
-  --status-green-border: #a7f3d0;
-  --status-yellow: #f59e0b;
-  --status-yellow-light: #fffbeb;
+  --border-light: #e4e7eb;              /* Card & container borders */
+  --border-subtle: #f1f3f5;             /* Internal row dividers */
+  --border-red: #dc2626;                /* Vehicle contour & category outline */
 
-  /* ==========================================================================
-     ROUNDNESS & CORNER RADIUS TOKENS
-     Adjust these tokens to change roundness of all boxes, buttons & cards
-     ========================================================================== */
-  --radius-box-lg: 20px;               /* Large hero cards & major containers */
-  --radius-box: 16px;                  /* Standard cards & boxes roundness */
-  --radius-box-sm: 10px;               /* Small boxes, alert cards, map frame */
-  --radius-btn: 12px;                  /* Main buttons roundness */
-  --radius-btn-sm: 8px;                /* Compact buttons roundness */
-  --radius-pill: 9999px;               /* Chips, status pills & badges */
-  --radius-input: 10px;                /* Form inputs roundness */
+  /* Roundness Tokens */
+  --radius-box-lg: 24px;                /* Large cards & modal containers */
+  --radius-box: 18px;                   /* Standard service & vehicle cards */
+  --radius-box-sm: 12px;                /* Input fields & small buttons */
+  --radius-btn: 12px;                   /* Action buttons */
+  --radius-pill: 9999px;                /* + Add Car, Audi selector, Category pills */
+  --radius-input: 12px;                 /* Search and form inputs */
 
-  /* ==========================================================================
-     TYPOGRAPHY & FONTS
-     ========================================================================== */
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Typography */
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
-  /* ==========================================================================
-     ELEVATION & SHADOWS
-     ========================================================================== */
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-card: 0 3px 12px -2px rgba(16, 24, 40, 0.06), 0 1px 4px -1px rgba(16, 24, 40, 0.03);
-  --shadow-card-hover: 0 8px 24px -4px rgba(16, 24, 40, 0.1);
-  --shadow-primary-btn: 0 4px 14px 0 rgba(211, 24, 38, 0.35);
-  --shadow-nav: 0 -4px 16px rgba(16, 24, 40, 0.06);
-  --shadow-modal: 0 20px 40px -12px rgba(16, 24, 40, 0.28);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 3px 12px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-nav: 0 -6px 20px rgba(0, 0, 0, 0.12);
+  --shadow-primary-btn: 0 4px 14px 0 rgba(220, 38, 38, 0.35);
 }
 
 /* Base resets & typography */
@@ -96,41 +76,47 @@ html, body {
   font-feature-settings: 'liga';
 }
 
-/* ==========================================================================
-   CENTRALIZED UI UTILITIES TIED TO CSS VARIABLES
-   Use these classes across the project so changes to index.css update everywhere
-   ========================================================================== */
+/* Blueprint Grid Background Pattern (Hero Section) */
+.bg-grid-blueprint {
+  background-color: #ffffff;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
 
-/* Cards & Containers */
-.app-card {
+/* Red Contour Wave Divider */
+.vehicle-selector-contour {
+  position: relative;
+}
+.vehicle-selector-contour::before,
+.vehicle-selector-contour::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  background-color: var(--color-primary);
+  z-index: 0;
+}
+.vehicle-selector-contour::before {
+  left: 0;
+  width: 16px;
+}
+.vehicle-selector-contour::after {
+  right: 0;
+  width: 16px;
+}
+
+/* UI Components & Utilities */
+.figma-card {
   background-color: var(--surface-card);
   border-radius: var(--radius-box);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
 
-.app-card-sm {
-  background-color: var(--surface-card);
-  border-radius: var(--radius-box-sm);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
-}
-
-.app-card-dark {
-  background-color: var(--surface-dark);
-  border-radius: var(--radius-box-lg);
-  color: var(--text-on-dark);
-  border: 1px solid var(--surface-dark-border);
-}
-
-.app-card-subtle {
-  background-color: var(--surface-subtle);
-  border-radius: var(--radius-box-sm);
-  border: 1px solid var(--border-subtle);
-}
-
-/* Buttons */
-.btn-primary {
+.btn-figma-primary {
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   border-radius: var(--radius-btn);
@@ -143,122 +129,46 @@ html, body {
   justify-content: center;
   gap: 0.5rem;
 }
-.btn-primary:hover {
+.btn-figma-primary:hover {
   background-color: var(--color-primary-hover);
   transform: translateY(-1px);
 }
-.btn-primary:active {
+.btn-figma-primary:active {
   transform: scale(0.98);
 }
 
-.btn-secondary {
-  background-color: var(--surface-card);
-  color: var(--text-main);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-btn);
-  font-weight: 600;
-  transition: all 0.18s ease;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-.btn-secondary:hover {
-  background-color: var(--surface-subtle);
-}
-.btn-secondary:active {
-  transform: scale(0.98);
-}
-
-.btn-dark {
-  background-color: var(--surface-dark);
-  color: #ffffff;
-  border-radius: var(--radius-btn);
-  font-weight: 600;
-  transition: all 0.18s ease;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-.btn-dark:hover {
-  background-color: #23272f;
-}
-
-.btn-dark-outline {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius-btn);
-  font-weight: 600;
-  transition: all 0.18s ease;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-.btn-dark-outline:hover {
-  background-color: rgba(255, 255, 255, 0.14);
-}
-
-/* Badges & Pills */
-.badge-pill {
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.badge-red {
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  border-radius: var(--radius-pill);
-}
-
-.badge-red-subtle {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary-border);
-  border-radius: var(--radius-pill);
-}
-
-.badge-alt {
+.btn-figma-subtle {
   background-color: var(--surface-alt);
-  color: var(--text-muted);
-  border-radius: var(--radius-pill);
+  color: #374151;
+  border-radius: var(--radius-btn);
+  font-weight: 600;
+  transition: all 0.18s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-figma-subtle:hover {
+  background-color: #e5e7eb;
 }
 
-/* Form Inputs */
-.app-input {
-  border-radius: var(--radius-input);
-  border: 1px solid var(--border-light);
-  background-color: var(--surface-card);
-  color: var(--text-main);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.app-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-glow);
+/* Curved Bottom Navigation Bar with Arched Top */
+.curved-bottom-nav {
+  background-color: var(--surface-dark-nav);
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  box-shadow: var(--shadow-nav);
 }
 
-/* Custom Scrollbar for inner carousels and lists */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #cbd5e1;
   border-radius: var(--radius-pill);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
 }
