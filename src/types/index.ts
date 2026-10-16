@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'services' | 'notifications' | 'profile'
+export type TabType = 'home' | 'services' | 'bookings' | 'notifications' | 'profile'
 
 export interface ServiceItem {
   id: string

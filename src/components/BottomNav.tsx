@@ -1,6 +1,6 @@
 import React from 'react'
 import { TabType } from '@/types'
-import { Home, Car, Bell, User } from 'lucide-react'
+import { Home, Car, ReceiptText, User } from 'lucide-react'
 
 interface BottomNavProps {
   currentTab: TabType
@@ -11,7 +11,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   const tabs = [
     { id: 'home' as TabType, label: 'Home', icon: Home },
     { id: 'services' as TabType, label: 'Services', icon: Car },
-    { id: 'notifications' as TabType, label: 'Notifications', icon: Bell },
+    { id: 'bookings' as TabType, label: 'Bookings', icon: ReceiptText },
     { id: 'profile' as TabType, label: 'Profile', icon: User },
   ]
 

@@ -19,17 +19,9 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
   if (!service) return null
 
   const handleAction = () => {
-    if (!isOrderSummary) {
-      setIsOrderSummary(true)
-    } else {
-      setBooked(true)
-      setTimeout(() => {
-        onBookNow(service)
-        setIsOrderSummary(false)
-        setBooked(false)
-        onClose()
-      }, 1200)
-    }
+    onBookNow(service)
+    setIsOrderSummary(false)
+    onClose()
   }
 
   return (

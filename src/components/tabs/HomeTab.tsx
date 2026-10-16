@@ -6,6 +6,7 @@ import logoBentley from '@/assets/Logo_Bentley.png'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
+  onBookNow?: (service: ServiceItem) => void
   onAddCar: () => void
   currentVehicle: string
   onSelectVehicle: (vehicle: string) => void
@@ -13,6 +14,7 @@ interface HomeTabProps {
 
 export const HomeTab: React.FC<HomeTabProps> = ({
   onSelectService,
+  onBookNow,
   onAddCar,
   currentVehicle,
   onSelectVehicle,
@@ -47,7 +49,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             Modifications
           </h1>
 
-          {/* "+ Add Car" Red Pill Button */}
+          {/* "Add Car" Red Pill Button */}
           <button
             onClick={onAddCar}
             className="mt-8 translate-y-8 px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-semibold shadow-md hover:bg-[var(--color-primary-hover)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -183,53 +185,72 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* 4. "FOR YOU" SERVICE CARDS SECTION */}
-      <section className="px-6 mt-6 flex flex-col gap-3.5">
-        <h2 className="text-lg font-bold text-[var(--text-main)] tracking-tight">
-          For You
-        </h2>
+      {/* 4. "FOR YOU" SERVICE CARDS SECTION - Horizontally Scrollable */}
+      <section className="mt-6 flex flex-col gap-3.5">
+        <div className="px-5 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-[var(--text-main)] tracking-tight">
+            For You
+          </h2>
+          <span className="text-[11px] text-gray-400 font-medium">Swipe &gt;</span>
+        </div>
 
-        {/* Carousel / Cards Grid */}
-        <div className="flex flex-col gap-5">
+        {/* Horizontal Scrollable Cards Strip with proper padding on the left */}
+        <div className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-5 scrollbar-none snap-x snap-mandatory">
           {filteredServices.map((service) => (
             <div
               key={service.id}
-              className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col"
+              className="w-[260px] sm:w-[275px] shrink-0 snap-start bg-white rounded-2xl border border-gray-200/90 shadow-sm p-3 flex flex-col justify-between hover:shadow-md transition-shadow"
             >
-              {/* Service Hero Image */}
-              <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+              {/* Service Hero Image - Inset with padding and rounded corners */}
+              <div className="relative h-36 sm:h-40 w-full overflow-hidden rounded-xl bg-slate-100 shadow-inner">
                 <img
                   src={service.image}
                   alt={service.title}
                   className="w-full h-full object-cover"
-                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                 />
               </div>
 
-              {/* Card Information */}
-              <div className="p-4 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full bg-[#dc2626] text-white text-[10px] font-bold tracking-wide">
-                    {service.category}
+              {/* Indicator dots matching reference */}
+              <div className="flex items-center justify-center gap-1 mt-2.5">
+                <span className="w-3.5 h-1 bg-[#dc2626] rounded-full"></span>
+                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+              </div>
+
+              {/* Category Pill & Starting at Price */}
+              <div className="mt-2 flex items-center justify-between gap-1">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold tracking-wide shrink-0">
+                  {service.category}
+                </span>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-400 block leading-tight font-medium">
+                    Starting at
                   </span>
-                  <div className="text-right">
-                    <span className="text-[10px] text-gray-500 block">Starting at</span>
-                    <span className="text-xs sm:text-sm font-bold text-[#dc2626] font-mono">
-                      {service.price}
-                    </span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-[#dc2626]">
+                    {service.price}
+                  </span>
                 </div>
+              </div>
 
-                <h3 className="text-base font-bold text-gray-900">
-                  {service.title}
-                </h3>
+              {/* Service Title */}
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 line-clamp-1 mt-1">
+                {service.title}
+              </h3>
 
-                {/* "View detail >" Subtle Button */}
+              {/* Side-by-Side Action Buttons: View Detail > & Book Now > */}
+              <div className="flex items-center gap-2 mt-3 pt-1">
                 <button
                   onClick={() => onSelectService(service)}
-                  className="w-full mt-1 py-2 rounded-xl bg-[#f1f3f5] hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold transition-all active:scale-98 cursor-pointer text-center"
+                  className="flex-1 py-2 px-1 rounded-full bg-[#f1f3f5] hover:bg-[#e4e7eb] text-[#dc2626] text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
                 >
-                  View detail &gt;
+                  View Detail &gt;
+                </button>
+                <button
+                  onClick={() => (onBookNow ? onBookNow(service) : onSelectService(service))}
+                  className="flex-1 py-2 px-1 rounded-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer"
+                >
+                  Book Now &gt;
                 </button>
               </div>
             </div>

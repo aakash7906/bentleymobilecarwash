@@ -4,24 +4,36 @@ import { USER_INFO } from '@/data/mockData'
 interface ProfileTabProps {
   onBack: () => void
   onOpenSavedVehicles: () => void
+  onNavigateToNotifications: () => void
+  onOpenBooking?: () => void
+  onLogout?: () => void
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
   onBack,
   onOpenSavedVehicles,
+  onNavigateToNotifications,
+  onOpenBooking,
+  onLogout,
 }) => {
   const menuItems = [
     {
       icon: 'receipt_long',
-      title: 'Quote',
-      subtitle: 'Your previous quotes',
-      action: () => alert('Viewing past quotes...'),
+      title: 'Quote & Bookings',
+      subtitle: 'Schedule or view appointments',
+      action: onOpenBooking || (() => alert('Viewing past quotes...')),
     },
     {
       icon: 'directions_car',
       title: 'Saved Vehicles',
       subtitle: 'Manage registered vehicles',
       action: onOpenSavedVehicles,
+    },
+    {
+      icon: 'notifications',
+      title: 'Notifications',
+      subtitle: 'View service alerts & updates',
+      action: onNavigateToNotifications,
     },
     {
       icon: 'person',
@@ -109,7 +121,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       {/* Red Logout Button */}
       <div className="mt-6 flex justify-center">
         <button
-          onClick={() => alert('Logged out successfully.')}
+          onClick={onLogout || (() => alert('Logged out successfully.'))}
           className="px-6 py-2 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
