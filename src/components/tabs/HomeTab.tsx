@@ -50,7 +50,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* "+ Add Car" Red Pill Button */}
           <button
             onClick={onAddCar}
-            className="mt-5 px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-semibold shadow-md hover:bg-[var(--color-primary-hover)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="mt-8 translate-y-8 px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-semibold shadow-md hover:bg-[var(--color-primary-hover)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[15px]">add</span>
             <span>Add Car</span>
