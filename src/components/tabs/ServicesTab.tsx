@@ -133,6 +133,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                   src={service.image}
                   alt={service.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                 />
               </div>
 

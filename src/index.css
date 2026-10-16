@@ -214,3 +214,10 @@ html, body {
 .animate-chevron-3 {
   animation: chevron-pulse 1.4s ease-in-out 0.4s infinite;
 }
+
+/* Enforce aspect ratio preservation with object-cover */
+img.object-cover,
+.object-cover {
+  object-fit: cover !important;
+}
+

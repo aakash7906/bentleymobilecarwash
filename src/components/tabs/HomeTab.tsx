@@ -147,6 +147,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   src={service.image}
                   alt={service.title}
                   className="w-full h-full object-cover"
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                 />
               </div>
 
