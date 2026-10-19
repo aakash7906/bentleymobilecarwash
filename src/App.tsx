@@ -14,6 +14,7 @@ import { Login } from '@/components/Login'
 import { Signup } from '@/components/Signup'
 import { SplashScreen } from '@/components/SplashScreen'
 import { OnboardingScreen } from '@/components/OnboardingScreen'
+import { MembershipPage } from '@/components/MembershipPage'
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('home')
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
   const [isAddCarOpen, setIsAddCarOpen] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
+  const [isMembershipOpen, setIsMembershipOpen] = useState(false)
 
   const navigateToTab = (tab: TabType) => {
     setPreviousTab(currentTab)
@@ -171,6 +173,7 @@ export const App: React.FC = () => {
               onOpenSavedVehicles={() => setIsAddCarOpen(true)}
               onNavigateToNotifications={() => navigateToTab('notifications')}
               onOpenBooking={() => navigateToTab('bookings')}
+              onOpenMembership={() => setIsMembershipOpen(true)}
               onLogout={() => {
                 setAuthMode('login')
                 setShowAuth(true)
@@ -212,6 +215,13 @@ export const App: React.FC = () => {
           onClose={() => setIsAddCarOpen(false)}
           onVehicleAdded={handleVehicleAdded}
         />
+
+        {/* Dedicated Membership Plans Page */}
+        {isMembershipOpen && (
+          <MembershipPage
+            onBack={() => setIsMembershipOpen(false)}
+          />
+        )}
       </main>
     </div>
   )

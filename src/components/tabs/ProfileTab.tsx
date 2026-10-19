@@ -6,7 +6,16 @@ interface ProfileTabProps {
   onOpenSavedVehicles: () => void
   onNavigateToNotifications: () => void
   onOpenBooking?: () => void
+  onOpenMembership?: () => void
   onLogout?: () => void
+}
+
+interface MenuItem {
+  icon: string
+  title: string
+  subtitle: string
+  action: () => void
+  badge?: string
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
@@ -14,9 +23,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onOpenSavedVehicles,
   onNavigateToNotifications,
   onOpenBooking,
+  onOpenMembership,
   onLogout,
 }) => {
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       icon: 'receipt_long',
       title: 'Quote & Bookings',
@@ -63,7 +73,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   return (
     <div className="flex flex-col w-full pb-28 px-5">
-
       {/* User Information Card */}
       <div className="mt-4 p-4 rounded-2xl border border-gray-200 bg-white shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -76,9 +85,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </div>
           <div className="flex flex-col">
             <h2 className="text-base font-bold text-gray-900">{USER_INFO.name}</h2>
-            <span className="text-xs text-gray-500 font-medium">
-              {USER_INFO.email}
-            </span>
+            <span className="text-xs text-gray-500 font-medium">{USER_INFO.email}</span>
           </div>
         </div>
 
@@ -87,8 +94,44 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         </button>
       </div>
 
+      {/* VIP Membership Banner */}
+      <div
+        onClick={onOpenMembership}
+        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-[#dc2626] via-[#cb1d24] to-[#a8141b] text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
+      >
+        <div
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)`,
+            backgroundSize: '16px 16px',
+          }}
+        />
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px] text-white">
+              workspace_premium
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-extrabold tracking-tight">Bentley Membership</span>
+              <span className="px-1.5 py-0.5 rounded bg-white text-[#dc2626] text-[10px] font-black uppercase">
+                VIP
+              </span>
+            </div>
+            <span className="text-[11px] text-white/90">
+              Gold, Platinum & Custom wash bundles
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-bold text-white relative z-10 pl-2">
+          <span>View</span>
+          <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+        </div>
+      </div>
+
       {/* Profile Menu List Card */}
-      <div className="mt-5 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col divide-y divide-gray-100">
+      <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col divide-y divide-gray-100">
         {menuItems.map((item, idx) => (
           <div
             key={idx}
@@ -97,17 +140,18 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           >
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
-                <span className="material-symbols-outlined text-[20px]">
-                  {item.icon}
-                </span>
+                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-bold text-gray-900">
-                  {item.title}
-                </span>
-                <span className="text-[11px] text-gray-500">
-                  {item.subtitle}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">{item.title}</span>
+                  {item.badge && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-red-100 text-[#dc2626] text-[10px] font-extrabold uppercase tracking-wide">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-gray-500">{item.subtitle}</span>
               </div>
             </div>
 
