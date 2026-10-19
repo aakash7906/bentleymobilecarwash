@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { USER_INFO } from '@/data/mockData'
+import { preloadMembershipImages } from '@/components/MembershipPage'
 
 interface ProfileTabProps {
   onBack: () => void
@@ -26,6 +27,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onOpenMembership,
   onLogout,
 }) => {
+  useEffect(() => {
+    // Preload membership images in background as soon as profile is open
+    preloadMembershipImages()
+  }, [])
   const menuItems: MenuItem[] = [
     {
       icon: 'receipt_long',
@@ -97,12 +102,14 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       {/* VIP Membership Banner */}
       <div
         onClick={onOpenMembership}
-        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-primary via-[#cb1d24] to-[#a8141b] text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
+        onMouseEnter={preloadMembershipImages}
+        onTouchStart={preloadMembershipImages}
+        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-primary to-primary-hover text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
       >
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
-            backgroundImage: `linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)`,
             backgroundSize: '16px 16px',
           }}
         />

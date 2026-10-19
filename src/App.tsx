@@ -20,7 +20,7 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('home')
   const [previousTab, setPreviousTab] = useState<TabType>('home')
   const [showSplash, setShowSplash] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
   const [currentVehicle, setCurrentVehicle] = useState('Audi R8 GT')
@@ -29,6 +29,8 @@ export const App: React.FC = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
   const [isMembershipOpen, setIsMembershipOpen] = useState(false)
+
+  const isAppReady = !showSplash && !showOnboarding && !showAuth
 
   const navigateToTab = (tab: TabType) => {
     setPreviousTab(currentTab)
@@ -56,7 +58,6 @@ export const App: React.FC = () => {
         <SplashScreen
           onFinish={() => {
             setShowSplash(false)
-            setShowOnboarding(true)
           }}
           duration={2800}
           dismissible={true}
@@ -108,7 +109,11 @@ export const App: React.FC = () => {
       )}
 
       {/* Mobile & Tablet App Canvas */}
-      <main className="w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100">
+      <main
+        className={`w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100 ${
+          !isAppReady ? 'hidden' : ''
+        }`}
+      >
         {/* Top Header (Rendered on non-home & non-bookings tabs; HomeTab & BookingsTab integrate their own headers) */}
         {currentTab !== 'home' && currentTab !== 'bookings' && (
           <Header

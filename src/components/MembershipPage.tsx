@@ -9,11 +9,12 @@ export interface MembershipPlan {
   washesCount?: number
   validity: string
   image: string
+  fallbackImage: string
   features: string[]
   badge?: string
 }
 
-const MEMBERSHIP_PLANS: MembershipPlan[] = [
+export const MEMBERSHIP_PLANS: MembershipPlan[] = [
   {
     id: 'gold',
     name: 'Gold Membership',
@@ -21,7 +22,8 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     price: '$1200',
     washesCount: 5,
     validity: 'Valid for 3 months from issue date',
-    image: '/membership/95fda802914acec1b3f98e1223a37d7969ef11ae.png',
+    image: '/membership/95fda802914acec1b3f98e1223a37d7969ef11ae.webp',
+    fallbackImage: '/membership/95fda802914acec1b3f98e1223a37d7969ef11ae.png',
     badge: 'Popular',
     features: [
       '5 Complete premium mobile auto washes & details',
@@ -38,7 +40,8 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     price: '$1500',
     washesCount: 8,
     validity: 'Valid for 3 months from issue date',
-    image: '/membership/c19277a5438f57fbc596fe0cd0eb6fde7202f81e.png',
+    image: '/membership/c19277a5438f57fbc596fe0cd0eb6fde7202f81e.webp',
+    fallbackImage: '/membership/c19277a5438f57fbc596fe0cd0eb6fde7202f81e.png',
     badge: 'Best Value',
     features: [
       '8 Comprehensive executive auto details & washes',
@@ -55,7 +58,8 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
       'It gives you up to 4months of service whenever you want to call us for more info on our membership card and how it works.',
     price: 'Custom',
     validity: 'Up to 4 months of flexible service',
-    image: '/membership/920d4193c6bbb23d4395b508e6efc2131d389b9a.png',
+    image: '/membership/920d4193c6bbb23d4395b508e6efc2131d389b9a.webp',
+    fallbackImage: '/membership/920d4193c6bbb23d4395b508e6efc2131d389b9a.png',
     features: [
       'Up to 4 months of flexible detailing whenever you need',
       'Customized package suited to your vehicle fleet or family',
@@ -65,6 +69,18 @@ const MEMBERSHIP_PLANS: MembershipPlan[] = [
     ],
   },
 ]
+
+/**
+ * Preloads all membership card images in memory for 0ms delay when opened
+ */
+export const preloadMembershipImages = () => {
+  if (typeof window === 'undefined') return
+  MEMBERSHIP_PLANS.forEach((plan) => {
+    const img = new Image()
+    img.src = plan.image
+  })
+}
+
 
 interface MembershipPageProps {
   onBack: () => void
@@ -122,13 +138,13 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
               <div
                 key={plan.id}
                 onClick={() => handleSelectPlan(plan)}
-                className="group relative w-full rounded-2xl bg-gradient-to-br from-[#e52026] via-[#d6191f] to-[#b91016] p-5 sm:p-6 text-white shadow-md hover:shadow-xl active:scale-[0.99] transition-all cursor-pointer overflow-hidden"
+                className="group relative w-full rounded-2xl bg-gradient-to-br from-primary via-primary to-primary-hover p-5 sm:p-6 text-white shadow-md hover:shadow-xl active:scale-[0.99] transition-all cursor-pointer overflow-hidden"
               >
                 {/* Subtle Geometric Grid Background Pattern (matching design) */}
                 <div
                   className="absolute inset-0 opacity-[0.07] pointer-events-none"
                   style={{
-                    backgroundImage: `linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)`,
+                    backgroundImage: `linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)`,
                     backgroundSize: '18px 18px',
                   }}
                 />
@@ -149,11 +165,18 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
 
                   {/* Right Column: Angled Membership Card Image */}
                   <div className="w-32 sm:w-40 shrink-0 flex items-center justify-center">
-                    <img
-                      src={plan.image}
-                      alt={plan.name}
-                      className="w-full h-auto object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] group-hover:scale-105 transition-transform duration-300"
-                    />
+                    <picture>
+                      <source srcSet={plan.image} type="image/webp" />
+                      <img
+                        src={plan.fallbackImage}
+                        alt={plan.name}
+                        loading="eager"
+                        decoding="async"
+                        width={160}
+                        height={120}
+                        className="w-full h-auto object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </picture>
                   </div>
                 </div>
               </div>
@@ -172,7 +195,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
             </div>
             <a
               href="tel:+12502580035"
-              className="px-3.5 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-black transition-colors shrink-0"
+              className="px-3.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary-hover text-secondary-foreground text-xs font-semibold transition-colors shrink-0"
             >
               Call Us
             </a>
@@ -202,18 +225,25 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
             </div>
 
             {/* Modal Card Banner */}
-            <div className="mt-4 rounded-xl bg-gradient-to-r from-primary to-[#991b1b] p-4 text-white flex items-center justify-between">
+            <div className="mt-4 rounded-xl bg-gradient-to-r from-primary to-primary-hover p-4 text-white flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase font-bold tracking-wider text-red-200">
                   {selectedPlan.validity}
                 </span>
                 <div className="text-2xl font-black mt-0.5">{selectedPlan.price}</div>
               </div>
-              <img
-                src={selectedPlan.image}
-                alt={selectedPlan.name}
-                className="w-24 h-auto object-contain filter drop-shadow-md"
-              />
+              <picture className="w-24 shrink-0 flex items-center justify-end">
+                <source srcSet={selectedPlan.image} type="image/webp" />
+                <img
+                  src={selectedPlan.fallbackImage}
+                  alt={selectedPlan.name}
+                  loading="eager"
+                  decoding="async"
+                  width={96}
+                  height={72}
+                  className="w-24 h-auto object-contain filter drop-shadow-md"
+                />
+              </picture>
             </div>
 
             {/* Features List */}

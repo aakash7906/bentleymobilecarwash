@@ -160,7 +160,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     <div className="flex flex-col w-full pb-32 relative select-none">
       {/* Toast Alert for Add to Cart */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-gray-900/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
           <span className="material-symbols-outlined text-[18px] text-emerald-400">
             check_circle
           </span>
@@ -203,7 +203,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 2. LOCATION PILL BAR */}
       <div className="px-4 sm:px-5 mt-2.5 sm:mt-3">
-        <div className="w-full bg-[#f4f5f7] border border-gray-200/70 rounded-xl py-2 px-3 sm:px-3.5 flex items-center gap-2 shadow-xs">
+        <div className="w-full bg-surface-alt border border-gray-200/70 rounded-xl py-2 px-3 sm:px-3.5 flex items-center gap-2 shadow-xs">
           <span className="material-symbols-outlined text-primary text-[17px] sm:text-[19px] shrink-0">
             location_on
           </span>
@@ -216,7 +216,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 3. HERO BLUEPRINT SECTION: Headline + Add Car */}
       <section className="relative w-full bg-grid-blueprint mt-2.5 sm:mt-3 py-3.5 sm:py-4 px-4 sm:px-5 overflow-hidden">
         <div className="relative z-10 flex items-center justify-between gap-2.5 sm:gap-4">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#111827] tracking-tight leading-[1.18]">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-secondary tracking-tight leading-[1.18]">
             Find all your needs
             <br />
             for Car Care
@@ -334,9 +334,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 1: Car Wash */}
           <div
             onClick={() => handleSelectCategory('Car Wash')}
-            className="flex-[0.38] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
               Car Wash
             </span>
             <div className="absolute -right-2 -bottom-2 w-26 sm:w-30 h-24 sm:h-28 overflow-hidden pointer-events-none flex items-end justify-end">
@@ -351,9 +351,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 2: Exterior Detailing */}
           <div
             onClick={() => handleSelectCategory('Exterior Detailing')}
-            className="flex-[0.62] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
               Exterior Detailing
             </span>
             <div className="absolute right-1 bottom-1 w-[85%] max-w-[210px] sm:max-w-[250px] h-20 sm:h-24 pointer-events-none flex items-end justify-end">
@@ -371,9 +371,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 3: Interior Detailing */}
           <div
             onClick={() => handleSelectCategory('Interior Detailing')}
-            className="flex-[0.62] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
               Interior Detailing
             </span>
             <div className="absolute right-0 bottom-0 left-0 h-16 sm:h-20 pointer-events-none flex items-end overflow-hidden">
@@ -388,9 +388,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 4: Tire Shine */}
           <div
             onClick={() => handleSelectCategory('Tire Shine')}
-            className="flex-[0.38] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
               Tire Shine
             </span>
             <div className="absolute -right-2 -bottom-2 w-24 sm:w-28 h-22 sm:h-26 pointer-events-none flex items-end justify-end overflow-hidden">
@@ -461,7 +461,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <div className="flex items-center gap-2 mt-3 pt-1">
                 <button
                   onClick={() => onSelectService(card.serviceItem)}
-                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-[#e4e7eb] text-primary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
+                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-gray-200 text-primary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
                 >
                   View Detail &gt;
                 </button>
@@ -542,11 +542,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               if (onOpenTracking) onOpenTracking()
               else setIsTrackingMapOpen(true)
             }}
-            className="w-full bg-[#00c04b] hover:bg-[#00b044] text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-emerald-400/40 filter drop-shadow-[0_6px_16px_rgba(0,192,75,0.25)]"
+            className="w-full bg-secondary hover:bg-secondary-hover text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-gray-700/50"
           >
             {/* Left Content */}
             <div className="flex flex-col items-start gap-0.5">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
+              <span className="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold leading-none">
                 Car Wash
               </span>
               <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">
@@ -556,10 +556,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
             {/* Right Mins Countdown Card (Compact) */}
             <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
-              <span className="text-[#00c04b] text-sm sm:text-base font-extrabold leading-none">
+              <span className="text-primary text-sm sm:text-base font-extrabold leading-none">
                 33
               </span>
-              <span className="text-[#00c04b] text-[9px] font-bold leading-tight">
+              <span className="text-secondary text-[9px] font-bold leading-tight">
                 mins
               </span>
             </div>
