@@ -182,15 +182,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             {/* Red Teardrop Location Pin */}
             <path
               d="M 0,-18 C -7,-18 -12,-13 -12,-6 C -12,2 0,10 0,10 C 0,10 12,2 12,-6 C 12,-13 7,-18 0,-18 Z"
-              fill="#dc2626"
+              fill="var(--primary)"
               filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.3))"
             />
             {/* Pin Center White Dot */}
             <circle cx="0" cy="-7" r="4.5" fill="#ffffff" />
-            <circle cx="0" cy="-7" r="2.2" fill="#dc2626" />
+            <circle cx="0" cy="-7" r="2.2" fill="var(--primary)" />
 
             {/* Red destination dot on street */}
-            <circle cx="0" cy="14" r="2.5" fill="#dc2626" />
+            <circle cx="0" cy="14" r="2.5" fill="var(--primary)" />
           </g>
 
           {/* Current Technician Van Position on Route */}
@@ -216,7 +216,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             className="w-9 h-9 rounded-xl bg-white shadow-md border border-gray-200/80 flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
             title="Recenter"
           >
-            <span className="material-symbols-outlined text-[19px] text-[#dc2626]">
+            <span className="material-symbols-outlined text-[19px] text-primary">
               my_location
             </span>
           </button>
@@ -249,7 +249,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             {/* Chat Button */}
             <button
               onClick={() => setIsChatOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-[#dc2626] hover:bg-red-50/60 active:scale-95 transition-all shadow-xs cursor-pointer"
+              className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
               title="Message Technician"
             >
               <span className="material-symbols-outlined text-[20px]">chat</span>
@@ -258,7 +258,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             {/* Call Button */}
             <button
               onClick={() => setIsCallOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-[#dc2626] hover:bg-red-50/60 active:scale-95 transition-all shadow-xs cursor-pointer"
+              className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
               title="Call Technician"
             >
               <span className="material-symbols-outlined text-[20px]">call</span>
@@ -288,11 +288,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between hover:bg-gray-50/80 cursor-pointer active:scale-98 transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-[#dc2626] shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary shadow-xs">
               <span className="material-symbols-outlined text-[22px]">support_agent</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-[#dc2626] leading-tight">
+              <span className="font-bold text-sm text-primary leading-tight">
                 Need Help?
               </span>
               <span className="text-xs text-gray-500 mt-0.5">
@@ -344,7 +344,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
                   <div
                     className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-xs ${
                       m.sender === 'user'
-                        ? 'bg-[#dc2626] text-white rounded-br-xs'
+                        ? 'bg-primary text-primary-foreground rounded-br-xs'
                         : 'bg-gray-100 text-gray-800 rounded-bl-xs'
                     }`}
                   >
@@ -380,11 +380,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
                 onChange={(e) => setInputMsg(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Type a message to James..."
-                className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#dc2626]"
+                className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary"
               />
               <button
                 onClick={handleSendMessage}
-                className="px-3.5 py-2.5 rounded-xl bg-[#dc2626] text-white text-xs font-bold hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                className="px-3.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
               >
                 Send
               </button>
@@ -443,7 +443,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           <div className="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-in slide-in-from-bottom duration-250">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#dc2626] text-[22px]">
+                <span className="material-symbols-outlined text-primary text-[22px]">
                   support_agent
                 </span>
                 <span className="text-sm font-bold text-gray-900">Bentley Concierge Help</span>
@@ -462,7 +462,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
             <a
               href="tel:+12503519155"
-              className="w-full py-3 rounded-xl bg-[#dc2626] text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#b91c1c] active:scale-98 transition-all shadow-sm"
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-98 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">call</span>
               <span>Call Support Hotline: (250) 351-9155</span>

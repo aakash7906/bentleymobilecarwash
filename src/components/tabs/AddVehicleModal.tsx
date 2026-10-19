@@ -64,16 +64,16 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 1: SELECT BRAND */}
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-[#dc2626]">Select Brand</span>
+              <span className="text-xs font-bold text-primary">Select Brand</span>
               <div className="relative">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search Brands..."
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#dc2626] pr-10"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary pr-10"
                 />
-                <span className="material-symbols-outlined text-[18px] text-[#dc2626] absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="material-symbols-outlined text-[18px] text-primary absolute right-3 top-1/2 -translate-y-1/2">
                   search
                 </span>
               </div>
@@ -91,7 +91,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     }}
                     className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition-colors"
                   >
-                    <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-4 bg-primary rounded-full" />
                     <span className="text-sm font-semibold text-gray-900">
                       {brand}
                     </span>
@@ -104,19 +104,19 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 2: SELECT MODEL */}
           {step === 2 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-[#dc2626]">Select Model</span>
+              <span className="text-xs font-bold text-primary">Select Model</span>
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search Models..."
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#dc2626] pr-10"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary pr-10"
                 />
-                <span className="material-symbols-outlined text-[18px] text-[#dc2626] absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="material-symbols-outlined text-[18px] text-primary absolute right-3 top-1/2 -translate-y-1/2">
                   search
                 </span>
               </div>
 
-              <h3 className="text-base font-bold text-[#dc2626] mt-2">
+              <h3 className="text-base font-bold text-primary mt-2">
                 {selectedBrand}
               </h3>
 
@@ -130,7 +130,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     }}
                     className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition-colors"
                   >
-                    <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-4 bg-primary rounded-full" />
                     <span className="text-sm font-semibold text-gray-900">
                       {model}
                     </span>
@@ -143,19 +143,19 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 3: SELECT VARIANT */}
           {step === 3 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-[#dc2626]">Select Variant</span>
+              <span className="text-xs font-bold text-primary">Select Variant</span>
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search Variant..."
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#dc2626] pr-10"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary pr-10"
                 />
-                <span className="material-symbols-outlined text-[18px] text-[#dc2626] absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="material-symbols-outlined text-[18px] text-primary absolute right-3 top-1/2 -translate-y-1/2">
                   search
                 </span>
               </div>
 
-              <h3 className="text-base font-bold text-[#dc2626] mt-2">
+              <h3 className="text-base font-bold text-primary mt-2">
                 {selectedBrand} {selectedModel}
               </h3>
 
@@ -169,7 +169,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     }}
                     className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition-colors"
                   >
-                    <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-4 bg-primary rounded-full" />
                     <span className="text-sm font-semibold text-gray-900">
                       {variant}
                     </span>
@@ -182,8 +182,8 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 4: SELECT YEAR */}
           {step === 4 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-[#dc2626]">Select Year</span>
-              <h3 className="text-base font-bold text-[#dc2626] mt-1">
+              <span className="text-xs font-bold text-primary">Select Year</span>
+              <h3 className="text-base font-bold text-primary mt-1">
                 {selectedBrand} {selectedModel} {selectedVariant}
               </h3>
 
@@ -197,7 +197,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     }}
                     className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition-colors"
                   >
-                    <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-4 bg-primary rounded-full" />
                     <span className="text-sm font-semibold text-gray-900">
                       {yr}
                     </span>
@@ -210,8 +210,8 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 5: SELECT COLOR */}
           {step === 5 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-[#dc2626]">Select Color</span>
-              <h3 className="text-base font-bold text-[#dc2626] mt-1">
+              <span className="text-xs font-bold text-primary">Select Color</span>
+              <h3 className="text-base font-bold text-primary mt-1">
                 {selectedBrand} {selectedModel} {selectedVariant} {selectedYear}
               </h3>
 
@@ -225,7 +225,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     }}
                     className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition-colors"
                   >
-                    <span className="w-1 h-4 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-4 bg-primary rounded-full" />
                     <span className="text-sm font-semibold text-gray-900">
                       {col}
                     </span>
@@ -238,7 +238,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
           {/* STEP 6: DIMENSIONS & CAPACITY SPECIFICATIONS + ADD VEHICLE */}
           {step === 6 && (
             <div className="flex flex-col gap-4">
-              <h3 className="text-base font-bold text-[#dc2626] border-b border-gray-200 pb-2">
+              <h3 className="text-base font-bold text-primary border-b border-gray-200 pb-2">
                 {selectedBrand} {selectedModel} {selectedVariant} {selectedYear} {selectedColor}
               </h3>
 
@@ -249,7 +249,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               <div className="flex flex-col divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden text-xs">
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Overall Length</span>
                   </div>
                   <span className="font-mono text-gray-600">183.8 in</span>
@@ -257,7 +257,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Overall Width</span>
                   </div>
                   <span className="font-mono text-gray-600">71.9 in</span>
@@ -265,7 +265,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Height</span>
                   </div>
                   <span className="font-mono text-gray-600">57.8 in</span>
@@ -273,7 +273,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Wheelbase</span>
                   </div>
                   <span className="font-mono text-gray-600">105.2 in</span>
@@ -281,7 +281,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Ground Clearance</span>
                   </div>
                   <span className="font-mono text-gray-600">5.4 in</span>
@@ -289,7 +289,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-white">
                   <div className="flex items-center gap-2">
-                    <span className="w-1 h-3.5 bg-[#dc2626] rounded-full" />
+                    <span className="w-1 h-3.5 bg-primary rounded-full" />
                     <span className="font-medium text-gray-800">Curb Weight</span>
                   </div>
                   <span className="font-mono text-gray-600">~3,351 lbs</span>
@@ -299,7 +299,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               {/* Red Add Vehicle Final Button */}
               <button
                 onClick={handleFinalAdd}
-                className="w-full mt-3 py-3.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer"
+                className="w-full mt-3 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer"
               >
                 Add Vehicle
               </button>

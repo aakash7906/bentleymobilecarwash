@@ -31,7 +31,7 @@ export const Signup: React.FC<SignupProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-[#dc2626] selection:text-white">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground">
       <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
         
         {/* Top Section with Mascot Logo */}
@@ -60,7 +60,7 @@ export const Signup: React.FC<SignupProps> = ({
               {/* Full Name* */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Full Name<span className="text-[#dc2626]">*</span>
+                  Full Name<span className="text-primary">*</span>
                 </label>
                 <input
                   type="text"
@@ -68,14 +68,14 @@ export const Signup: React.FC<SignupProps> = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter full name"
-                  className="w-full px-4 py-2.5 sm:py-3 rounded-md border border-[#dc2626] text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#dc2626] transition-colors"
+                  className="w-full px-4 py-2.5 sm:py-3 rounded-md border border-primary text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                 />
               </div>
 
               {/* Email Address* */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Email Address<span className="text-[#dc2626]">*</span>
+                  Email Address<span className="text-primary">*</span>
                 </label>
                 <input
                   type="email"
@@ -83,14 +83,14 @@ export const Signup: React.FC<SignupProps> = ({
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full px-4 py-2.5 sm:py-3 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-[#dc2626] transition-colors"
+                  className="w-full px-4 py-2.5 sm:py-3 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
               {/* Password* */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Password<span className="text-[#dc2626]">*</span>
+                  Password<span className="text-primary">*</span>
                 </label>
                 <div className="relative w-full">
                   <input
@@ -99,7 +99,7 @@ export const Signup: React.FC<SignupProps> = ({
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     placeholder="Create password"
-                    className="w-full px-4 py-2.5 sm:py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-[#dc2626] transition-colors"
+                    className="w-full px-4 py-2.5 sm:py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                   />
                   <button
                     type="button"
@@ -118,7 +118,7 @@ export const Signup: React.FC<SignupProps> = ({
               {/* Confirm Password* */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Confirm Password<span className="text-[#dc2626]">*</span>
+                  Confirm Password<span className="text-primary">*</span>
                 </label>
                 <div className="relative w-full">
                   <input
@@ -127,7 +127,7 @@ export const Signup: React.FC<SignupProps> = ({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat password"
-                    className="w-full px-4 py-2.5 sm:py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-[#dc2626] transition-colors"
+                    className="w-full px-4 py-2.5 sm:py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                   />
                   <button
                     type="button"
@@ -151,14 +151,14 @@ export const Signup: React.FC<SignupProps> = ({
                 >
                   <div
                     className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${
-                      agreeTerms ? 'bg-[#dc2626] text-white' : 'border border-gray-300 bg-gray-100'
+                      agreeTerms ? 'bg-primary text-primary-foreground' : 'border border-gray-300 bg-gray-100'
                     }`}
                   >
                     {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <span className="text-xs font-medium text-gray-600">
                     I have read and agree to the{' '}
-                    <span className="text-[#dc2626] font-semibold underline cursor-pointer">
+                    <span className="text-primary font-semibold underline cursor-pointer">
                       Terms of Service
                     </span>
                   </span>
@@ -172,7 +172,7 @@ export const Signup: React.FC<SignupProps> = ({
                   e.preventDefault()
                   handleSignupSubmit()
                 }}
-                className="w-full mt-2.5 py-3.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center"
+                className="w-full mt-2.5 py-3.5 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center"
               >
                 Get Started
               </button>
@@ -185,7 +185,7 @@ export const Signup: React.FC<SignupProps> = ({
                 <button
                   type="button"
                   onClick={onSwitchToLogin}
-                  className="text-[#dc2626] font-bold hover:underline cursor-pointer ml-0.5"
+                  className="text-primary font-bold hover:underline cursor-pointer ml-0.5"
                 >
                   Log in
                 </button>

@@ -105,13 +105,13 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
           {/* Top row: details + thumbnail */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col items-start gap-1">
-              <span className="px-2.5 py-0.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
                 {activeBooking.category}
               </span>
               <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">
                 {activeBooking.title}
               </h3>
-              <span className="text-xs font-semibold text-[#dc2626]">
+              <span className="text-xs font-semibold text-primary">
                 {activeBooking.vehicle}
               </span>
             </div>
@@ -129,7 +129,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
           {/* Bottom Button: Track Order */}
           <button
             onClick={() => handleTrackOrder(activeBooking)}
-            className="w-full py-2.5 rounded-xl bg-[#f1f3f5] hover:bg-[#e5e7eb] text-[#dc2626] text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
+            className="w-full py-2.5 rounded-xl bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
           >
             Track Order &gt;
           </button>
@@ -151,13 +151,13 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
               {/* Top row: details + thumbnail */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col items-start gap-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
                     {booking.category}
                   </span>
                   <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">
                     {booking.title}
                   </h3>
-                  <span className="text-xs font-semibold text-[#dc2626]">
+                  <span className="text-xs font-semibold text-primary">
                     {booking.vehicle}
                   </span>
                 </div>
@@ -179,7 +179,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     const s = booking.serviceItem || SERVICES_CATALOG[0]
                     onViewServiceDetail(s)
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-[#f1f3f5] hover:bg-[#e5e7eb] text-[#dc2626] text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
+                  className="flex-1 py-2.5 rounded-xl bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
                 >
                   View Detail &gt;
                 </button>
@@ -189,7 +189,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     const s = booking.serviceItem || SERVICES_CATALOG[0]
                     onBookAgain(s)
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold transition-all active:scale-[0.99] shadow-sm cursor-pointer text-center"
+                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold transition-all active:scale-[0.99] shadow-sm cursor-pointer text-center"
                 >
                   Book Again &gt;
                 </button>

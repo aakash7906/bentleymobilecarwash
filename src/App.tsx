@@ -50,7 +50,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[var(--bg-canvas)] flex justify-center selection:bg-[#dc2626] selection:text-white">
+    <div className="min-h-screen w-full bg-canvas flex justify-center selection:bg-primary selection:text-primary-foreground">
       {/* 1. Launch Splash Screen (Fixed 375x812 iPhone Layout) */}
       {showSplash && (
         <SplashScreen

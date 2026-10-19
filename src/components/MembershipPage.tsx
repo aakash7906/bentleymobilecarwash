@@ -190,7 +190,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#dc2626]" />
+                <ShieldCheck className="w-5 h-5 text-primary" />
                 <h3 className="text-base font-bold text-gray-900">{selectedPlan.name}</h3>
               </div>
               <button
@@ -202,7 +202,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
             </div>
 
             {/* Modal Card Banner */}
-            <div className="mt-4 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#991b1b] p-4 text-white flex items-center justify-between">
+            <div className="mt-4 rounded-xl bg-gradient-to-r from-primary to-[#991b1b] p-4 text-white flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase font-bold tracking-wider text-red-200">
                   {selectedPlan.validity}
@@ -223,7 +223,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
               </span>
               {selectedPlan.features.map((feature, idx) => (
                 <div key={idx} className="flex items-start gap-2.5 text-xs text-gray-700">
-                  <div className="w-4 h-4 rounded-full bg-red-100 text-[#dc2626] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-4 h-4 rounded-full bg-primary-light text-primary flex items-center justify-center shrink-0 mt-0.5">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
                   <span>{feature}</span>
@@ -254,7 +254,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
               <button
                 onClick={handlePurchaseInquiry}
                 disabled={inquirySuccess}
-                className="w-full py-3.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] active:scale-[0.99] text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-lg bg-primary hover:bg-primary-hover active:scale-[0.99] text-primary-foreground text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {inquirySuccess ? (
                   <>

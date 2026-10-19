@@ -55,7 +55,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
           >
             <path
               d="M 0,28 Q 18,12 32,12"
-              stroke="#dc2626"
+              stroke="var(--primary)"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
             />
@@ -67,7 +67,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full bg-white border border-[#dc2626] rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-red-50/20 active:scale-98 transition-all"
+            className="w-full bg-white border border-primary rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary-light/50 active:scale-98 transition-all"
           >
             <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight">
               {currentVehicle}
@@ -94,7 +94,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
           >
             <path
               d="M 0,12 Q 14,12 32,28"
-              stroke="#dc2626"
+              stroke="var(--primary)"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
             />
@@ -117,13 +117,13 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                   }}
                   className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
                     v === currentVehicle
-                      ? 'bg-red-50 text-[#dc2626] font-bold'
+                      ? 'bg-primary-light text-primary font-bold'
                       : 'hover:bg-gray-50 text-gray-800 font-medium'
                   }`}
                 >
                   <span className="text-xs sm:text-sm">{v}</span>
                   {v === currentVehicle && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#dc2626]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
                 </div>
               ))}
@@ -135,7 +135,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                 setIsDropdownOpen(false)
                 onAddCar()
               }}
-              className="mt-2 w-full py-2 rounded-xl border border-dashed border-[#dc2626] text-[#dc2626] hover:bg-red-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="mt-2 w-full py-2 rounded-xl border border-dashed border-primary text-primary hover:bg-primary-light text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
               <span>+ Add another car</span>
             </button>
@@ -151,9 +151,9 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search Modifications..."
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#dc2626] shadow-sm pr-10"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary shadow-sm pr-10"
           />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-[#dc2626]">
+          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
             <span className="material-symbols-outlined text-[20px]">search</span>
           </button>
         </div>
@@ -161,7 +161,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
         {/* Red Filter Button */}
         <button
           onClick={() => setActiveCategory('all')}
-          className="w-10 h-10 rounded-xl bg-[#dc2626] text-white flex items-center justify-center shadow-md hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer shrink-0"
+          className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shrink-0"
         >
           <span className="material-symbols-outlined text-[20px]">tune</span>
         </button>
@@ -177,8 +177,8 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
               onClick={() => setActiveCategory(cat.id)}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-[#dc2626] text-white shadow-sm'
-                  : 'bg-white border border-[#dc2626] text-[#dc2626] hover:bg-red-50'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-white border border-primary text-primary hover:bg-primary-light'
               }`}
             >
               {cat.label}
@@ -213,18 +213,18 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
               {/* Information */}
               <div className="p-4 flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full bg-[#dc2626] text-white text-[10px] font-bold tracking-wide">
+                  <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wide">
                     {service.category}
                   </span>
                   <div className="text-right">
                     <span className="text-[10px] text-gray-500 block">Starting at</span>
-                    <span className="text-xs sm:text-sm font-bold text-[#dc2626] font-mono">
+                    <span className="text-xs sm:text-sm font-bold text-primary font-mono">
                       {service.price}
                     </span>
                   </div>
                 </div>
 
-                <h3 className="text-base font-bold text-gray-900 group-hover:text-[#dc2626] transition-colors">
+                <h3 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
                   {service.title}
                 </h3>
 
@@ -237,7 +237,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                     e.stopPropagation()
                     onSelectService(service)
                   }}
-                  className="w-full mt-1 py-2 rounded-xl bg-[#f1f3f5] hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold transition-all active:scale-98 cursor-pointer text-center"
+                  className="w-full mt-1 py-2 rounded-xl bg-surface-alt hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold transition-all active:scale-98 cursor-pointer text-center"
                 >
                   View detail &gt;
                 </button>

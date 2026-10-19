@@ -2,14 +2,25 @@
 
 :root {
   /* ==========================================================================
-     FIGMA DESIGN SYSTEM TOKENS
-     Matches the attached Figma design (Red: #dc2626, Charcoal Nav: #1e1e22)
+     BRAND DESIGN SYSTEM TOKENS
      ========================================================================== */
-  --color-primary: #dc2626;             /* Signature Red (Add Car, Audi outline, Price) */
-  --color-primary-hover: #b91c1c;       /* Darker Red on hover */
-  --color-primary-light: #fef2f2;       /* Soft red tint */
-  --color-primary-border: #fca5a5;      /* Red contour line border */
-  --color-primary-glow: rgba(220, 38, 38, 0.25);
+  --primary: #dc2626;                   /* Signature Primary Red */
+  --primary-hover: #b91c1c;             /* Darker Red on hover/active */
+  --primary-light: #fef2f2;             /* Soft red tint */
+  --primary-border: #fca5a5;            /* Red contour line border */
+  --primary-glow: rgba(220, 38, 38, 0.25);
+  --primary-foreground: #ffffff;        /* Crisp white on primary */
+
+  --secondary: #222225;                 /* Dark Charcoal Navigation & Surfaces */
+  --secondary-hover: #1e1e22;           /* Darker Charcoal */
+  --secondary-foreground: #ffffff;      /* White text/icons on secondary */
+
+  /* Aliases for backwards compatibility */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-primary-border: var(--primary-border);
+  --color-primary-glow: var(--primary-glow);
 
   /* Backgrounds & Canvas */
   --bg-app: #ffffff;                    /* Pure white app canvas */
@@ -17,7 +28,7 @@
   --surface-card: #ffffff;              /* Crisp white cards */
   --surface-subtle: #f8fafc;            /* Subtle card inner sections */
   --surface-alt: #f1f3f5;               /* Pill, chip & button backgrounds */
-  --surface-dark-nav: #1e1e22;          /* Curved bottom navigation bar */
+  --surface-dark-nav: var(--secondary); /* Curved bottom navigation bar */
 
   /* Typography Colors */
   --text-main: #111418;                 /* Primary bold headings & titles */
@@ -46,7 +57,23 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-card: 0 3px 12px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
   --shadow-nav: 0 -6px 20px rgba(0, 0, 0, 0.12);
-  --shadow-primary-btn: 0 4px 14px 0 rgba(220, 38, 38, 0.35);
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-primary-border: var(--primary-border);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--surface-card);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-alt: var(--surface-alt);
 }
 
 /* Base resets & typography */
@@ -160,20 +187,30 @@ html, body {
   box-shadow: var(--shadow-nav);
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+/* Mobile App Scrollbar Reset: Hide visible scrollbars while preserving touch & momentum scrolling */
+html,
+body,
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  background: transparent !important;
 }
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: var(--radius-pill);
+
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
 }
 
 /* ==========================================================================

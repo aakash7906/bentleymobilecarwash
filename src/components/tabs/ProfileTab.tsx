@@ -97,7 +97,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       {/* VIP Membership Banner */}
       <div
         onClick={onOpenMembership}
-        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-[#dc2626] via-[#cb1d24] to-[#a8141b] text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
+        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-primary via-[#cb1d24] to-[#a8141b] text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
       >
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
@@ -115,7 +115,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-extrabold tracking-tight">Bentley Membership</span>
-              <span className="px-1.5 py-0.5 rounded bg-white text-[#dc2626] text-[10px] font-black uppercase">
+              <span className="px-1.5 py-0.5 rounded bg-white text-primary text-[10px] font-black uppercase">
                 VIP
               </span>
             </div>
@@ -146,7 +146,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs sm:text-sm font-bold text-gray-900">{item.title}</span>
                   {item.badge && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-red-100 text-[#dc2626] text-[10px] font-extrabold uppercase tracking-wide">
+                    <span className="px-1.5 py-0.2 rounded-full bg-primary-light text-primary text-[10px] font-extrabold uppercase tracking-wide">
                       {item.badge}
                     </span>
                   )}
@@ -166,7 +166,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       <div className="mt-6 flex justify-center">
         <button
           onClick={onLogout || (() => alert('Logged out successfully.'))}
-          className="px-6 py-2 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+          className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
           <span>Logout</span>

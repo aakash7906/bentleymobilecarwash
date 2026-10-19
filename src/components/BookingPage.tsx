@@ -186,7 +186,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           <div className="mt-6 w-full p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col gap-3 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200">
               <span className="text-xs text-gray-500 font-medium">Booking ID</span>
-              <span className="text-xs font-mono font-bold text-[#dc2626]">{bookingRef}</span>
+              <span className="text-xs font-mono font-bold text-primary">{bookingRef}</span>
             </div>
 
             <div className="flex items-center justify-between text-xs">
@@ -215,7 +215,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
               <span className="font-bold text-gray-900">Total Estimated:</span>
-              <span className="text-sm font-bold text-[#dc2626] font-mono">${grandTotal} CAD</span>
+              <span className="text-sm font-bold text-primary font-mono">${grandTotal} CAD</span>
             </div>
           </div>
         </div>
@@ -230,7 +230,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 onBack()
               }
             }}
-            className="w-full py-3.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer text-center"
+            className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer text-center"
           >
             Track Order &gt;
           </button>
@@ -276,7 +276,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               />
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-bold text-[#dc2626] uppercase tracking-wide">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wide">
                 {selectedService.category}
               </span>
               <h2 className="text-sm font-bold text-gray-900 truncate">
@@ -285,7 +285,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <span className="text-xs text-gray-500 mt-0.5">
                 Est. {selectedService.estTime}
               </span>
-              <span className="text-sm font-extrabold text-[#dc2626] font-mono mt-1">
+              <span className="text-sm font-extrabold text-primary font-mono mt-1">
                 {selectedService.price}
               </span>
             </div>
@@ -294,7 +294,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 2. Vehicle Selector */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Car className="w-3.5 h-3.5 text-[#dc2626]" />
+              <Car className="w-3.5 h-3.5 text-primary" />
               <span>Vehicle to be Detailed</span>
             </label>
             <div className="p-3 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-between">
@@ -305,7 +305,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <select
                 value={selectedVehicle}
                 onChange={(e) => setSelectedVehicle(e.target.value)}
-                className="text-xs font-semibold text-[#dc2626] bg-red-50 py-1.5 px-3 rounded-lg border-0 cursor-pointer focus:outline-none"
+                className="text-xs font-semibold text-primary bg-primary-light py-1.5 px-3 rounded-lg border-0 cursor-pointer focus:outline-none"
               >
                 <option value={currentVehicle}>{currentVehicle}</option>
                 {USER_SAVED_VEHICLES.map((v, i) => (
@@ -320,7 +320,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 3. Location Mode (Mobile vs Workshop) */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#dc2626]" />
+              <MapPin className="w-3.5 h-3.5 text-primary" />
               <span>Service Location</span>
             </label>
 
@@ -331,14 +331,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 onClick={() => setLocationType('mobile')}
                 className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${
                   locationType === 'mobile'
-                    ? 'border-[#dc2626] bg-red-50/30 ring-1 ring-[#dc2626]'
+                    ? 'border-primary bg-primary-light/30 ring-1 ring-primary'
                     : 'border-gray-200 bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <Truck className={`w-4 h-4 ${locationType === 'mobile' ? 'text-[#dc2626]' : 'text-gray-500'}`} />
+                  <Truck className={`w-4 h-4 ${locationType === 'mobile' ? 'text-primary' : 'text-gray-500'}`} />
                   {locationType === 'mobile' && (
-                    <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Mobile Unit</span>
@@ -350,14 +350,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 onClick={() => setLocationType('shop')}
                 className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${
                   locationType === 'shop'
-                    ? 'border-[#dc2626] bg-red-50/30 ring-1 ring-[#dc2626]'
+                    ? 'border-primary bg-primary-light/30 ring-1 ring-primary'
                     : 'border-gray-200 bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <Building2 className={`w-4 h-4 ${locationType === 'shop' ? 'text-[#dc2626]' : 'text-gray-500'}`} />
+                  <Building2 className={`w-4 h-4 ${locationType === 'shop' ? 'text-primary' : 'text-gray-500'}`} />
                   {locationType === 'shop' && (
-                    <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Bentley Studio</span>
@@ -375,7 +375,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Enter driveway or parking address"
-                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-[#dc2626]"
+                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
                   />
                 </div>
 
@@ -386,7 +386,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-[#dc2626]"
+                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
@@ -395,7 +395,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-[#dc2626]"
+                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
                     />
                   </div>
                 </div>
@@ -407,7 +407,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     value={addressNotes}
                     onChange={(e) => setAddressNotes(e.target.value)}
                     placeholder="e.g. Park in underground visitor bay #12"
-                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-[#dc2626]"
+                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -417,7 +417,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 4. Select Date (Horizontal Scroll Strip) */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#dc2626]" />
+              <Calendar className="w-3.5 h-3.5 text-primary" />
               <span>Select Date</span>
             </label>
 
@@ -431,7 +431,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     onClick={() => setSelectedDateIndex(idx)}
                     className={`min-w-[62px] py-2.5 px-2 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#dc2626] text-white shadow-md'
+                        ? 'bg-primary text-primary-foreground shadow-md'
                         : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -447,7 +447,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 5. Select Time Slot */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#dc2626]" />
+              <Clock className="w-3.5 h-3.5 text-primary" />
               <span>Select Time Slot</span>
             </label>
 
@@ -461,7 +461,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     onClick={() => setSelectedTimeSlot(slot.time)}
                     className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#dc2626] text-white shadow-sm font-bold'
+                        ? 'bg-primary text-primary-foreground shadow-sm font-bold'
                         : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium'
                     }`}
                   >
@@ -476,7 +476,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 6. Popular Add-Ons */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#dc2626]" />
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span>Recommended Add-Ons</span>
             </label>
 
@@ -489,14 +489,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     onClick={() => toggleAddon(addon.id)}
                     className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       isChecked
-                        ? 'bg-red-50/30 border-[#dc2626]'
+                        ? 'bg-primary-light/30 border-primary'
                         : 'bg-white border-gray-200 hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <div
                         className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
-                          isChecked ? 'bg-[#dc2626] text-white' : 'border border-gray-300 bg-white'
+                          isChecked ? 'bg-primary text-primary-foreground' : 'border border-gray-300 bg-white'
                         }`}
                       >
                         {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -508,7 +508,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-[#dc2626] font-mono shrink-0 ml-2">
+                    <span className="text-xs font-bold text-primary font-mono shrink-0 ml-2">
                       +${addon.price}
                     </span>
                   </div>
@@ -528,7 +528,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-[#dc2626]"
+                  className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-primary"
                 />
               </div>
 
@@ -538,7 +538,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-[#dc2626]"
+                  className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-primary"
                 />
               </div>
             </div>
@@ -549,7 +549,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 type="email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
-                className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-[#dc2626]"
+                className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1 focus:outline-none focus:border-primary"
               />
             </div>
           </div>
@@ -557,7 +557,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 8. Payment Method */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-[#dc2626]" />
+              <CreditCard className="w-3.5 h-3.5 text-primary" />
               <span>Payment Option</span>
             </label>
 
@@ -567,14 +567,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 onClick={() => setPaymentMethod('on_completion')}
                 className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${
                   paymentMethod === 'on_completion'
-                    ? 'border-[#dc2626] bg-red-50/40 ring-1 ring-[#dc2626]'
+                    ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
                     : 'border-gray-200 bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   {paymentMethod === 'on_completion' && (
-                    <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Pay on Completion</span>
@@ -586,14 +586,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 onClick={() => setPaymentMethod('card')}
                 className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${
                   paymentMethod === 'card'
-                    ? 'border-[#dc2626] bg-red-50/40 ring-1 ring-[#dc2626]'
+                    ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
                     : 'border-gray-200 bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <CreditCard className="w-4 h-4 text-gray-700" />
                   {paymentMethod === 'card' && (
-                    <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Credit / Debit Card</span>
@@ -634,7 +634,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
               <span className="text-sm font-bold text-gray-900">Total Amount</span>
-              <span className="text-base font-extrabold text-[#dc2626] font-mono">
+              <span className="text-base font-extrabold text-primary font-mono">
                 ${grandTotal} CAD
               </span>
             </div>
@@ -646,14 +646,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           <div className="max-w-md md:max-w-xl mx-auto flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 font-medium">Estimated Total</span>
-              <span className="text-lg font-black text-[#dc2626] font-mono leading-tight">
+              <span className="text-lg font-black text-primary font-mono leading-tight">
                 ${grandTotal}
               </span>
             </div>
 
             <button
               onClick={handleConfirmBooking}
-              className="flex-1 py-3.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Confirm & Schedule</span>
             </button>

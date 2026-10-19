@@ -23,13 +23,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
           <svg
             viewBox="0 0 400 18"
             preserveAspectRatio="none"
-            className="w-full h-4 block fill-[#222225] filter drop-shadow-[0_-4px_8px_rgba(0,0,0,0.12)]"
+            className="w-full h-4 block fill-secondary -mb-px"
           >
             <path d="M 0,18 Q 200,0 400,18 Z" />
           </svg>
 
           {/* Minimalist Navigation Body */}
-          <div className="bg-[#222225] px-6 pt-0.5 pb-2.5 flex items-center justify-around">
+          <div className="bg-secondary px-6 pt-0.5 pb-2.5 flex items-center justify-around">
             {tabs.map((tab) => {
               const isActive = currentTab === tab.id
               const IconComponent = tab.icon
@@ -42,21 +42,30 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                     window.scrollTo({ top: 0, behavior: 'smooth' })
                   }}
                   aria-label={tab.label}
-                  className="flex items-center justify-center p-1 cursor-pointer transition-transform active:scale-90"
+                  className="flex flex-col items-center justify-center p-1 cursor-pointer transition-transform active:scale-90 group"
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    className={`flex items-center justify-center transition-all ${
                       isActive
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-[#8e8e93] hover:text-white hover:bg-white/5'
+                        ? 'text-white'
+                        : 'text-[#8e8e93] group-hover:text-white'
                     }`}
                   >
                     <IconComponent
-                      size={20}
+                      size={18}
                       strokeWidth={isActive ? 2.4 : 1.7}
                       className="transition-colors"
                     />
                   </div>
+                  <span
+                    className={`text-[10px] tracking-tight mt-0.5 leading-none transition-colors ${
+                      isActive
+                        ? 'text-white font-bold'
+                        : 'text-[#8e8e93] font-medium group-hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
                 </button>
               )
             })}

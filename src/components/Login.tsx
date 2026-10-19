@@ -28,7 +28,7 @@ export const Login: React.FC<LoginProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-[#dc2626] selection:text-white">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground">
       <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
         
         {/* Top Section with Mascot Logo */}
@@ -65,7 +65,7 @@ export const Login: React.FC<LoginProps> = ({
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="w-full px-4 py-3 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-[#dc2626] transition-colors"
+                  className="w-full px-4 py-3 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
@@ -81,7 +81,7 @@ export const Login: React.FC<LoginProps> = ({
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Enter password"
-                    className="w-full px-4 py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-[#dc2626] transition-colors tracking-widest"
+                    className="w-full px-4 py-3 pr-11 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors tracking-widest"
                   />
                   <button
                     type="button"
@@ -106,7 +106,7 @@ export const Login: React.FC<LoginProps> = ({
                 >
                   <div
                     className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors ${
-                      rememberMe ? 'bg-[#dc2626] text-white' : 'border border-gray-300 bg-white'
+                      rememberMe ? 'bg-primary text-primary-foreground' : 'border border-gray-300 bg-white'
                     }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
@@ -118,7 +118,7 @@ export const Login: React.FC<LoginProps> = ({
                 <button
                   type="button"
                   onClick={() => alert('Password reset link sent to your email!')}
-                  className="text-xs font-bold text-gray-900 hover:text-[#dc2626] transition-colors cursor-pointer"
+                  className="text-xs font-bold text-gray-900 hover:text-primary transition-colors cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -131,7 +131,7 @@ export const Login: React.FC<LoginProps> = ({
                   e.preventDefault()
                   handleLoginSubmit()
                 }}
-                className="w-full mt-3 py-3.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center"
+                className="w-full mt-3 py-3.5 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center"
               >
                 Log in
               </button>
@@ -144,7 +144,7 @@ export const Login: React.FC<LoginProps> = ({
                 <button
                   type="button"
                   onClick={onSwitchToSignup}
-                  className="text-[#dc2626] font-bold hover:underline cursor-pointer ml-0.5"
+                  className="text-primary font-bold hover:underline cursor-pointer ml-0.5"
                 >
                   Sign Up
                 </button>

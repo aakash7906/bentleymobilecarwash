@@ -179,7 +179,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Grid Layout Button */}
           <button
             type="button"
-            className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-[#dc2626] text-white flex items-center justify-center shadow-sm hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer"
+            className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary-hover active:scale-95 transition-all cursor-pointer"
             title="Categories"
           >
             <span className="material-symbols-outlined text-[18px] sm:text-[20px]">grid_view</span>
@@ -188,12 +188,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Shopping Cart Button */}
           <button
             type="button"
-            className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-[#dc2626] text-white flex items-center justify-center shadow-sm hover:bg-[#b91c1c] active:scale-95 transition-all relative cursor-pointer"
+            className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary-hover active:scale-95 transition-all relative cursor-pointer"
             title="Cart"
           >
             <span className="material-symbols-outlined text-[18px] sm:text-[20px]">shopping_cart</span>
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white text-[#dc2626] text-[10px] font-bold flex items-center justify-center border border-[#dc2626] shadow-sm animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white text-primary text-[10px] font-bold flex items-center justify-center border border-primary shadow-sm animate-pulse">
                 {cartCount}
               </span>
             )}
@@ -204,7 +204,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 2. LOCATION PILL BAR */}
       <div className="px-4 sm:px-5 mt-2.5 sm:mt-3">
         <div className="w-full bg-[#f4f5f7] border border-gray-200/70 rounded-xl py-2 px-3 sm:px-3.5 flex items-center gap-2 shadow-xs">
-          <span className="material-symbols-outlined text-[#dc2626] text-[17px] sm:text-[19px] shrink-0">
+          <span className="material-symbols-outlined text-primary text-[17px] sm:text-[19px] shrink-0">
             location_on
           </span>
           <span className="text-[11px] sm:text-xs font-medium text-gray-700 truncate tracking-tight">
@@ -224,7 +224,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
           <button
             onClick={onAddCar}
-            className="shrink-0 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#dc2626] text-white text-[11px] sm:text-xs font-bold shadow-md hover:bg-[#b91c1c] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="shrink-0 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold shadow-md hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
             <span>+</span>
             <span>Add Car</span>
@@ -239,7 +239,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <svg className="w-full h-full" viewBox="0 0 20 36" preserveAspectRatio="none" fill="none">
             <path
               d="M 0,28 Q 10,12 20,12"
-              stroke="#dc2626"
+              stroke="var(--primary)"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
             />
@@ -251,7 +251,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full bg-white border border-[#dc2626] rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-red-50/20 active:scale-98 transition-all"
+            className="w-full bg-white border border-primary rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary-light/50 active:scale-98 transition-all"
           >
             <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight truncate">
               {currentVehicle}
@@ -283,13 +283,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     }}
                     className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
                       v === currentVehicle
-                        ? 'bg-red-50 text-[#dc2626] font-bold'
+                        ? 'bg-primary-light text-primary font-bold'
                         : 'hover:bg-gray-50 text-gray-800 font-medium'
                     }`}
                   >
                     <span className="text-xs sm:text-sm">{v}</span>
                     {v === currentVehicle && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#dc2626]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                     )}
                   </div>
                 ))}
@@ -299,7 +299,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   setIsDropdownOpen(false)
                   onAddCar()
                 }}
-                className="mt-1 w-full py-1.5 rounded-xl border border-dashed border-[#dc2626] text-[#dc2626] hover:bg-red-50 text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                className="mt-1 w-full py-1.5 rounded-xl border border-dashed border-primary text-primary hover:bg-primary-light text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer"
               >
                 <span>+ Add another car</span>
               </button>
@@ -312,7 +312,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <svg className="w-full h-full" viewBox="0 0 20 36" preserveAspectRatio="none" fill="none">
             <path
               d="M 0,12 Q 10,12 20,28"
-              stroke="#dc2626"
+              stroke="var(--primary)"
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
             />
@@ -322,7 +322,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 5. RED ACTION BANNER */}
       <div className="px-4 sm:px-5 mt-3 sm:mt-3.5">
-        <div className="w-full bg-[#dc2626] rounded-xl h-9.5 sm:h-10 px-4 flex items-center text-white shadow-sm">
+        <div className="w-full bg-primary rounded-xl h-9.5 sm:h-10 px-4 flex items-center text-primary-foreground shadow-sm">
           <span className="material-symbols-outlined text-[19px] sm:text-[21px]">grid_view</span>
         </div>
       </div>
@@ -431,7 +431,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Indicator dots matching reference */}
               <div className="flex items-center justify-center gap-1 mt-2.5">
-                <span className="w-3.5 h-1 bg-[#dc2626] rounded-full"></span>
+                <span className="w-3.5 h-1 bg-primary rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -439,14 +439,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Category Pill & Starting at Price */}
               <div className="mt-2 flex items-center justify-between gap-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold tracking-wide shrink-0">
+                <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wide shrink-0">
                   {card.category}
                 </span>
                 <div className="text-right">
                   <span className="text-[10px] text-gray-400 block leading-tight font-medium">
                     Starting at
                   </span>
-                  <span className="text-xs sm:text-sm font-bold text-[#dc2626]">
+                  <span className="text-xs sm:text-sm font-bold text-primary">
                     {card.price}
                   </span>
                 </div>
@@ -461,7 +461,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <div className="flex items-center gap-2 mt-3 pt-1">
                 <button
                   onClick={() => onSelectService(card.serviceItem)}
-                  className="flex-1 py-2 px-1 rounded-full bg-[#f1f3f5] hover:bg-[#e4e7eb] text-[#dc2626] text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
+                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-[#e4e7eb] text-primary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
                 >
                   View Detail &gt;
                 </button>
@@ -469,7 +469,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   onClick={() =>
                     onBookNow ? onBookNow(card.serviceItem) : onSelectService(card.serviceItem)
                   }
-                  className="flex-1 py-2 px-1 rounded-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer"
+                  className="flex-1 py-2 px-1 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer"
                 >
                   Book Now &gt;
                 </button>
@@ -506,7 +506,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Indicator dots matching reference */}
               <div className="flex items-center justify-center gap-1 mt-2.5">
-                <span className="w-3.5 h-1 bg-[#dc2626] rounded-full"></span>
+                <span className="w-3.5 h-1 bg-primary rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -517,7 +517,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-1">
                   {prod.title}
                 </h3>
-                <span className="text-xs sm:text-sm font-bold text-[#dc2626] shrink-0">
+                <span className="text-xs sm:text-sm font-bold text-primary shrink-0">
                   {prod.price}
                 </span>
               </div>
@@ -525,7 +525,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               {/* Add to Cart Button */}
               <button
                 onClick={() => handleAddToCart(prod.title)}
-                className="mt-3 w-full py-2.5 rounded-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer flex items-center justify-center gap-1"
+                className="mt-3 w-full py-2.5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer flex items-center justify-center gap-1"
               >
                 <span>Add to Cart &gt;</span>
               </button>

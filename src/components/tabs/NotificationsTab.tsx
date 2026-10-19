@@ -15,7 +15,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ onBack }) =>
         {NOTIFICATIONS_DATA.map((item) => (
           <div
             key={item.id}
-            className="p-3.5 rounded-2xl bg-[#f4f4f5] border-l-4 border-l-[#dc2626] flex flex-col gap-1 shadow-sm"
+            className="p-3.5 rounded-2xl bg-[#f4f4f5] border-l-4 border-l-primary flex flex-col gap-1 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-bold text-gray-900">

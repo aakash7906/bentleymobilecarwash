@@ -61,12 +61,12 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 
           {/* Pricing & Category */}
           <div className="flex items-center justify-between pt-1">
-            <span className="px-3 py-1 rounded-full bg-[#dc2626] text-white text-[11px] font-bold">
+            <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
               {service.category}
             </span>
             <div className="text-right">
               <span className="text-[11px] text-gray-500 block">Starting at</span>
-              <span className="text-base font-bold text-[#dc2626] font-mono">
+              <span className="text-base font-bold text-primary font-mono">
                 {service.price}
               </span>
             </div>
@@ -75,9 +75,9 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
           <div>
             <h2 className="text-lg font-bold text-gray-900">{service.title}</h2>
             <div className="flex items-center gap-2 mt-0.5 text-xs">
-              <span className="text-[#dc2626] font-semibold">{service.vehicleModel}</span>
+              <span className="text-primary font-semibold">{service.vehicleModel}</span>
               <span className="text-gray-400">•</span>
-              <span className="text-gray-600 font-medium">Est. Time <strong className="text-[#dc2626]">({service.estTime})</strong></span>
+              <span className="text-gray-600 font-medium">Est. Time <strong className="text-primary">({service.estTime})</strong></span>
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             <button
               onClick={handleAction}
               disabled={booked}
-              className="w-full py-3.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {booked ? (
                 <span>✓ Appointment Confirmed!</span>
