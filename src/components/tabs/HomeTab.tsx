@@ -3,13 +3,13 @@ import { ServiceItem } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
 import logoBentley from '@/assets/Logo_Bentley.png'
 
-// Category and Section Assets copied from home_ima
-import catCarWashImg from '@/assets/home/cat-car-wash.png'
+// Category and Section Assets from src/assets/home
+import catCarWashImg from '@/assets/home/wheel-brush-clean.png'
 import catExteriorImg from '@/assets/home/cat-exterior.png'
 import catInteriorImg from '@/assets/home/cat-interior.png'
 import catTireShineImg from '@/assets/home/cat-tire-shine.png'
 import recCarWashImg from '@/assets/home/rec-car-wash.png'
-import shopTireShineImg from '@/assets/home/shop-tire-shine.png'
+import shopTireShineImg from '@/assets/home/shop-tire-shine.jpg'
 import { OrderTrackingMapPage } from '@/components/OrderTrackingMapPage'
 
 interface HomeTabProps {
@@ -327,23 +327,23 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* 6. 4 CATEGORY CARDS (2x2 Asymmetric Bento Grid) */}
+      {/* 6. 4 CATEGORY CARDS (2x2 Asymmetric Bento Grid matching reference design) */}
       <div className="px-4 sm:px-5 mt-3 sm:mt-3.5 flex flex-col gap-2.5">
         {/* Row 1: Car Wash (~38%) + Exterior Detailing (~62%) */}
         <div className="flex items-center gap-2.5">
           {/* Card 1: Car Wash */}
           <div
             onClick={() => handleSelectCategory('Car Wash')}
-            className="flex-[0.38] bg-[#f3f4f6] rounded-2xl p-2.5 sm:p-3 h-28 sm:h-32 md:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-98 group"
+            className="flex-[0.38] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="text-xs sm:text-sm md:text-base font-bold text-gray-900 z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
               Car Wash
             </span>
-            <div className="absolute right-0 bottom-0 w-20 sm:w-22 md:w-24 h-22 sm:h-24 md:h-26 overflow-hidden pointer-events-none">
+            <div className="absolute -right-2 -bottom-2 w-26 sm:w-30 h-24 sm:h-28 overflow-hidden pointer-events-none flex items-end justify-end">
               <img
                 src={catCarWashImg}
                 alt="Car Wash"
-                className="w-full h-full object-cover object-bottom group-hover:scale-105 transition-transform"
+                className="w-full h-full object-contain object-top group-hover:scale-105 transition-transform duration-300 drop-shadow-sm"
               />
             </div>
           </div>
@@ -351,16 +351,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 2: Exterior Detailing */}
           <div
             onClick={() => handleSelectCategory('Exterior Detailing')}
-            className="flex-[0.62] bg-[#f3f4f6] rounded-2xl p-2.5 sm:p-3 h-28 sm:h-32 md:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-98 group"
+            className="flex-[0.62] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="text-xs sm:text-sm md:text-base font-bold text-gray-900 z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
               Exterior Detailing
             </span>
-            <div className="absolute right-1 bottom-1 w-[80%] max-w-[190px] sm:max-w-[220px] md:max-w-[260px] h-15 sm:h-18 md:h-22 flex items-end justify-end pointer-events-none">
+            <div className="absolute right-1 bottom-1 w-[85%] max-w-[210px] sm:max-w-[250px] h-20 sm:h-24 pointer-events-none flex items-end justify-end">
               <img
                 src={catExteriorImg}
                 alt="Exterior Detailing"
-                className="w-full h-auto object-contain group-hover:scale-105 transition-transform"
+                className="w-full h-auto max-h-full object-contain object-bottom-right group-hover:scale-105 transition-transform duration-300 drop-shadow-sm"
               />
             </div>
           </div>
@@ -371,16 +371,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 3: Interior Detailing */}
           <div
             onClick={() => handleSelectCategory('Interior Detailing')}
-            className="flex-[0.62] bg-[#f3f4f6] rounded-2xl p-2.5 sm:p-3 h-28 sm:h-32 md:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-98 group"
+            className="flex-[0.62] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="text-xs sm:text-sm md:text-base font-bold text-gray-900 z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
               Interior Detailing
             </span>
-            <div className="absolute right-0 bottom-0 left-0 h-15 sm:h-18 md:h-22 flex items-end overflow-hidden pointer-events-none">
+            <div className="absolute right-0 bottom-0 left-0 h-16 sm:h-20 pointer-events-none flex items-end overflow-hidden">
               <img
                 src={catInteriorImg}
                 alt="Interior Detailing"
-                className="w-full h-full object-cover object-center rounded-b-2xl group-hover:scale-105 transition-transform"
+                className="w-full h-full object-cover object-bottom rounded-b-[20px] group-hover:scale-105 transition-transform duration-300"
               />
             </div>
           </div>
@@ -388,16 +388,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 4: Tire Shine */}
           <div
             onClick={() => handleSelectCategory('Tire Shine')}
-            className="flex-[0.38] bg-[#f3f4f6] rounded-2xl p-2.5 sm:p-3 h-28 sm:h-32 md:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-98 group"
+            className="flex-[0.38] bg-[#f1f3f6] hover:bg-[#e8ecf1] rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="text-xs sm:text-sm md:text-base font-bold text-gray-900 z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-[#111827] z-10 leading-tight">
               Tire Shine
             </span>
-            <div className="absolute right-0 bottom-0 w-18 sm:w-20 md:w-24 h-18 sm:h-20 md:h-24 overflow-hidden pointer-events-none">
+            <div className="absolute -right-2 -bottom-2 w-24 sm:w-28 h-22 sm:h-26 pointer-events-none flex items-end justify-end overflow-hidden">
               <img
                 src={catTireShineImg}
                 alt="Tire Shine"
-                className="w-full h-full object-contain object-bottom-right group-hover:scale-105 transition-transform"
+                className="w-full h-full object-contain object-bottom-right group-hover:scale-105 transition-transform duration-300 drop-shadow-sm"
               />
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import splashExactBg from '@/assets/splash/splash-exact-bg.png'
+import logoBentley from '@/assets/splash/bentley-logo-hd.png'
 
 export interface SplashScreenProps {
   /**
@@ -53,7 +53,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   if (!isVisible) return null
 
-  // 8 radial spokes matching authentic Figma iOS Activity Indicator
+  // 8 radial spokes matching authentic circulating activity indicator
   const spokes = [
     { rotate: 0, opacity: 1.0 },
     { rotate: 45, opacity: 0.875 },
@@ -67,58 +67,70 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black transition-opacity duration-300 ease-in-out ${isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-secondary/80 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}
       onClick={handleDismiss}
       title={dismissible ? 'Tap anywhere to continue' : undefined}
     >
       {/* 
-        Responsive Mobile App Container matching the main application canvas.
-        Full viewport on mobile (100dvh), framed smartphone view on desktop.
+        Responsive Mobile & Tablet App Container:
+        - 100dvh dynamic viewport height on all mobile devices
+        - Fluid width up to max-w-md on mobile, md:max-w-xl matching app layout on tablets
+        - Framed rounded view with elevation on desktop & tablets
+        - Background gradient driven by index.css design tokens
       */}
-      <div className="relative w-full max-w-md h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] sm:max-h-[92vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none bg-black cursor-pointer flex flex-col justify-end">
-        {/* Base Image: Cockpit POV, Speed Tunnel, Bentley Emblem */}
-        <img
-          src={splashExactBg}
-          alt="Bentley Mobile Wash Splash Screen"
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-        />
+      <div
+        className="relative w-full max-w-md md:max-w-xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none cursor-pointer flex flex-col items-center justify-center p-6"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 48%, var(--surface-subtle) 0%, var(--bg-canvas) 60%, var(--border-light) 100%)',
+        }}
+      >
+        {/* Center Section: HD Mascot Logo */}
+        <div className="flex flex-col items-center justify-center w-full flex-1 relative px-4">
+          <div className="w-60 min-[380px]:w-68 sm:w-80 md:w-96 max-w-[82%] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+            <img
+              src={logoBentley}
+              alt="Bentley Mobile Auto Detail Car Wash"
+              className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+            />
+          </div>
 
-        {/* 
-          Live Animated 8-Spoke Activity Indicator (Loader)
-          Cleanly positioned in lower cockpit dashboard center, always perfectly aligned
-        */}
-        <div className="relative z-20 pointer-events-none flex items-center justify-center pb-16 sm:pb-20">
-          <svg
-            className="w-[36px] h-[36px] drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]"
-            viewBox="0 0 36 36"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <g>
-              {/* Native SVG rotation around center (18, 18) for flawless 60fps spinning */}
-              <animateTransform
-                attributeName="transform"
-                type="rotate"
-                from="0 18 18"
-                to="360 18 18"
-                dur="1s"
-                repeatCount="indefinite"
-              />
-              {spokes.map((spoke, idx) => (
-                <rect
-                  key={idx}
-                  x="16.5"
-                  y="4.5"
-                  width="3"
-                  height="8.5"
-                  rx="1.5"
-                  fill="#FFFFFF"
-                  opacity={spoke.opacity}
-                  transform={`rotate(${spoke.rotate} 18 18)`}
+          {/* Primary Circulating Activity Indicator: Driven by text-primary token */}
+          <div className="absolute bottom-28 min-[400px]:bottom-36 sm:bottom-40 md:bottom-44 flex items-center justify-center">
+            <svg
+              className="w-9 h-9 min-[400px]:w-10 min-[400px]:h-10 text-primary"
+              viewBox="0 0 36 36"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-label="Loading..."
+            >
+              <g>
+                {/* Native SVG rotation around center (18, 18) for smooth 60fps spinning */}
+                <animateTransform
+                  attributeName="transform"
+                  type="rotate"
+                  from="0 18 18"
+                  to="360 18 18"
+                  dur="0.9s"
+                  repeatCount="indefinite"
                 />
-              ))}
-            </g>
-          </svg>
+                {spokes.map((spoke, idx) => (
+                  <rect
+                    key={idx}
+                    x="16.25"
+                    y="3.5"
+                    width="3.5"
+                    height="9"
+                    rx="1.75"
+                    fill="currentColor"
+                    opacity={spoke.opacity}
+                    transform={`rotate(${spoke.rotate} 18 18)`}
+                  />
+                ))}
+              </g>
+            </svg>
+          </div>
         </div>
       </div>
     </div>
