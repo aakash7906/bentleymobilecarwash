@@ -28,3 +28,40 @@ export interface ModificationNotification {
   title: string
   description: string
 }
+
+export interface ProductItem {
+  id: string
+  title: string
+  subtitle?: string
+  category: string
+  price: string
+  priceNumeric: number
+  originalPrice?: string
+  rating: number
+  reviewsCount: number
+  image: string
+  description: string
+  features: string[]
+  inStock: boolean
+  volume?: string
+  badge?: string
+}
+
+export interface CartItem {
+  product: ProductItem
+  quantity: number
+}
+
+export interface UserProfile {
+  name: string
+  email: string
+  phone: string
+  address: string
+  city?: string
+  postalCode?: string
+  avatar: string
+  preferredVehicle?: string
+  membershipTier?: string
+}
+
+

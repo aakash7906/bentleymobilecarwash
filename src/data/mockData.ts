@@ -1,10 +1,16 @@
 import { ServiceItem, ModificationNotification } from '@/types'
 
 export const USER_INFO = {
-  name: 'Sarah',
-  email: 'sarah@gmail.com',
-  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+  name: 'Sarah Jenkins',
+  email: 'sarah.jenkins@gmail.com',
+  phone: '+1 (998) 877-5561',
+  address: '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
+  city: 'Ontario',
+  postalCode: 'L4B 1X9',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
   currentVehicle: 'Audi R8 GT',
+  preferredVehicle: 'Audi R8 GT',
+  membershipTier: 'VIP Platinum',
 }
 
 export const USER_SAVED_VEHICLES = [

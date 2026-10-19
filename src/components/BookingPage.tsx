@@ -6,7 +6,6 @@ import {
   MapPin,
   Car,
   CheckCircle2,
-  Sparkles,
   CreditCard,
   ShieldCheck,
   Check,
@@ -476,7 +475,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 6. Popular Add-Ons */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span>Recommended Add-Ons</span>
             </label>
 

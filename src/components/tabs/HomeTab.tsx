@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { ServiceItem } from '@/types'
+import { ServiceItem, ProductItem, CartItem } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
+import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
 
 // Category and Section Assets from src/assets/home
@@ -11,6 +12,8 @@ import catTireShineImg from '@/assets/home/cat-tire-shine.png'
 import recCarWashImg from '@/assets/home/rec-car-wash.png'
 import shopTireShineImg from '@/assets/home/shop-tire-shine.jpg'
 import { OrderTrackingMapPage } from '@/components/OrderTrackingMapPage'
+import { ProductDetailPage } from '@/components/ProductDetailPage'
+import { CartPage } from '@/components/CartPage'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -30,16 +33,57 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenTracking,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
+  const [isCartOpen, setIsCartOpen] = useState(false)
 
-  const handleAddToCart = (productName: string) => {
-    setCartCount((prev) => prev + 1)
-    setToastMessage(`Added "${productName}" to Cart!`)
+  // Real cart items state initialized with featured care essentials
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    {
+      product: BENTLEY_PRODUCTS[0], // Bentley 007 Tire Shine (1 Gal)
+      quantity: 1,
+    },
+    {
+      product: BENTLEY_PRODUCTS[2], // Bentley Glisten Ceramic Silica (250ml)
+      quantity: 1,
+    },
+  ])
+
+  const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0)
+
+  const handleAddToCart = (product: ProductItem, quantity: number = 1) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id)
+      if (existing) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        )
+      }
+      return [...prev, { product, quantity }]
+    })
+    setToastMessage(`Added ${quantity > 1 ? `${quantity}x ` : ''}"${product.title}" to Cart!`)
     setTimeout(() => {
       setToastMessage(null)
     }, 2400)
+  }
+
+  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
+    )
+  }
+
+  const handleRemoveCartItem = (productId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.product.id !== productId))
+  }
+
+  const handleClearCart = () => {
+    setCartItems([])
   }
 
   // Recommended for you cards matching user screenshot
@@ -121,27 +165,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     },
   ]
 
-  // Bentley Shop products matching screenshot
-  const shopProducts = [
-    {
-      id: 'shop-tire-shine',
-      title: 'Bentley 007 – Tire Shine',
-      price: '$50.00',
-      image: shopTireShineImg,
-    },
-    {
-      id: 'shop-ceramic-spray',
-      title: 'Bentley Gold Foam Wash',
-      price: '$45.00',
-      image: recCarWashImg,
-    },
-    {
-      id: 'shop-microfiber',
-      title: 'Bentley Ultra Detail Pack',
-      price: '$35.00',
-      image: catInteriorImg,
-    },
-  ]
+  // Bentley Shop authentic products from src/assets/products
+  const shopProducts = BENTLEY_PRODUCTS
 
   const handleSelectCategory = (catName: string) => {
     const found = SERVICES_CATALOG.find(
@@ -188,8 +213,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Shopping Cart Button */}
           <button
             type="button"
+            onClick={() => setIsCartOpen(true)}
             className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary-hover active:scale-95 transition-all relative cursor-pointer"
-            title="Cart"
+            title="Shopping Cart"
           >
             <span className="material-symbols-outlined text-[18px] sm:text-[20px]">shopping_cart</span>
             {cartCount > 0 && (
@@ -482,9 +508,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 8. "BENTLEY SHOP" SECTION */}
       <section className="mt-5 sm:mt-6 flex flex-col gap-3">
         <div className="px-4 sm:px-5 flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
-            Bentley Shop
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
+              Bentley Shop
+            </h2>
+            <span className="text-[10px] font-bold text-primary bg-primary-light border border-primary/25 px-2 py-0.5 rounded-full">
+              Official Care
+            </span>
+          </div>
           <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Swipe &gt;</span>
         </div>
 
@@ -493,15 +524,30 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {shopProducts.map((prod) => (
             <div
               key={prod.id}
-              className="w-[240px] sm:w-[265px] md:w-[280px] shrink-0 snap-start bg-white rounded-2xl border border-gray-200/90 shadow-sm p-3 flex flex-col justify-between hover:shadow-md transition-shadow"
+              onClick={() => setSelectedProduct(prod)}
+              className="w-[245px] sm:w-[270px] md:w-[285px] shrink-0 snap-start bg-white rounded-2xl border border-gray-200/90 shadow-sm p-3 flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer group"
             >
-              {/* Product Image */}
-              <div className="relative h-34 sm:h-38 md:h-40 w-full overflow-hidden rounded-xl bg-slate-100 shadow-inner">
+              {/* Product Image Container */}
+              <div className="relative h-40 sm:h-44 md:h-48 w-full overflow-hidden rounded-xl bg-slate-50 flex items-center justify-center p-2 border border-gray-100">
                 <img
                   src={prod.image}
                   alt={prod.title}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
+
+                {/* Badge Overlay */}
+                {prod.badge && (
+                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-extrabold uppercase tracking-wider shadow-xs">
+                    {prod.badge}
+                  </span>
+                )}
+
+                {/* Volume Pill Overlay */}
+                {prod.volume && (
+                  <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[9px] font-semibold tracking-tight shadow-xs">
+                    {prod.volume}
+                  </span>
+                )}
               </div>
 
               {/* Indicator dots matching reference */}
@@ -512,29 +558,55 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
               </div>
 
+              {/* Category & Rating */}
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                  {prod.category}
+                </span>
+                <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5">
+                  ★ {prod.rating}
+                </span>
+              </div>
+
               {/* Product Title & Price */}
-              <div className="mt-2.5 flex items-center justify-between gap-1">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-1">
+              <div className="mt-1 flex items-start justify-between gap-1.5">
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
                   {prod.title}
                 </h3>
-                <span className="text-xs sm:text-sm font-bold text-primary shrink-0">
+                <span className="text-xs sm:text-sm font-extrabold text-primary shrink-0 font-mono">
                   {prod.price}
                 </span>
               </div>
 
-              {/* Add to Cart Button */}
-              <button
-                onClick={() => handleAddToCart(prod.title)}
-                className="mt-3 w-full py-2.5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer flex items-center justify-center gap-1"
-              >
-                <span>Add to Cart &gt;</span>
-              </button>
+              {/* Action Buttons: View Details & Add to Cart */}
+              <div className="flex items-center gap-2 mt-3 pt-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedProduct(prod)
+                  }}
+                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-gray-200 text-secondary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer border border-gray-200"
+                >
+                  Details &gt;
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAddToCart(prod, 1)
+                  }}
+                  className="flex-1 py-2 px-1 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold transition-all active:scale-95 shadow-xs text-center cursor-pointer"
+                >
+                  Add to Cart
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Technician is Arriving (Reduced sleek size) */}
+      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Technician is Arriving (Elevated above bottom nav) */}
       <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
         <div className="max-w-[340px] sm:max-w-sm mx-auto pointer-events-auto">
           <div
@@ -542,11 +614,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               if (onOpenTracking) onOpenTracking()
               else setIsTrackingMapOpen(true)
             }}
-            className="w-full bg-secondary hover:bg-secondary-hover text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-gray-700/50"
+            className="w-full bg-status-active hover:bg-status-active-hover text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-white/25 filter drop-shadow-[0_6px_16px_var(--status-active-glow)]"
           >
             {/* Left Content */}
             <div className="flex flex-col items-start gap-0.5">
-              <span className="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold leading-none">
+              <span className="px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
                 Car Wash
               </span>
               <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">
@@ -556,10 +628,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
             {/* Right Mins Countdown Card (Compact) */}
             <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
-              <span className="text-primary text-sm sm:text-base font-extrabold leading-none">
+              <span className="text-status-active text-sm sm:text-base font-extrabold leading-none">
                 33
               </span>
-              <span className="text-secondary text-[9px] font-bold leading-tight">
+              <span className="text-status-active text-[9px] font-bold leading-tight">
                 mins
               </span>
             </div>
@@ -579,6 +651,36 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           technicianName="James Marlo"
         />
       )}
+
+      {/* 11. Dedicated Product Detail Page Modal */}
+      {selectedProduct && (
+        <ProductDetailPage
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={(prod, qty) => {
+            handleAddToCart(prod, qty)
+          }}
+          onBuyNowSuccess={(prod, qty) => {
+            handleAddToCart(prod, qty)
+          }}
+          cartCount={cartCount}
+          onOpenCart={() => {
+            setSelectedProduct(null)
+            setIsCartOpen(true)
+          }}
+        />
+      )}
+
+      {/* 12. Dedicated Shopping Cart Page Modal */}
+      <CartPage
+        isOpen={isCartOpen}
+        items={cartItems}
+        onClose={() => setIsCartOpen(false)}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveCartItem}
+        onClearCart={handleClearCart}
+        onContinueShopping={() => setIsCartOpen(false)}
+      />
     </div>
   )
 }
