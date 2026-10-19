@@ -15,6 +15,11 @@
   --secondary-hover: #1e1e22;           /* Darker Charcoal */
   --secondary-foreground: #ffffff;      /* White text/icons on secondary */
 
+  /* Status Colors */
+  --status-active: #00c04b;             /* Status / Active Technician Green */
+  --status-active-hover: #00b044;       /* Active Hover Green */
+  --status-active-glow: rgba(0, 192, 75, 0.25);
+
   /* Aliases for backwards compatibility */
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
@@ -74,6 +79,9 @@
   --color-surface: var(--surface-card);
   --color-surface-subtle: var(--surface-subtle);
   --color-surface-alt: var(--surface-alt);
+
+  --color-status-active: var(--status-active);
+  --color-status-active-hover: var(--status-active-hover);
 }
 
 /* Base resets & typography */

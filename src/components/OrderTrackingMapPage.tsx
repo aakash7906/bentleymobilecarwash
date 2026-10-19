@@ -57,7 +57,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f7f9fb] flex flex-col justify-between overflow-y-auto max-w-md md:max-w-xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 bg-[#f7f9fb] flex flex-col overflow-y-auto max-w-md md:max-w-xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
       {/* 1. TOP HEADER */}
       <div className="bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3 border-b border-gray-100 flex items-center justify-between z-20 shrink-0">
         {/* Circular Back Button */}
@@ -83,17 +83,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         <div className="w-10" />
       </div>
 
-      {/* 2. INTERACTIVE VECTOR MAP SECTION */}
-      <div className="relative w-full h-[320px] sm:h-[360px] bg-[#ebf1f5] overflow-hidden select-none border-b border-gray-200/50">
+      {/* 2. INTERACTIVE VECTOR MAP SECTION - Expanded downwards to meet driver profile */}
+      <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[420px] bg-[#ebf1f5] overflow-hidden select-none border-b border-gray-200/50">
         <svg
           className="w-full h-full object-cover"
-          viewBox="0 0 400 340"
+          viewBox="0 0 400 480"
           preserveAspectRatio="xMidYMid slice"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           {/* Base Map City Ground */}
-          <rect width="400" height="340" fill="#eef2f5" />
+          <rect width="400" height="480" fill="#eef2f5" />
 
           {/* Green Park Areas */}
           {/* Park 1: Top Left */}
@@ -112,6 +112,12 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           <path d="M 260,190 L 335,160 L 380,230 L 290,265 Z" fill="#c3edb6" />
           {/* Park 8: Bottom Right */}
           <path d="M 270,270 L 380,250 L 410,320 L 295,350 Z" fill="#c3edb6" />
+          {/* Park 9: Extended Lower Left */}
+          <path d="M 15,330 L 75,315 L 90,395 L 20,415 Z" fill="#c3edb6" />
+          {/* Park 10: Extended Lower Center */}
+          <path d="M 125,370 L 190,350 L 200,430 L 135,450 Z" fill="#c3edb6" />
+          {/* Park 11: Extended Lower Right */}
+          <path d="M 265,365 L 375,345 L 410,425 L 285,465 Z" fill="#c3edb6" />
 
           {/* Secondary White City Streets Network */}
           <g stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
@@ -131,11 +137,18 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             <path d="M 210,0 L 220,90 L 200,160" />
             <path d="M 320,0 L 340,100 L 330,180" />
             <path d="M 380,80 L 390,200 L 370,300" />
+            {/* Extended streets in lower expanded region */}
+            <path d="M -10,350 L 130,325 L 260,410 L 410,375" />
+            <path d="M -10,430 L 115,410 L 180,480 L 310,445" />
+            <path d="M 35,320 L 75,395 L 145,375 L 275,475" />
+            <path d="M 175,305 L 185,410 L 170,490" />
+            <path d="M 375,295 L 385,405 L 365,490" />
+            <path d="M 85,175 L 90,295 L 85,445" />
           </g>
 
           {/* Blue Diagonal River */}
           <path
-            d="M 370,-30 Q 330,60 260,155 T 90,360"
+            d="M 370,-30 Q 330,60 260,155 T 90,360 T -20,520"
             stroke="#38bdf8"
             strokeWidth="26"
             fill="none"
@@ -143,7 +156,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           />
           {/* River Water Texture / Inner Stream */}
           <path
-            d="M 370,-30 Q 330,60 260,155 T 90,360"
+            d="M 370,-30 Q 330,60 260,155 T 90,360 T -20,520"
             stroke="#0284c7"
             strokeWidth="2"
             fill="none"
@@ -154,13 +167,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           {/* White Bridge Crossings */}
           <line x1="245" y1="140" x2="275" y2="170" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
           <line x1="160" y1="230" x2="190" y2="260" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
+          <line x1="75" y1="355" x2="105" y2="385" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
 
           {/* Primary Golden / Orange Arterial Avenues */}
           <g stroke="#f6ad55" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M 125,-10 L 105,100 L 145,210 L 165,350" strokeWidth="7" />
+            <path d="M 125,-10 L 105,100 L 145,210 L 165,350 L 155,490" strokeWidth="7" />
             <path d="M -10,38 L 260,125 L 410,20" strokeWidth="5.5" />
             <path d="M 245,60 L 395,130" strokeWidth="6" />
             <path d="M 50,340 L 410,125" strokeWidth="5.5" />
+            <path d="M -10,410 L 270,330 L 410,420" strokeWidth="6" />
           </g>
 
           {/* ROUTE POLYLINE (From starting point to customer location) */}
@@ -223,8 +238,8 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         </div>
       </div>
 
-      {/* 3. BOTTOM CARDS SECTION */}
-      <div className="bg-[#f7f9fb] px-4 sm:px-5 py-4 flex flex-col gap-3 flex-1 justify-end">
+      {/* 3. BOTTOM CARDS SECTION - Sits directly beneath the expanded map */}
+      <div className="bg-[#f7f9fb] px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 shrink-0 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
         {/* Card 1: Technician Info */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -310,7 +325,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       {/* 4. MODAL: IN-APP CHAT WITH TECHNICIAN */}
       {isChatOpen && (
         <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center p-0 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-250">
+          <div className="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col h-[65vh] animate-in slide-in-from-bottom duration-250">
             {/* Chat Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
