@@ -10,7 +10,8 @@ import { ProfileTab } from '@/components/tabs/ProfileTab'
 import { ServiceDetailModal } from '@/components/tabs/ServiceDetailModal'
 import { AddVehicleModal } from '@/components/tabs/AddVehicleModal'
 import { BookingPage } from '@/components/BookingPage'
-import { AuthScreen } from '@/components/AuthScreen'
+import { Login } from '@/components/Login'
+import { Signup } from '@/components/Signup'
 import { SplashScreen } from '@/components/SplashScreen'
 import { OnboardingScreen } from '@/components/OnboardingScreen'
 
@@ -72,14 +73,30 @@ export const App: React.FC = () => {
       )}
 
       {/* 3. Launch Login & Signup Screen */}
-      {showAuth && (
-        <AuthScreen
-          initialMode={authMode}
+      {showAuth && authMode === 'login' && (
+        <Login
           onLoginSuccess={(_user) => {
             setShowAuth(false)
             setCurrentTab('home')
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
+          onSwitchToSignup={() => setAuthMode('signup')}
+          onSkip={() => {
+            setShowAuth(false)
+            setCurrentTab('home')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+        />
+      )}
+
+      {showAuth && authMode === 'signup' && (
+        <Signup
+          onSignupSuccess={(_user) => {
+            setShowAuth(false)
+            setCurrentTab('home')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          onSwitchToLogin={() => setAuthMode('login')}
           onSkip={() => {
             setShowAuth(false)
             setCurrentTab('home')
