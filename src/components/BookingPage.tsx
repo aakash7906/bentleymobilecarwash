@@ -11,16 +11,21 @@ import {
   Check,
   Truck,
   Building2,
+  Receipt,
+  RefreshCw,
 } from 'lucide-react'
-import { ServiceItem } from '@/types'
+import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES, USER_INFO } from '@/data/mockData'
+import { InvoiceModal } from '@/components/InvoiceModal'
 
 interface BookingPageProps {
   initialService?: ServiceItem | null
   currentVehicle: string
   onBack: () => void
-  onBookingComplete?: (bookingDetails: any) => void
+  onBookingComplete?: (booking: BookingRecord) => void
   onTrackOrder?: () => void
+  savedVehicles?: SavedVehicle[]
+  onSelectVehicle?: (vehicleName: string) => void
 }
 
 interface AddOnOption {
@@ -92,12 +97,19 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onBack,
   onBookingComplete,
   onTrackOrder,
+  savedVehicles,
+  onSelectVehicle,
 }) => {
   // Service selection
   const [selectedService, setSelectedService] = useState<ServiceItem>(
     initialService || SERVICES_CATALOG[0]
   )
   const [selectedVehicle, setSelectedVehicle] = useState<string>(currentVehicle)
+
+  // Frequency & Subscription
+  const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
   // Booking location
   const [locationType, setLocationType] = useState<'mobile' | 'shop'>('mobile')
@@ -126,6 +138,12 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [isSuccess, setIsSuccess] = useState(false)
   const [bookingRef, setBookingRef] = useState('')
 
+  // Vehicle Sizing calculation
+  const selectedVehicleObj = savedVehicles?.find((v) => v.name === selectedVehicle)
+  const vehicleType = selectedVehicleObj?.type || 'Sedan'
+  const vehicleSizeSurcharge =
+    vehicleType === 'SUV' ? 15 : vehicleType === 'Truck' || vehicleType === 'Van' ? 25 : 0
+
   const toggleAddon = (id: string) => {
     setSelectedAddonIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -138,26 +156,57 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
     return sum + (addon ? addon.price : 0)
   }, 0)
-  const mobileFee = locationType === 'mobile' ? 0 : 0 // Free mobile service in Kelowna area
-  const subtotal = basePrice + addonsTotal + mobileFee
+  const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal
+  const recurringDiscount =
+    frequency !== 'one_time' ? Math.round(preDiscountSubtotal * 0.15) : 0
+  const mobileFee = locationType === 'mobile' ? 0 : 0 // Free mobile dispatch in Kelowna
+  const subtotal = Math.max(0, preDiscountSubtotal - recurringDiscount + mobileFee)
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
   const grandTotal = (subtotal + tax).toFixed(2)
 
   const handleConfirmBooking = () => {
     const ref = `BW-${Math.floor(100000 + Math.random() * 900000)}`
+    const newBookingId = `bkg-${Math.floor(100000 + Math.random() * 900000)}`
+    const fullAddress =
+      locationType === 'mobile'
+        ? `${address}, ${city} ${postalCode}`
+        : 'Bentley Studio (Kelowna)'
+    const formattedDate = `${dateSlots[selectedDateIndex].dayName}, ${dateSlots[selectedDateIndex].month} ${dateSlots[selectedDateIndex].dayNumber}`
+
+    const newBooking: BookingRecord = {
+      id: newBookingId,
+      title: selectedService.title,
+      category: selectedService.category,
+      vehicle: selectedVehicle,
+      vehicleType,
+      licensePlate: selectedVehicleObj?.licensePlate,
+      image: selectedService.image,
+      price: `$${grandTotal}`,
+      totalNumeric: parseFloat(grandTotal),
+      date: formattedDate,
+      time: selectedTimeSlot,
+      status: 'scheduled',
+      locationType,
+      address: fullAddress,
+      customerName,
+      customerPhone,
+      customerEmail,
+      technicianName: 'Alex Rivera',
+      addons: selectedAddonIds
+        .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
+        .filter(Boolean) as string[],
+      paymentMethod:
+        paymentMethod === 'card' ? 'Credit / Debit Card' : 'Pay on Completion',
+      frequency,
+      serviceItem: selectedService,
+      createdAt: new Date().toISOString(),
+    }
+
     setBookingRef(ref)
+    setCreatedBooking(newBooking)
     setIsSuccess(true)
     if (onBookingComplete) {
-      onBookingComplete({
-        bookingRef: ref,
-        service: selectedService,
-        vehicle: selectedVehicle,
-        date: dateSlots[selectedDateIndex],
-        time: selectedTimeSlot,
-        locationType,
-        address: `${address}, ${city} ${postalCode}`,
-        total: grandTotal,
-      })
+      onBookingComplete(newBooking)
     }
   }
 
@@ -233,6 +282,15 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           >
             Track Order &gt;
           </button>
+          {createdBooking && (
+            <button
+              onClick={() => setShowInvoiceModal(true)}
+              className="w-full py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <Receipt className="w-3.5 h-3.5 text-primary" />
+              <span>View Receipt / Invoice</span>
+            </button>
+          )}
           <button
             onClick={onBack}
             className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold active:scale-98 transition-all cursor-pointer text-center"
@@ -240,6 +298,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             Back to Home
           </button>
         </div>
+
+        {/* Invoice Modal */}
+        {showInvoiceModal && createdBooking && (
+          <InvoiceModal
+            booking={createdBooking}
+            onClose={() => setShowInvoiceModal(false)}
+          />
+        )}
       </div>
     )
   }
@@ -303,16 +369,40 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               </div>
               <select
                 value={selectedVehicle}
-                onChange={(e) => setSelectedVehicle(e.target.value)}
+                onChange={(e) => {
+                  setSelectedVehicle(e.target.value)
+                  if (onSelectVehicle) onSelectVehicle(e.target.value)
+                }}
                 className="text-xs font-semibold text-primary bg-primary-light py-1.5 px-3 rounded-lg border-0 cursor-pointer focus:outline-none"
               >
-                <option value={currentVehicle}>{currentVehicle}</option>
-                {USER_SAVED_VEHICLES.map((v, i) => (
-                  <option key={i} value={v}>
-                    {v}
+                {(savedVehicles && savedVehicles.length > 0
+                  ? savedVehicles
+                  : USER_SAVED_VEHICLES.map((name, i) => ({
+                      id: `v-${i}`,
+                      name,
+                      type: 'Sedan' as const,
+                      licensePlate: undefined,
+                    }))
+                ).map((veh) => (
+                  <option key={veh.id} value={veh.name}>
+                    {veh.name} {veh.licensePlate ? `• ${veh.licensePlate}` : ''}
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Vehicle Sizing Tier Notice */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle rounded-lg border border-neutral-100 text-[11px]">
+              <span className="text-neutral-500">
+                Body Category: <strong className="text-neutral-800">{vehicleType}</strong>
+              </span>
+              {vehicleSizeSurcharge > 0 ? (
+                <span className="text-primary font-semibold">
+                  +${vehicleSizeSurcharge}.00 size adjustment applied
+                </span>
+              ) : (
+                <span className="text-emerald-700 font-medium">Standard size ($0 extra)</span>
+              )}
             </div>
           </div>
 
@@ -515,7 +605,61 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             </div>
           </div>
 
-          {/* 7. Contact Details */}
+          {/* 7. Service Frequency & Subscription Plan */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 text-primary" />
+                <span>Service Frequency</span>
+              </label>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                Save 15% with Recurring
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setFrequency('one_time')}
+                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
+                  frequency === 'one_time'
+                    ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-gray-900">One-Time</span>
+                <span className="text-[10px] text-gray-500">Standard rate</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFrequency('biweekly')}
+                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all relative overflow-hidden ${
+                  frequency === 'biweekly'
+                    ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-gray-900">Bi-Weekly</span>
+                <span className="text-[10px] font-bold text-emerald-600">Save 15%</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFrequency('monthly')}
+                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
+                  frequency === 'monthly'
+                    ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-gray-900">Monthly</span>
+                <span className="text-[10px] font-bold text-emerald-600">Save 15%</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 8. Contact Details */}
           <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col gap-2.5">
             <span className="text-xs font-bold text-gray-900">Your Contact Details</span>
 
@@ -609,6 +753,13 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <span className="font-mono">${basePrice}.00</span>
             </div>
 
+            {vehicleSizeSurcharge > 0 && (
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>+ {vehicleType} Size Surcharge</span>
+                <span className="font-mono">+${vehicleSizeSurcharge}.00</span>
+              </div>
+            )}
+
             {selectedAddonIds.map((id) => {
               const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
               if (!addon) return null
@@ -619,6 +770,13 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 </div>
               )
             })}
+
+            {recurringDiscount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-semibold">
+                <span>Recurring Subscription (15% Off)</span>
+                <span className="font-mono">-${recurringDiscount}.00</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>Mobile Dispatch Fee (Kelowna)</span>

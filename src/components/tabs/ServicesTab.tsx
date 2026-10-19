@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ServiceItem } from '@/types'
+import { ServiceItem, SavedVehicle } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
 
 interface ServicesTabProps {
@@ -7,6 +7,7 @@ interface ServicesTabProps {
   onAddCar: () => void
   currentVehicle: string
   onSelectVehicle: (vehicle: string) => void
+  savedVehicles?: SavedVehicle[]
 }
 
 export const ServicesTab: React.FC<ServicesTabProps> = ({
@@ -14,6 +15,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
   onAddCar,
   currentVehicle,
   onSelectVehicle,
+  savedVehicles,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string>('all')
@@ -107,23 +109,41 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               YOUR VEHICLES
             </span>
-            <div className="flex flex-col gap-2">
-              {USER_SAVED_VEHICLES.map((v, i) => (
+            <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
+              {(savedVehicles && savedVehicles.length > 0
+                ? savedVehicles
+                : USER_SAVED_VEHICLES.map((name, i) => ({
+                    id: `v-${i}`,
+                    name,
+                    type: 'Sedan' as const,
+                    licensePlate: undefined,
+                  }))
+              ).map((veh) => (
                 <div
-                  key={i}
+                  key={veh.id}
                   onClick={() => {
-                    onSelectVehicle(v)
+                    onSelectVehicle(veh.name)
                     setIsDropdownOpen(false)
                   }}
                   className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
-                    v === currentVehicle
+                    veh.name === currentVehicle
                       ? 'bg-primary-light text-primary font-bold'
                       : 'hover:bg-gray-50 text-gray-800 font-medium'
                   }`}
                 >
-                  <span className="text-xs sm:text-sm">{v}</span>
-                  {v === currentVehicle && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs sm:text-sm truncate">{veh.name}</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
+                      {veh.licensePlate && (
+                        <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 rounded">
+                          {veh.licensePlate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {veh.name === currentVehicle && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
                   )}
                 </div>
               ))}

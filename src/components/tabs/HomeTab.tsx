@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ServiceItem, ProductItem, CartItem } from '@/types'
+import { ServiceItem, ProductItem, CartItem, SavedVehicle } from '@/types'
 import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
@@ -22,6 +22,7 @@ interface HomeTabProps {
   currentVehicle: string
   onSelectVehicle: (vehicle: string) => void
   onOpenTracking?: () => void
+  savedVehicles?: SavedVehicle[]
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -31,12 +32,88 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   currentVehicle,
   onSelectVehicle,
   onOpenTracking,
+  savedVehicles,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [currentAddress, setCurrentAddress] = useState('5th Avenue, Jamesford Road, Ontario...')
+  const [isLocating, setIsLocating] = useState(false)
+
+  // Fetch live user GPS location & reverse geocode to address
+  const handleFetchLiveLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setToastMessage('Geolocation is not supported by your browser')
+      setTimeout(() => setToastMessage(null), 3000)
+      return
+    }
+
+    setIsLocating(true)
+    setToastMessage('Detecting your live location...')
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                'Accept-Language': 'en',
+              },
+            }
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const addr = data.address || {}
+            const street = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || ''
+            const city = addr.city || addr.town || addr.village || addr.county || ''
+            const state = addr.state || addr.country || ''
+            const formatted = [street, city, state].filter(Boolean).join(', ')
+            if (formatted) {
+              setCurrentAddress(formatted)
+              setToastMessage('Live location detected successfully!')
+            } else if (data.display_name) {
+              setCurrentAddress(data.display_name.split(',').slice(0, 3).join(', '))
+              setToastMessage('Live location detected successfully!')
+            } else {
+              setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
+              setToastMessage('Live coordinates updated!')
+            }
+          } else {
+            setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
+            setToastMessage('Live coordinates updated!')
+          }
+        } catch {
+          setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
+          setToastMessage('Live coordinates updated!')
+        } finally {
+          setIsLocating(false)
+          setTimeout(() => setToastMessage(null), 3000)
+        }
+      },
+      (err) => {
+        setIsLocating(false)
+        let msg = 'Unable to fetch your location'
+        if (err.code === 1) {
+          msg = 'Location permission denied. Please allow location access in your browser.'
+        } else if (err.code === 2) {
+          msg = 'Location unavailable. Please check your GPS/network.'
+        } else if (err.code === 3) {
+          msg = 'Location request timed out. Please try again.'
+        }
+        setToastMessage(msg)
+        setTimeout(() => setToastMessage(null), 3500)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    )
+  }
 
   // Real cart items state initialized with featured care essentials
   const [cartItems, setCartItems] = useState<CartItem[]>([
@@ -227,16 +304,34 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* 2. LOCATION PILL BAR */}
+      {/* 2. LOCATION PILL BAR (Interactive Live GPS Detection) */}
       <div className="px-4 sm:px-5 mt-2.5 sm:mt-3">
-        <div className="w-full bg-surface-alt border border-gray-200/70 rounded-xl py-2 px-3 sm:px-3.5 flex items-center gap-2 shadow-xs">
-          <span className="material-symbols-outlined text-primary text-[17px] sm:text-[19px] shrink-0">
-            location_on
+        <button
+          type="button"
+          onClick={handleFetchLiveLocation}
+          disabled={isLocating}
+          className="w-full bg-surface-alt hover:bg-gray-200/60 border border-gray-200/70 rounded-xl py-2 px-3 sm:px-3.5 flex items-center justify-between shadow-xs transition-all active:scale-[0.99] text-left group cursor-pointer"
+          title="Click to detect your live location"
+          aria-label="Detect your live location"
+        >
+          <div className="flex items-center gap-2 overflow-hidden mr-2">
+            <span
+              className={`material-symbols-outlined text-primary text-[18px] sm:text-[20px] shrink-0 transition-transform ${
+                isLocating ? 'animate-spin' : 'group-hover:scale-110'
+              }`}
+            >
+              {isLocating ? 'sync' : 'location_on'}
+            </span>
+            <span className="text-[11px] sm:text-xs font-medium text-gray-700 truncate tracking-tight">
+              {isLocating ? 'Detecting your live location...' : currentAddress}
+            </span>
+          </div>
+
+          <span className="text-[10px] font-bold text-primary tracking-tight shrink-0 bg-primary-light px-2 py-0.5 rounded-md border border-primary-border/40 group-hover:bg-primary group-hover:text-primary-foreground transition-colors flex items-center gap-1">
+            {isLocating && <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />}
+            <span>{isLocating ? 'Locating...' : 'Locate'}</span>
           </span>
-          <span className="text-[11px] sm:text-xs font-medium text-gray-700 truncate tracking-tight">
-            5th Avenue, Jamesford Road, Ontario...
-          </span>
-        </div>
+        </button>
       </div>
 
       {/* 3. HERO BLUEPRINT SECTION: Headline + Add Car */}
@@ -299,28 +394,47 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                 YOUR VEHICLES
               </span>
-              <div className="flex flex-col gap-1">
-                {USER_SAVED_VEHICLES.map((v, i) => (
+              <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                {(savedVehicles && savedVehicles.length > 0
+                  ? savedVehicles
+                  : USER_SAVED_VEHICLES.map((name, i) => ({
+                      id: `v-${i}`,
+                      name,
+                      type: 'Sedan' as const,
+                      licensePlate: undefined,
+                    }))
+                ).map((veh) => (
                   <div
-                    key={i}
+                    key={veh.id}
                     onClick={() => {
-                      onSelectVehicle(v)
+                      onSelectVehicle(veh.name)
                       setIsDropdownOpen(false)
                     }}
                     className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
-                      v === currentVehicle
+                      veh.name === currentVehicle
                         ? 'bg-primary-light text-primary font-bold'
                         : 'hover:bg-gray-50 text-gray-800 font-medium'
                     }`}
                   >
-                    <span className="text-xs sm:text-sm">{v}</span>
-                    {v === currentVehicle && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs sm:text-sm truncate">{veh.name}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
+                        {veh.licensePlate && (
+                          <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 rounded">
+                            {veh.licensePlate}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {veh.name === currentVehicle && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
                     )}
                   </div>
                 ))}
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setIsDropdownOpen(false)
                   onAddCar()

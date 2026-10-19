@@ -5,6 +5,9 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
   ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -43,7 +46,13 @@ export const MAP_STYLES = {
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  bright: 'https://tiles.openfreemap.org/styles/bright',
+  liberty: 'https://tiles.openfreemap.org/styles/liberty',
 }
+
+export type MapRef = MapLibreMap
+
+export type MapStyleOption = string | { light: string; dark?: string }
 
 interface MapContextValue {
   map: MapLibreMap | null
@@ -60,33 +69,51 @@ export const useMap = () => useContext(MapContext)
 /* =========================================================================
    1. CORE MAP COMPONENT (mapcn)
    ========================================================================= */
-interface MapProps {
+export interface MapProps {
   center?: [number, number] // [lng, lat]
   zoom?: number
   pitch?: number
   bearing?: number
   mapStyle?: string
+  styles?: MapStyleOption
   interactive?: boolean
   className?: string
   children?: ReactNode
   onLoad?: (map: MapLibreMap) => void
 }
 
-export const Map: React.FC<MapProps> = ({
-  center = [-79.3832, 43.6532],
-  zoom = 13.5,
-  pitch = 0,
-  bearing = 0,
-  mapStyle = MAP_STYLES.voyager,
-  interactive = true,
-  className = 'w-full h-full min-h-[350px]',
-  children,
-  onLoad,
-}) => {
+export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
+  {
+    center = [-79.3832, 43.6532],
+    zoom = 13.5,
+    pitch = 0,
+    bearing = 0,
+    mapStyle = MAP_STYLES.voyager,
+    styles,
+    interactive = true,
+    className = 'w-full h-full min-h-[350px]',
+    children,
+    onLoad,
+  },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
+  // Resolve current active style URL from styles or mapStyle
+  const activeStyleUrl = useMemo(() => {
+    if (styles) {
+      if (typeof styles === 'string') return styles
+      return styles.light || styles.dark || MAP_STYLES.voyager
+    }
+    return mapStyle || MAP_STYLES.voyager
+  }, [styles, mapStyle])
+
+  // Expose MapLibreMap instance to parent ref
+  useImperativeHandle(ref, () => mapRef.current as MapLibreMap, [])
+
+  // Initialize map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
@@ -95,7 +122,7 @@ export const Map: React.FC<MapProps> = ({
     try {
       mapInstance = new MapLibreMap({
         container: containerRef.current,
-        style: mapStyle,
+        style: activeStyleUrl,
         center,
         zoom,
         pitch,
@@ -147,7 +174,21 @@ export const Map: React.FC<MapProps> = ({
     } catch (err) {
       console.error('Failed to initialize MapLibre map:', err)
     }
-  }, [center, zoom, pitch, bearing, mapStyle, interactive, onLoad])
+  }, [center, zoom, pitch, bearing, activeStyleUrl, interactive, onLoad])
+
+  // React to dynamic style switching
+  const prevStyleUrlRef = useRef(activeStyleUrl)
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded) return
+    if (prevStyleUrlRef.current !== activeStyleUrl) {
+      prevStyleUrlRef.current = activeStyleUrl
+      try {
+        mapRef.current.setStyle(activeStyleUrl)
+      } catch (err) {
+        console.warn('Failed to switch map style:', err)
+      }
+    }
+  }, [activeStyleUrl, isLoaded])
 
   return (
     <MapContext.Provider value={{ map: mapRef.current, isLoaded }}>
@@ -157,7 +198,7 @@ export const Map: React.FC<MapProps> = ({
       </div>
     </MapContext.Provider>
   )
-}
+})
 
 /* =========================================================================
    2. MAP MARKER COMPONENT
@@ -296,10 +337,18 @@ export const MapRoute: React.FC<MapRouteProps> = ({
   }, [map, isLoaded, id, coordinates, color, width, opacity, dashArray])
 
   useEffect(() => {
+    if (!map) return
+
     updateRoute()
 
+    // Automatically re-apply route layer when map style changes
+    const handleStyleLoad = () => {
+      updateRoute()
+    }
+    map.on('style.load', handleStyleLoad)
+
     return () => {
-      if (!map) return
+      map.off('style.load', handleStyleLoad)
       try {
         const sourceId = `source-${id}`
         const layerId = `layer-${id}`
@@ -309,7 +358,7 @@ export const MapRoute: React.FC<MapRouteProps> = ({
         // Ignored on cleanup
       }
     }
-  }, [updateRoute, map, id])
+  }, [map, updateRoute, id])
 
   return null
 }
@@ -379,6 +428,54 @@ export const MapControls: React.FC<MapControlsProps> = ({
       >
         <Navigation className="w-3.5 h-3.5" />
       </button>
+    </div>
+  )
+}
+
+/* =========================================================================
+   5. CUSTOM STYLE EXAMPLE COMPONENT
+   ========================================================================= */
+const exampleStyles = {
+  default: undefined,
+  openstreetmap: 'https://tiles.openfreemap.org/styles/bright',
+  openstreetmap3d: 'https://tiles.openfreemap.org/styles/liberty',
+}
+
+type ExampleStyleKey = keyof typeof exampleStyles
+
+export function CustomStyleExample() {
+  const mapRef = useRef<MapRef>(null)
+  const [style, setStyle] = useState<ExampleStyleKey>('default')
+  const selectedStyle = exampleStyles[style]
+  const is3D = style === 'openstreetmap3d'
+
+  useEffect(() => {
+    mapRef.current?.easeTo({ pitch: is3D ? 60 : 0, duration: 500 })
+  }, [is3D])
+
+  return (
+    <div className="relative h-[420px] w-full">
+      <Map
+        ref={mapRef}
+        center={[-0.1276, 51.5074]}
+        zoom={15}
+        styles={
+          selectedStyle
+            ? { light: selectedStyle, dark: selectedStyle }
+            : undefined
+        }
+      />
+      <div className="absolute top-2 right-2 z-10">
+        <select
+          value={style}
+          onChange={(e) => setStyle(e.target.value as ExampleStyleKey)}
+          className="bg-white/95 text-gray-800 rounded-md border border-gray-200 px-2 py-1 text-sm shadow cursor-pointer focus:outline-none"
+        >
+          <option value="default">Default (Carto)</option>
+          <option value="openstreetmap">OpenStreetMap</option>
+          <option value="openstreetmap3d">OpenStreetMap 3D</option>
+        </select>
+      </div>
     </div>
   )
 }

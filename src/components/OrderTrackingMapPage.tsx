@@ -1,6 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { Map, MapMarker, MapRoute, MapControls } from '@/components/ui/map'
+import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
+
+const mapStyles = {
+  default: undefined,
+  openstreetmap: 'https://tiles.openfreemap.org/styles/bright',
+  openstreetmap3d: 'https://tiles.openfreemap.org/styles/liberty',
+}
+
+type StyleKey = keyof typeof mapStyles
 
 // Coordinates for customer address & approaching technician van
 const CUSTOMER_COORDS: [number, number] = [-79.3832, 43.6532]
@@ -33,6 +41,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   customerAddress = '21/22, 5th Avenue, Jamesford Road, Ontario,\nCanada',
   technicianName = 'James Marlo',
 }) => {
+  const mapRef = useRef<MapRef>(null)
+  const [style, setStyle] = useState<StyleKey>('default')
+  const selectedStyle = mapStyles[style]
+  const is3D = style === 'openstreetmap3d'
+
+  useEffect(() => {
+    mapRef.current?.easeTo({ pitch: is3D ? 60 : 25, duration: 600 })
+  }, [is3D])
+
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isCallOpen, setIsCallOpen] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
@@ -99,9 +116,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       {/* 2. REAL INTERACTIVE MAPCN MAP SECTION */}
       <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50">
         <Map
+          ref={mapRef}
           center={[-79.3925, 43.6582]}
           zoom={14.1}
           pitch={25}
+          styles={
+            selectedStyle
+              ? { light: selectedStyle, dark: selectedStyle }
+              : undefined
+          }
           className="w-full h-full min-h-[380px] sm:min-h-[440px]"
         >
           {/* Driving Route Polyline from Technician Van to Customer */}
@@ -149,18 +172,42 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           <MapControls position="bottom-right" />
         </Map>
 
-        {/* Live Distance & ETA Floating Badge (Pinned on top left over the map) */}
-        <div className="absolute top-3 left-4 z-10 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-gray-200/80 shadow-md flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs font-bold text-gray-900 tracking-tight">
-            {technicianName} is ~8 mins away
-          </span>
-          <span className="text-[10px] text-gray-400 font-medium font-mono">• 2.4 km</span>
+        {/* Map Style Switcher (Default Carto, OpenStreetMap, OpenStreetMap 3D) */}
+        <div className="absolute top-3 right-3 z-10">
+          <div className="flex items-center bg-white/95 backdrop-blur-md rounded-xl border border-gray-200/80 shadow-md px-2.5 py-1.5 gap-1.5 transition-all hover:bg-white">
+            <span className="material-symbols-outlined text-[15px] text-gray-600">layers</span>
+            <select
+              value={style}
+              onChange={(e) => setStyle(e.target.value as StyleKey)}
+              className="bg-transparent text-gray-800 text-[11px] font-semibold focus:outline-none cursor-pointer pr-0.5"
+              aria-label="Select Map Style"
+            >
+              <option value="default">Default (Carto)</option>
+              <option value="openstreetmap">OpenStreetMap</option>
+              <option value="openstreetmap3d">OpenStreetMap 3D</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* 3. BOTTOM CARDS SECTION - Sits directly beneath the expanded map */}
       <div className="bg-surface-subtle px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 shrink-0 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
+        {/* Live Distance & ETA Status Bar (Shifted below the map) */}
+        <div className="bg-white rounded-2xl px-4 py-2.5 border border-gray-200/80 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active" />
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-gray-900 tracking-tight">
+              {technicianName} is ~8 mins away
+            </span>
+          </div>
+          <span className="text-xs font-semibold text-gray-500 font-mono bg-surface-alt px-2.5 py-0.5 rounded-full">
+            2.4 km
+          </span>
+        </div>
+
         {/* Card 1: Technician Info */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -13,6 +13,30 @@ export interface ServiceItem {
   included: string[]
 }
 
+export type VehicleCategory = 'Sedan' | 'SUV' | 'Truck' | 'Coupe' | 'Van' | 'Hatchback'
+
+export interface SavedVehicle {
+  id: string
+  name: string
+  brand: string
+  model: string
+  year?: string
+  variant?: string
+  color?: string
+  type: VehicleCategory
+  licensePlate?: string
+  isPrimary?: boolean
+  notes?: string
+  specs?: {
+    length?: string
+    width?: string
+    height?: string
+    wheelbase?: string
+    groundClearance?: string
+    curbWeight?: string
+  }
+}
+
 export interface VehicleOption {
   id: string
   brand: string
@@ -63,5 +87,41 @@ export interface UserProfile {
   preferredVehicle?: string
   membershipTier?: string
 }
+
+export type BookingStatus =
+  | 'scheduled'
+  | 'en_route'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+
+export interface BookingRecord {
+  id: string
+  title: string
+  category: string
+  vehicle: string
+  vehicleType?: VehicleCategory
+  licensePlate?: string
+  image: string
+  price: string
+  totalNumeric: number
+  date: string
+  time: string
+  status: BookingStatus
+  locationType: 'mobile' | 'shop'
+  address: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+  technicianName?: string
+  addons?: string[]
+  paymentMethod?: string
+  frequency?: 'one_time' | 'biweekly' | 'monthly'
+  serviceItem?: ServiceItem
+  createdAt: string
+  rating?: number
+  review?: string
+}
+
 
 

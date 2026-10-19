@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { TabType, ServiceItem } from '@/types'
+import React, { useState, useEffect } from 'react'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord } from '@/types'
+import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
 import { HomeTab } from '@/components/tabs/HomeTab'
@@ -9,6 +10,7 @@ import { BookingsTab } from '@/components/tabs/BookingsTab'
 import { ProfileTab } from '@/components/tabs/ProfileTab'
 import { ServiceDetailModal } from '@/components/tabs/ServiceDetailModal'
 import { AddVehicleModal } from '@/components/tabs/AddVehicleModal'
+import { SavedVehiclesModal } from '@/components/SavedVehiclesModal'
 import { BookingPage } from '@/components/BookingPage'
 import { Login } from '@/components/Login'
 import { Signup } from '@/components/Signup'
@@ -23,12 +25,61 @@ export const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
-  const [currentVehicle, setCurrentVehicle] = useState('Audi R8 GT')
+
+  // Persistent Saved Vehicles State (Synced with localStorage)
+  const [savedVehicles, setSavedVehicles] = useState<SavedVehicle[]>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_saved_vehicles')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return INITIAL_SAVED_VEHICLES
+  })
+
+  // Persistent Bookings State (Synced with localStorage)
+  const [bookings, setBookings] = useState<BookingRecord[]>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_bookings')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return INITIAL_BOOKINGS
+  })
+
+  // Active Vehicle State
+  const [currentVehicle, setCurrentVehicle] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_active_vehicle')
+      if (stored) return stored
+    } catch {}
+    return INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)'
+  })
+
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
   const [isAddCarOpen, setIsAddCarOpen] = useState(false)
+  const [isSavedVehiclesOpen, setIsSavedVehiclesOpen] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
   const [isMembershipOpen, setIsMembershipOpen] = useState(false)
+
+  // Sync savedVehicles with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_saved_vehicles', JSON.stringify(savedVehicles))
+    } catch {}
+  }, [savedVehicles])
+
+  // Sync bookings with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_bookings', JSON.stringify(bookings))
+    } catch {}
+  }, [bookings])
+
+  // Sync currentVehicle with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_active_vehicle', currentVehicle)
+    } catch {}
+  }, [currentVehicle])
 
   const isAppReady = !showSplash && !showOnboarding && !showAuth
 
@@ -47,8 +98,71 @@ export const App: React.FC = () => {
     setIsBookingOpen(true)
   }
 
-  const handleVehicleAdded = (newVehicle: string) => {
-    setCurrentVehicle(newVehicle)
+  const handleVehicleAdded = (newVehicle: SavedVehicle) => {
+    setSavedVehicles((prev) => [newVehicle, ...prev.filter((v) => v.id !== newVehicle.id)])
+    setCurrentVehicle(newVehicle.name)
+  }
+
+  const handleSelectVehicle = (vehicleName: string) => {
+    setCurrentVehicle(vehicleName)
+    setSavedVehicles((prev) =>
+      prev.map((v) => ({
+        ...v,
+        isPrimary: v.name === vehicleName,
+      }))
+    )
+  }
+
+  const handleDeleteVehicle = (vehicleId: string) => {
+    setSavedVehicles((prev) => {
+      const remaining = prev.filter((v) => v.id !== vehicleId)
+      const wasActive = prev.find((v) => v.id === vehicleId)?.name === currentVehicle
+      if (wasActive && remaining.length > 0) {
+        setCurrentVehicle(remaining[0].name)
+      }
+      return remaining
+    })
+  }
+
+  const handleBookingComplete = (newBooking: BookingRecord) => {
+    setBookings((prev) => [newBooking, ...prev])
+  }
+
+  const handleCancelBooking = (bookingId: string) => {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId ? { ...b, status: 'cancelled' as const } : b
+      )
+    )
+  }
+
+  const handleRescheduleBooking = (
+    bookingId: string,
+    newDate: string,
+    newTime: string
+  ) => {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId
+          ? {
+              ...b,
+              date: newDate,
+              time: newTime,
+              status: 'scheduled' as const,
+            }
+          : b
+      )
+    )
+  }
+
+  const handleRateBooking = (
+    bookingId: string,
+    rating: number,
+    review: string
+  ) => {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === bookingId ? { ...b, rating, review } : b))
+    )
   }
 
   return (
@@ -141,7 +255,8 @@ export const App: React.FC = () => {
               onBookNow={handleBookNow}
               onAddCar={() => setIsAddCarOpen(true)}
               currentVehicle={currentVehicle}
-              onSelectVehicle={setCurrentVehicle}
+              onSelectVehicle={handleSelectVehicle}
+              savedVehicles={savedVehicles}
             />
           )}
 
@@ -150,7 +265,8 @@ export const App: React.FC = () => {
               onSelectService={handleSelectService}
               onAddCar={() => setIsAddCarOpen(true)}
               currentVehicle={currentVehicle}
-              onSelectVehicle={setCurrentVehicle}
+              onSelectVehicle={handleSelectVehicle}
+              savedVehicles={savedVehicles}
             />
           )}
 
@@ -165,6 +281,10 @@ export const App: React.FC = () => {
                 setSelectedService(service)
               }}
               currentVehicle={currentVehicle}
+              bookings={bookings}
+              onCancelBooking={handleCancelBooking}
+              onRescheduleBooking={handleRescheduleBooking}
+              onRateBooking={handleRateBooking}
             />
           )}
 
@@ -175,10 +295,11 @@ export const App: React.FC = () => {
           {currentTab === 'profile' && (
             <ProfileTab
               onBack={() => setCurrentTab('home')}
-              onOpenSavedVehicles={() => setIsAddCarOpen(true)}
+              onOpenSavedVehicles={() => setIsSavedVehiclesOpen(true)}
               onNavigateToNotifications={() => navigateToTab('notifications')}
               onOpenBooking={() => navigateToTab('bookings')}
               onOpenMembership={() => setIsMembershipOpen(true)}
+              savedVehiclesCount={savedVehicles.length}
               onLogout={() => {
                 setAuthMode('login')
                 setShowAuth(true)
@@ -202,10 +323,11 @@ export const App: React.FC = () => {
           <BookingPage
             initialService={bookingService}
             currentVehicle={currentVehicle}
+            savedVehicles={savedVehicles}
+            onSelectVehicle={handleSelectVehicle}
             onBack={() => setIsBookingOpen(false)}
-            onBookingComplete={() => {
-              // Redirect to home when confirmed
-              setCurrentTab('home')
+            onBookingComplete={(newBooking) => {
+              handleBookingComplete(newBooking)
             }}
             onTrackOrder={() => {
               setIsBookingOpen(false)
@@ -213,6 +335,20 @@ export const App: React.FC = () => {
             }}
           />
         )}
+
+        {/* Dedicated My Garage / Saved Vehicles Management Screen */}
+        <SavedVehiclesModal
+          isOpen={isSavedVehiclesOpen}
+          onClose={() => setIsSavedVehiclesOpen(false)}
+          vehicles={savedVehicles}
+          currentVehicleName={currentVehicle}
+          onSelectVehicle={handleSelectVehicle}
+          onDeleteVehicle={handleDeleteVehicle}
+          onOpenAddVehicle={() => {
+            setIsSavedVehiclesOpen(false)
+            setIsAddCarOpen(true)
+          }}
+        />
 
         {/* Multi-Step Add Vehicle Flow */}
         <AddVehicleModal

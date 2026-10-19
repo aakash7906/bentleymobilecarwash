@@ -13,6 +13,7 @@ interface ProfileTabProps {
   onLogout?: () => void
   userProfile?: UserProfile
   onUpdateProfile?: (updated: UserProfile) => void
+  savedVehiclesCount?: number
 }
 
 interface MenuItem {
@@ -32,6 +33,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onLogout,
   userProfile: externalProfile,
   onUpdateProfile,
+  savedVehiclesCount,
 }) => {
   // Dynamic user profile state with local persistence
   const [profile, setProfile] = useState<UserProfile>(() => {
@@ -106,6 +108,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       title: 'Saved Vehicles',
       subtitle: 'Manage registered vehicles',
       action: onOpenSavedVehicles,
+      badge: savedVehiclesCount !== undefined ? `${savedVehiclesCount} Cars` : undefined,
     },
     {
       icon: 'notifications',
