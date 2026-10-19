@@ -1,5 +1,18 @@
 import React, { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
+import { Map, MapMarker, MapRoute, MapControls } from '@/components/ui/map'
+
+// Coordinates for customer address & approaching technician van
+const CUSTOMER_COORDS: [number, number] = [-79.3832, 43.6532]
+const TECHNICIAN_COORDS: [number, number] = [-79.4035, 43.6635]
+const TRACKING_ROUTE: [number, number][] = [
+  [-79.4035, 43.6635],
+  [-79.3985, 43.6620],
+  [-79.3950, 43.6585],
+  [-79.3905, 43.6565],
+  [-79.3860, 43.6545],
+  [-79.3832, 43.6532],
+]
 
 interface OrderTrackingMapPageProps {
   onBack: () => void
@@ -57,7 +70,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f7f9fb] flex flex-col overflow-y-auto max-w-md md:max-w-xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto max-w-md md:max-w-xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
       {/* 1. TOP HEADER */}
       <div className="bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3 border-b border-gray-100 flex items-center justify-between z-20 shrink-0">
         {/* Circular Back Button */}
@@ -74,7 +87,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           <span className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-medium tracking-tight mb-0.5">
             {serviceTitle}
           </span>
-          <h1 className="text-base sm:text-lg font-bold text-[#16a34a] tracking-tight leading-tight">
+          <h1 className="text-base sm:text-lg font-bold text-status-active tracking-tight leading-tight">
             Technician is Arriving
           </h1>
         </div>
@@ -83,163 +96,71 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         <div className="w-10" />
       </div>
 
-      {/* 2. INTERACTIVE VECTOR MAP SECTION - Expanded downwards to meet driver profile */}
-      <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[420px] bg-[#ebf1f5] overflow-hidden select-none border-b border-gray-200/50">
-        <svg
-          className="w-full h-full object-cover"
-          viewBox="0 0 400 480"
-          preserveAspectRatio="xMidYMid slice"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+      {/* 2. REAL INTERACTIVE MAPCN MAP SECTION */}
+      <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50">
+        <Map
+          center={[-79.3925, 43.6582]}
+          zoom={14.1}
+          pitch={25}
+          className="w-full h-full min-h-[380px] sm:min-h-[440px]"
         >
-          {/* Base Map City Ground */}
-          <rect width="400" height="480" fill="#eef2f5" />
-
-          {/* Green Park Areas */}
-          {/* Park 1: Top Left */}
-          <path d="M -10,-10 L 125,-10 L 110,65 L -10,80 Z" fill="#c3edb6" />
-          {/* Park 2: Mid Left */}
-          <path d="M 20,120 L 75,108 L 85,155 L 15,165 Z" fill="#c3edb6" />
-          {/* Park 3: Center Mid */}
-          <path d="M 130,115 L 178,115 L 185,152 L 140,165 Z" fill="#c3edb6" />
-          {/* Park 4: Center Bottom */}
-          <path d="M 110,210 L 170,180 L 180,240 L 120,255 Z" fill="#c3edb6" />
-          {/* Park 5: Bottom Left */}
-          <path d="M -10,230 L 60,205 L 75,270 L -10,290 Z" fill="#c3edb6" />
-          {/* Park 6: Top Right Block */}
-          <path d="M 280,30 L 375,0 L 410,80 L 325,120 Z" fill="#c3edb6" />
-          {/* Park 7: Mid Right Block */}
-          <path d="M 260,190 L 335,160 L 380,230 L 290,265 Z" fill="#c3edb6" />
-          {/* Park 8: Bottom Right */}
-          <path d="M 270,270 L 380,250 L 410,320 L 295,350 Z" fill="#c3edb6" />
-          {/* Park 9: Extended Lower Left */}
-          <path d="M 15,330 L 75,315 L 90,395 L 20,415 Z" fill="#c3edb6" />
-          {/* Park 10: Extended Lower Center */}
-          <path d="M 125,370 L 190,350 L 200,430 L 135,450 Z" fill="#c3edb6" />
-          {/* Park 11: Extended Lower Right */}
-          <path d="M 265,365 L 375,345 L 410,425 L 285,465 Z" fill="#c3edb6" />
-
-          {/* Secondary White City Streets Network */}
-          <g stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
-            {/* Horizontal / Diagonal local streets */}
-            <path d="M -10,40 L 120,30 L 260,125 L 360,95 L 410,110" />
-            <path d="M -10,105 L 110,95 L 150,170 L 240,140" />
-            <path d="M 30,140 L 110,140 L 115,115" />
-            <path d="M -10,180 L 30,140" />
-            <path d="M 30,140 L 70,220 L 140,200 L 270,300" />
-            <path d="M 10,270 L 120,240 L 170,310 L 290,270" />
-            <path d="M 160,80 L 280,30 L 380,50" />
-            <path d="M 230,170 L 360,140 L 410,180" />
-            <path d="M 280,220 L 410,180" />
-            <path d="M 220,280 L 360,240 L 410,280" />
-            <path d="M 80,0 L 95,110 L 80,180" />
-            <path d="M 140,50 L 150,120 L 135,210" />
-            <path d="M 210,0 L 220,90 L 200,160" />
-            <path d="M 320,0 L 340,100 L 330,180" />
-            <path d="M 380,80 L 390,200 L 370,300" />
-            {/* Extended streets in lower expanded region */}
-            <path d="M -10,350 L 130,325 L 260,410 L 410,375" />
-            <path d="M -10,430 L 115,410 L 180,480 L 310,445" />
-            <path d="M 35,320 L 75,395 L 145,375 L 275,475" />
-            <path d="M 175,305 L 185,410 L 170,490" />
-            <path d="M 375,295 L 385,405 L 365,490" />
-            <path d="M 85,175 L 90,295 L 85,445" />
-          </g>
-
-          {/* Blue Diagonal River */}
-          <path
-            d="M 370,-30 Q 330,60 260,155 T 90,360 T -20,520"
-            stroke="#38bdf8"
-            strokeWidth="26"
-            fill="none"
-            strokeLinecap="round"
-          />
-          {/* River Water Texture / Inner Stream */}
-          <path
-            d="M 370,-30 Q 330,60 260,155 T 90,360 T -20,520"
-            stroke="#0284c7"
-            strokeWidth="2"
-            fill="none"
-            strokeDasharray="8 12"
-            opacity="0.4"
+          {/* Driving Route Polyline from Technician Van to Customer */}
+          <MapRoute
+            id="order-tracking-route"
+            coordinates={TRACKING_ROUTE}
+            color="var(--primary)"
+            width={5.5}
+            opacity={0.9}
           />
 
-          {/* White Bridge Crossings */}
-          <line x1="245" y1="140" x2="275" y2="170" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
-          <line x1="160" y1="230" x2="190" y2="260" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
-          <line x1="75" y1="355" x2="105" y2="385" stroke="#ffffff" strokeWidth="8" strokeLinecap="square" />
+          {/* Technician Mobile Wash Van Live Marker */}
+          <MapMarker longitude={TECHNICIAN_COORDS[0]} latitude={TECHNICIAN_COORDS[1]}>
+            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
+              {/* Outer Pulsing Green Beacon */}
+              <div className="absolute w-12 h-12 rounded-full bg-status-active/30 animate-ping pointer-events-none" />
+              {/* Van Bubble */}
+              <div className="w-10 h-10 rounded-full bg-status-active text-white border-2 border-white shadow-xl flex items-center justify-center transform hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-[20px]">local_shipping</span>
+              </div>
+              {/* Van Tooltip Pill */}
+              <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-secondary text-white text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
+                {technicianName} • Van
+              </div>
+            </div>
+          </MapMarker>
 
-          {/* Primary Golden / Orange Arterial Avenues */}
-          <g stroke="#f6ad55" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M 125,-10 L 105,100 L 145,210 L 165,350 L 155,490" strokeWidth="7" />
-            <path d="M -10,38 L 260,125 L 410,20" strokeWidth="5.5" />
-            <path d="M 245,60 L 395,130" strokeWidth="6" />
-            <path d="M 50,340 L 410,125" strokeWidth="5.5" />
-            <path d="M -10,410 L 270,330 L 410,420" strokeWidth="6" />
-          </g>
+          {/* Customer Destination House Pin Marker */}
+          <MapMarker longitude={CUSTOMER_COORDS[0]} latitude={CUSTOMER_COORDS[1]}>
+            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
+              {/* Destination Beacon Ping */}
+              <div className="absolute w-11 h-11 rounded-full bg-primary/30 animate-ping pointer-events-none" />
+              {/* Red Pin Bubble */}
+              <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground border-2 border-white shadow-xl flex items-center justify-center transform hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-[17px]">home</span>
+              </div>
+              {/* Destination Tooltip Pill */}
+              <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
+                Destination
+              </div>
+            </div>
+          </MapMarker>
 
-          {/* ROUTE POLYLINE (From starting point to customer location) */}
-          <path
-            d="M -10,180 L 30,140 L 70,150 L 105,140 L 115,115"
-            stroke="#111827"
-            strokeWidth="3.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
+          {/* Minimalist Controls */}
+          <MapControls position="bottom-right" />
+        </Map>
 
-          {/* DESTINATION PIN (Matches attached image) */}
-          <g transform="translate(115, 100)">
-            {/* Animated Beacon Ping */}
-            <circle cx="0" cy="0" r="12" fill="#ef4444" opacity="0.35" className="animate-ping" />
-            <circle cx="0" cy="0" r="6" fill="#ef4444" opacity="0.4" />
-
-            {/* Red Teardrop Location Pin */}
-            <path
-              d="M 0,-18 C -7,-18 -12,-13 -12,-6 C -12,2 0,10 0,10 C 0,10 12,2 12,-6 C 12,-13 7,-18 0,-18 Z"
-              fill="var(--primary)"
-              filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.3))"
-            />
-            {/* Pin Center White Dot */}
-            <circle cx="0" cy="-7" r="4.5" fill="#ffffff" />
-            <circle cx="0" cy="-7" r="2.2" fill="var(--primary)" />
-
-            {/* Red destination dot on street */}
-            <circle cx="0" cy="14" r="2.5" fill="var(--primary)" />
-          </g>
-
-          {/* Current Technician Van Position on Route */}
-          <g transform="translate(30, 140)">
-            <circle cx="0" cy="0" r="14" fill="#16a34a" opacity="0.25" className="animate-pulse" />
-            <circle cx="0" cy="0" r="8" fill="#16a34a" stroke="#ffffff" strokeWidth="2" />
-          </g>
-        </svg>
-
-        {/* Live Distance & ETA Floating Badge */}
-        <div className="absolute top-3 left-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-gray-200/80 shadow-md flex items-center gap-2">
+        {/* Live Distance & ETA Floating Badge (Pinned on top left over the map) */}
+        <div className="absolute top-3 left-4 z-10 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-gray-200/80 shadow-md flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
           <span className="text-xs font-bold text-gray-900 tracking-tight">
-            James is ~8 mins away
+            {technicianName} is ~8 mins away
           </span>
           <span className="text-[10px] text-gray-400 font-medium font-mono">• 2.4 km</span>
-        </div>
-
-        {/* Map Control Buttons (Recenter & Zoom) */}
-        <div className="absolute bottom-3 right-4 flex flex-col gap-1.5">
-          <button
-            onClick={() => alert('Centering on technician vehicle')}
-            className="w-9 h-9 rounded-xl bg-white shadow-md border border-gray-200/80 flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
-            title="Recenter"
-          >
-            <span className="material-symbols-outlined text-[19px] text-primary">
-              my_location
-            </span>
-          </button>
         </div>
       </div>
 
       {/* 3. BOTTOM CARDS SECTION - Sits directly beneath the expanded map */}
-      <div className="bg-[#f7f9fb] px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 shrink-0 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
+      <div className="bg-surface-subtle px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 shrink-0 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
         {/* Card 1: Technician Info */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -253,7 +174,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <h3 className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
                 {technicianName}
               </h3>
-              <span className="text-xs font-semibold text-[#16a34a] mt-0.5">
+              <span className="text-xs font-semibold text-status-active mt-0.5">
                 Verified Technician
               </span>
             </div>
