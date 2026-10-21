@@ -17,6 +17,11 @@ import { Signup } from '@/components/Signup'
 import { SplashScreen } from '@/components/SplashScreen'
 import { OnboardingScreen } from '@/components/OnboardingScreen'
 import { MembershipPage } from '@/components/MembershipPage'
+// STEP 1 INTEGRATION: Import Firebase auth and session state listener
+import { auth, db } from '@/lib/firebase'
+import { onAuthStateChanged, signOut, User } from 'firebase/auth'
+// STEP 2 INTEGRATION: Import Firestore real-time listener to fetch user document
+import { doc, onSnapshot } from 'firebase/firestore'
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('home')
@@ -25,6 +30,20 @@ export const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+
+  // STEP 1 INTEGRATION: Firebase User state from Auth
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  // STEP 2 INTEGRATION: Live user profile data fetched from Firestore 'users' collection
+  const [userProfileData, setUserProfileData] = useState<{
+    fullName?: string
+    email?: string
+    phone?: string
+    city?: string
+    address?: string
+    postalCode?: string
+    role?: string
+  } | null>(null)
 
   // Persistent Saved Vehicles State (Synced with localStorage)
   const [savedVehicles, setSavedVehicles] = useState<SavedVehicle[]>(() => {
@@ -80,6 +99,45 @@ export const App: React.FC = () => {
       localStorage.setItem('bentley_active_vehicle', currentVehicle)
     } catch {}
   }, [currentVehicle])
+
+  // STEP 1 INTEGRATION: Persistent Firebase Auth session listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user)
+        // If user is already authenticated, close auth screens automatically
+        setShowAuth(false)
+      } else {
+        setCurrentUser(null)
+        setUserProfileData(null)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // STEP 2 INTEGRATION: Real-time listener for Firestore 'users' document
+  useEffect(() => {
+    if (!currentUser) {
+      setUserProfileData(null)
+      return
+    }
+
+    // Subscribe to live updates of the logged-in user document in 'carwash' database
+    const userDocRef = doc(db, 'users', currentUser.uid)
+    const unsubDoc = onSnapshot(
+      userDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setUserProfileData(docSnap.data() as any)
+        }
+      },
+      (error) => {
+        console.error('Error fetching real-time user profile from Firestore:', error)
+      }
+    )
+
+    return () => unsubDoc()
+  }, [currentUser])
 
   const isAppReady = !showSplash && !showOnboarding && !showAuth
 
@@ -222,9 +280,9 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Mobile & Tablet App Canvas */}
+      {/* Mobile, Tablet & Desktop App Canvas */}
       <main
-        className={`w-full max-w-md md:max-w-xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100 ${
+        className={`w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100 ${
           !isAppReady ? 'hidden' : ''
         }`}
       >
@@ -300,7 +358,40 @@ export const App: React.FC = () => {
               onOpenBooking={() => navigateToTab('bookings')}
               onOpenMembership={() => setIsMembershipOpen(true)}
               savedVehiclesCount={savedVehicles.length}
-              onLogout={() => {
+              userProfile={
+                currentUser
+                  ? {
+                      // STEP 2 INTEGRATION: Prefer real Firestore 'fullName' from 'users' collection, fallback to displayName/email
+                      name:
+                        userProfileData?.fullName ||
+                        currentUser.displayName ||
+                        currentUser.email?.split('@')[0] ||
+                        'Member',
+                      email: userProfileData?.email || currentUser.email || '',
+                      phone: userProfileData?.phone || currentUser.phoneNumber || '+1 (998) 877-5561',
+                      address:
+                        userProfileData?.address ||
+                        '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
+                      city: userProfileData?.city || 'Ontario',
+                      postalCode: userProfileData?.postalCode || 'L4B 1X9',
+                      avatar:
+                        currentUser.photoURL ||
+                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+                      preferredVehicle: currentVehicle,
+                      membershipTier: 'VIP Platinum',
+                    }
+                  : undefined
+              }
+              onLogout={async () => {
+                // STEP 1 & 2 INTEGRATION: Complete Firebase sign-out and session teardown
+                try {
+                  await signOut(auth)
+                } catch (e) {
+                  console.error('Firebase Sign-out error:', e)
+                }
+                // Reset local states and redirect to Login screen
+                setCurrentUser(null)
+                setUserProfileData(null)
                 setAuthMode('login')
                 setShowAuth(true)
               }}

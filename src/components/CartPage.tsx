@@ -115,7 +115,7 @@ export const CartPage: React.FC<CartPageProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col bg-white pb-36">
+      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-white pb-36">
         {/* 1. TOP HEADER */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
           <button
@@ -399,7 +399,7 @@ export const CartPage: React.FC<CartPageProps> = ({
         {/* 3. STICKY BOTTOM CHECKOUT BAR */}
         {items.length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/80 px-4 sm:px-5 py-3 shadow-lg">
-            <div className="max-w-md md:max-w-xl mx-auto flex items-center justify-between gap-4">
+            <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex flex-col">
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   Total Payment

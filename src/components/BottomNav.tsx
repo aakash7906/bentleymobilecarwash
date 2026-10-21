@@ -17,7 +17,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-      <div className="max-w-md md:max-w-xl mx-auto pointer-events-auto">
+      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto pointer-events-auto">
         {/* Parabolic Top Edge SVG */}
         <div className="relative w-full">
           <svg

@@ -178,6 +178,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               <h2 className="text-base font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
                 {profile.name}
               </h2>
+              {/* STEP 2 INTEGRATION: Display real logged-in user email */}
+              {profile.email && (
+                <span className="text-xs text-gray-500 truncate font-normal">
+                  {profile.email}
+                </span>
+              )}
             </div>
           </div>
 
@@ -255,7 +261,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       </div>
 
       {/* Profile Menu List Card */}
-      <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col divide-y divide-gray-100">
+      <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-1 md:gap-2">
         {menuItems.map((item, idx) => (
           <div
             key={idx}

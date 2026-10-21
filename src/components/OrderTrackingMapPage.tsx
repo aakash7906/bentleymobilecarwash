@@ -87,7 +87,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto max-w-md md:max-w-xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
       {/* 1. TOP HEADER */}
       <div className="bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3 border-b border-gray-100 flex items-center justify-between z-20 shrink-0">
         {/* Circular Back Button */}
@@ -293,7 +293,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       {/* 4. MODAL: IN-APP CHAT WITH TECHNICIAN */}
       {isChatOpen && (
         <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center p-0 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col h-[65vh] animate-in slide-in-from-bottom duration-250">
+          <div className="w-full max-w-md md:max-w-xl bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col h-[65vh] animate-in slide-in-from-bottom duration-250">
             {/* Chat Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
@@ -423,7 +423,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       {/* 6. MODAL: CUSTOMER SUPPORT */}
       {isSupportOpen && (
         <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center p-0 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-in slide-in-from-bottom duration-250">
+          <div className="w-full max-w-md md:max-w-xl bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-in slide-in-from-bottom duration-250">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[22px]">

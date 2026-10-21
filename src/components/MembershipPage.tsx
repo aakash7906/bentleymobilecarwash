@@ -108,7 +108,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-right duration-200">
-      <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col bg-white">
+      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-white">
         {/* Top Header */}
         <div className="sticky top-0 z-30 bg-white px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-100">
           <button

@@ -178,7 +178,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             <p className="text-[11px] text-neutral-400 mt-0.5">Explore services to schedule your next detail</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {activeBookings.map((booking) => (
               <div
                 key={booking.id}
@@ -278,7 +278,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
           Past Services ({pastBookings.length})
         </h2>
 
-        <div className="flex flex-col gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {pastBookings.map((booking) => (
             <div
               key={booking.id}
