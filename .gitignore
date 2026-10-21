@@ -7,10 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Production / Build outputs
 dist
 dist-ssr
+build
 *.local
+
+# Environment variables & local configs
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*
@@ -24,6 +35,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Cloudflare
+# Cloudflare & Serverless
 .wrangler
 .cloudflare
+
+# Temporary files & caches
+.eslintcache
+.cache
+*.tsbuildinfo
