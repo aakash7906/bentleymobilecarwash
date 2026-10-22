@@ -3,21 +3,22 @@ import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserP
 import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
-import { HomeTab } from '@/components/tabs/HomeTab'
-import { ServicesTab } from '@/components/tabs/ServicesTab'
-import { NotificationsTab } from '@/components/tabs/NotificationsTab'
-import { BookingsTab } from '@/components/tabs/BookingsTab'
-import { ProfileTab } from '@/components/tabs/ProfileTab'
-import { ServiceDetailModal } from '@/components/tabs/ServiceDetailModal'
-import { AddVehicleModal } from '@/components/tabs/AddVehicleModal'
-import { SavedVehiclesModal } from '@/components/SavedVehiclesModal'
-import { BookingPage } from '@/components/BookingPage'
-import { Login } from '@/components/Login'
-import { Signup } from '@/components/Signup'
-import { SplashScreen } from '@/components/SplashScreen'
-import { OnboardingScreen } from '@/components/OnboardingScreen'
-import { MembershipPage } from '@/components/MembershipPage'
-import { DriverDashboard } from '@/components/driver/DriverDashboard'
+// Direct Page Imports
+import { HomeTab } from '@/pages/Tabs/HomeTab'
+import { ServicesTab } from '@/pages/Tabs/ServicesTab'
+import { NotificationsTab } from '@/pages/Tabs/NotificationsTab'
+import { BookingsTab } from '@/pages/Tabs/BookingsTab'
+import { ProfileTab } from '@/pages/Tabs/ProfileTab'
+import { AddVehicleModal } from '@/pages/Tabs/AddVehicleModal'
+import { ServiceDetailModal } from '@/pages/Service/ServiceDetailModal'
+import { BookingPage } from '@/pages/Booking/BookingPage'
+import { SavedVehiclesModal } from '@/pages/Profile/SavedVehiclesModal'
+import { Login } from '@/pages/Auth/LoginPage'
+import { Signup } from '@/pages/Auth/SignupPage'
+import { SplashScreen } from '@/pages/Auth/SplashScreen'
+import { OnboardingScreen } from '@/pages/Auth/OnboardingPage'
+import { MembershipPage } from '@/pages/Membership/MembershipPage'
+import { DriverDashboard } from '@/pages/Driver/DriverDashboardPage'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
 import { auth, db } from '@/firebase'
@@ -51,7 +52,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_current_role')
       if (stored === 'driver' || stored === 'customer') return stored
-    } catch {}
+    } catch { }
     return 'customer'
   })
 
@@ -84,7 +85,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_driver_profile')
       if (stored) return JSON.parse(stored)
-    } catch {}
+    } catch { }
     return {
       name: 'Alex Rivera',
       email: 'driver@bentleycarwash.com',
@@ -108,7 +109,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_saved_vehicles')
       if (stored) return JSON.parse(stored)
-    } catch {}
+    } catch { }
     return INITIAL_SAVED_VEHICLES
   })
 
@@ -117,7 +118,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_bookings')
       if (stored) return JSON.parse(stored)
-    } catch {}
+    } catch { }
     return INITIAL_BOOKINGS
   })
 
@@ -126,7 +127,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_active_vehicle')
       if (stored) return stored
-    } catch {}
+    } catch { }
     return INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)'
   })
 
@@ -135,7 +136,7 @@ export const App: React.FC = () => {
     try {
       const stored = localStorage.getItem('bentley_cart_items')
       if (stored) return JSON.parse(stored)
-    } catch {}
+    } catch { }
     return []
   })
 
@@ -150,35 +151,35 @@ export const App: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem('bentley_cart_items', JSON.stringify(cartItems))
-    } catch {}
+    } catch { }
   }, [cartItems])
 
   // Sync savedVehicles with localStorage
   useEffect(() => {
     try {
       localStorage.setItem('bentley_saved_vehicles', JSON.stringify(savedVehicles))
-    } catch {}
+    } catch { }
   }, [savedVehicles])
 
   // Sync bookings with localStorage
   useEffect(() => {
     try {
       localStorage.setItem('bentley_bookings', JSON.stringify(bookings))
-    } catch {}
+    } catch { }
   }, [bookings])
 
   // Sync currentVehicle with localStorage
   useEffect(() => {
     try {
       localStorage.setItem('bentley_active_vehicle', currentVehicle)
-    } catch {}
+    } catch { }
   }, [currentVehicle])
 
   // Sync currentRole with localStorage
   useEffect(() => {
     try {
       localStorage.setItem('bentley_current_role', currentRole)
-    } catch {}
+    } catch { }
   }, [currentRole])
 
   // STEP 1 INTEGRATION: Persistent Firebase Auth session listener
@@ -269,14 +270,14 @@ export const App: React.FC = () => {
     return () => unsubVehicles()
   }, [currentUser])
 
-  // STEP 4 INTEGRATION: Real-time listener for user bookings ('bookings' collection filtered by userId)
+  // STEP 4 INTEGRATION: Real-time listener for bookings ('bookings' collection filtered by userId for customers, all bookings for drivers)
   useEffect(() => {
     if (!currentUser) return
 
-    const bookingsQuery = query(
-      collection(db, 'bookings'),
-      where('userId', '==', currentUser.uid)
-    )
+    const bookingsQuery =
+      currentRole === 'driver'
+        ? query(collection(db, 'bookings'))
+        : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
 
     const unsubBookings = onSnapshot(
       bookingsQuery,
@@ -299,7 +300,7 @@ export const App: React.FC = () => {
     )
 
     return () => unsubBookings()
-  }, [currentUser])
+  }, [currentUser, currentRole])
 
   const isAppReady = !showSplash && !showOnboarding && !showAuth
 
@@ -431,11 +432,11 @@ export const App: React.FC = () => {
       prev.map((b) =>
         b.id === bookingId
           ? {
-              ...b,
-              date: newDate,
-              time: newTime,
-              status: 'scheduled' as const,
-            }
+            ...b,
+            date: newDate,
+            time: newTime,
+            status: 'scheduled' as const,
+          }
           : b
       )
     )
@@ -513,7 +514,7 @@ export const App: React.FC = () => {
     setDriverProfile(updated)
     try {
       localStorage.setItem('bentley_driver_profile', JSON.stringify(updated))
-    } catch {}
+    } catch { }
 
     if (currentUser) {
       try {
@@ -537,27 +538,45 @@ export const App: React.FC = () => {
   }
 
   // Driver accept order workflow handler
-  const handleAcceptOrder = (bookingId: string) => {
+  const handleAcceptOrder = async (bookingId: string) => {
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId
           ? {
-              ...b,
-              status: 'accepted' as const,
-              driverId: currentUser?.uid || 'drv-alex',
-              driverName: driverProfile.name,
-              driverPhone: driverProfile.phone,
-              driverVehicle: driverProfile.vanModel,
-              driverVanNumber: driverProfile.licensePlate,
-              driverCoords: b.driverCoords || [-79.4035, 43.6635],
-            }
+            ...b,
+            status: 'accepted' as const,
+            driverId: currentUser?.uid || 'drv-partner',
+            driverName: driverProfile.name,
+            driverPhone: driverProfile.phone,
+            driverVehicle: driverProfile.vanModel,
+            driverVanNumber: driverProfile.licensePlate,
+            driverCoords: b.driverCoords || [-79.4035, 43.6635],
+          }
           : b
       )
     )
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', bookingId)
+        await updateDoc(bookingDocRef, {
+          status: 'accepted',
+          driverId: currentUser.uid,
+          driverName: driverProfile.name,
+          driverPhone: driverProfile.phone,
+          driverVehicle: driverProfile.vanModel,
+          driverVanNumber: driverProfile.licensePlate,
+          driverCoords: [-79.4035, 43.6635],
+          acceptedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to accept booking in Firestore:', err)
+      }
+    }
   }
 
   // Driver update booking status (en_route, in_progress, completed) and live GPS coordinates
-  const handleUpdateBookingStatus = (
+  const handleUpdateBookingStatus = async (
     bookingId: string,
     newStatus: BookingStatus,
     coords?: [number, number]
@@ -566,13 +585,32 @@ export const App: React.FC = () => {
       prev.map((b) =>
         b.id === bookingId
           ? {
-              ...b,
-              status: newStatus,
-              ...(coords ? { driverCoords: coords } : {}),
-            }
+            ...b,
+            status: newStatus,
+            ...(coords ? { driverCoords: coords } : {}),
+          }
           : b
       )
     )
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', bookingId)
+        const updatePayload: Record<string, any> = {
+          status: newStatus,
+          updatedAt: serverTimestamp(),
+        }
+        if (coords) {
+          updatePayload.driverCoords = coords
+        }
+        if (newStatus === 'completed') {
+          updatePayload.completedAt = serverTimestamp()
+        }
+        await updateDoc(bookingDocRef, updatePayload)
+      } catch (err) {
+        console.error('Failed to update booking status in Firestore:', err)
+      }
+    }
   }
 
   // Unified Logout handler for both Customer and Driver portals
@@ -744,39 +782,39 @@ export const App: React.FC = () => {
         <main
           className="w-full max-w-full min-h-screen bg-white relative flex flex-col"
         >
-        {/* Top Header (Rendered on non-home & non-bookings tabs; HomeTab & BookingsTab integrate their own headers) */}
-        {currentTab !== 'home' && currentTab !== 'bookings' && (
-          <Header
-            currentTab={currentTab}
-            onTabChange={navigateToTab}
-            showBack={currentTab === 'notifications' || currentTab === 'profile'}
-            title={
-              currentTab === 'notifications'
-                ? 'Notification'
-                : currentTab === 'profile'
-                ? 'Profile'
-                : currentTab === 'services'
-                ? 'Services'
-                : undefined
-            }
-            onBack={() => setCurrentTab(previousTab || 'home')}
-          />
-        )}
+          {/* Top Header (Rendered on non-home & non-bookings tabs; HomeTab & BookingsTab integrate their own headers) */}
+          {currentTab !== 'home' && currentTab !== 'bookings' && (
+            <Header
+              currentTab={currentTab}
+              onTabChange={navigateToTab}
+              showBack={currentTab === 'notifications' || currentTab === 'profile'}
+              title={
+                currentTab === 'notifications'
+                  ? 'Notification'
+                  : currentTab === 'profile'
+                    ? 'Profile'
+                    : currentTab === 'services'
+                      ? 'Services'
+                      : undefined
+              }
+              onBack={() => setCurrentTab(previousTab || 'home')}
+            />
+          )}
 
-        {/* Tab Content */}
-        <div className="flex-1 w-full">
-          {currentTab === 'home' && (
-            <HomeTab
-              onSelectService={handleSelectService}
-              onBookNow={handleBookNow}
-              onAddCar={() => setIsAddCarOpen(true)}
-              currentVehicle={currentVehicle}
-              onSelectVehicle={handleSelectVehicle}
-              savedVehicles={savedVehicles}
-              activeBookings={bookings}
-              userProfile={
-                currentUser
-                  ? {
+          {/* Tab Content */}
+          <div className="flex-1 w-full">
+            {currentTab === 'home' && (
+              <HomeTab
+                onSelectService={handleSelectService}
+                onBookNow={handleBookNow}
+                onAddCar={() => setIsAddCarOpen(true)}
+                currentVehicle={currentVehicle}
+                onSelectVehicle={handleSelectVehicle}
+                savedVehicles={savedVehicles}
+                activeBookings={bookings}
+                userProfile={
+                  currentUser
+                    ? {
                       name:
                         userProfileData?.fullName ||
                         currentUser.displayName ||
@@ -788,62 +826,62 @@ export const App: React.FC = () => {
                       city: userProfileData?.city || '',
                       postalCode: userProfileData?.postalCode || '',
                     }
-                  : undefined
-              }
-              cartItems={cartItems}
-              onAddToCart={handleAddToCart}
-              onUpdateCartQuantity={handleUpdateCartQuantity}
-              onRemoveCartItem={handleRemoveCartItem}
-              onClearCart={handleClearCart}
-              onCheckoutOrder={handleCheckoutOrder}
-              onOpenTracking={() => navigateToTab('bookings')}
-            />
-          )}
+                    : undefined
+                }
+                cartItems={cartItems}
+                onAddToCart={handleAddToCart}
+                onUpdateCartQuantity={handleUpdateCartQuantity}
+                onRemoveCartItem={handleRemoveCartItem}
+                onClearCart={handleClearCart}
+                onCheckoutOrder={handleCheckoutOrder}
+                onOpenTracking={() => navigateToTab('bookings')}
+              />
+            )}
 
-          {currentTab === 'services' && (
-            <ServicesTab
-              onSelectService={handleSelectService}
-              onAddCar={() => setIsAddCarOpen(true)}
-              currentVehicle={currentVehicle}
-              onSelectVehicle={handleSelectVehicle}
-              savedVehicles={savedVehicles}
-            />
-          )}
+            {currentTab === 'services' && (
+              <ServicesTab
+                onSelectService={handleSelectService}
+                onAddCar={() => setIsAddCarOpen(true)}
+                currentVehicle={currentVehicle}
+                onSelectVehicle={handleSelectVehicle}
+                savedVehicles={savedVehicles}
+              />
+            )}
 
-          {currentTab === 'bookings' && (
-            <BookingsTab
-              onBack={() => setCurrentTab('home')}
-              onBookAgain={(service) => {
-                setBookingService(service)
-                setIsBookingOpen(true)
-              }}
-              onViewServiceDetail={(service) => {
-                setSelectedService(service)
-              }}
-              currentVehicle={currentVehicle}
-              bookings={bookings}
-              onCancelBooking={handleCancelBooking}
-              onRescheduleBooking={handleRescheduleBooking}
-              onRateBooking={handleRateBooking}
-            />
-          )}
+            {currentTab === 'bookings' && (
+              <BookingsTab
+                onBack={() => setCurrentTab('home')}
+                onBookAgain={(service) => {
+                  setBookingService(service)
+                  setIsBookingOpen(true)
+                }}
+                onViewServiceDetail={(service) => {
+                  setSelectedService(service)
+                }}
+                currentVehicle={currentVehicle}
+                bookings={bookings}
+                onCancelBooking={handleCancelBooking}
+                onRescheduleBooking={handleRescheduleBooking}
+                onRateBooking={handleRateBooking}
+              />
+            )}
 
-          {currentTab === 'notifications' && (
-            <NotificationsTab onBack={() => setCurrentTab(previousTab || 'home')} />
-          )}
+            {currentTab === 'notifications' && (
+              <NotificationsTab onBack={() => setCurrentTab(previousTab || 'home')} />
+            )}
 
-          {currentTab === 'profile' && (
-            <ProfileTab
-              onBack={() => setCurrentTab('home')}
-              onOpenSavedVehicles={() => setIsSavedVehiclesOpen(true)}
-              onNavigateToNotifications={() => navigateToTab('notifications')}
-              onOpenBooking={() => navigateToTab('bookings')}
-              onOpenMembership={() => setIsMembershipOpen(true)}
-              savedVehiclesCount={savedVehicles.length}
-              savedVehiclesList={savedVehicles.map((v) => v.name)}
-              userProfile={
-                currentUser
-                  ? {
+            {currentTab === 'profile' && (
+              <ProfileTab
+                onBack={() => setCurrentTab('home')}
+                onOpenSavedVehicles={() => setIsSavedVehiclesOpen(true)}
+                onNavigateToNotifications={() => navigateToTab('notifications')}
+                onOpenBooking={() => navigateToTab('bookings')}
+                onOpenMembership={() => setIsMembershipOpen(true)}
+                savedVehiclesCount={savedVehicles.length}
+                savedVehiclesList={savedVehicles.map((v) => v.name)}
+                userProfile={
+                  currentUser
+                    ? {
                       name:
                         userProfileData?.fullName ||
                         currentUser.displayName ||
@@ -864,33 +902,37 @@ export const App: React.FC = () => {
                         '',
                       membershipTier: userProfileData?.membershipTier || 'General Member',
                     }
-                  : undefined
-              }
-              onUpdateProfile={handleUpdateProfile}
-              onLogout={handleLogout}
-            />
-          )}
-        </div>
+                    : undefined
+                }
+                onUpdateProfile={handleUpdateProfile}
+                onLogout={handleLogout}
+                onSwitchToDriver={() => {
+                  setCurrentRole('driver')
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+              />
+            )}
+          </div>
 
-        {/* Curved Dark Bottom Navigation */}
-        <BottomNav currentTab={currentTab} onTabChange={navigateToTab} />
+          {/* Curved Dark Bottom Navigation */}
+          <BottomNav currentTab={currentTab} onTabChange={navigateToTab} />
 
-        {/* Full Service Detail & Order Summary Modal */}
-        <ServiceDetailModal
-          service={selectedService}
-          onClose={() => setSelectedService(null)}
-          onBookNow={handleBookNow}
-        />
+          {/* Full Service Detail & Order Summary Modal */}
+          <ServiceDetailModal
+            service={selectedService}
+            onClose={() => setSelectedService(null)}
+            onBookNow={handleBookNow}
+          />
 
-        {/* Dedicated Full Booking Page Flow */}
-        {isBookingOpen && (
-          <BookingPage
-            initialService={bookingService}
-            currentVehicle={currentVehicle}
-            savedVehicles={savedVehicles}
-            userProfile={
-              currentUser
-                ? {
+          {/* Dedicated Full Booking Page Flow */}
+          {isBookingOpen && (
+            <BookingPage
+              initialService={bookingService}
+              currentVehicle={currentVehicle}
+              savedVehicles={savedVehicles}
+              userProfile={
+                currentUser
+                  ? {
                     name:
                       userProfileData?.fullName ||
                       currentUser.displayName ||
@@ -902,62 +944,62 @@ export const App: React.FC = () => {
                     city: userProfileData?.city || '',
                     postalCode: userProfileData?.postalCode || '',
                   }
-                : undefined
-            }
-            onSelectVehicle={handleSelectVehicle}
-            onBack={() => setIsBookingOpen(false)}
-            onBookingComplete={(newBooking) => {
-              handleBookingComplete(newBooking)
-            }}
-            onTrackOrder={() => {
-              setIsBookingOpen(false)
-              setCurrentTab('bookings')
-            }}
-          />
-        )}
-
-        {/* Dedicated My Garage / Saved Vehicles Management Screen */}
-        <SavedVehiclesModal
-          isOpen={isSavedVehiclesOpen}
-          onClose={() => setIsSavedVehiclesOpen(false)}
-          vehicles={savedVehicles}
-          currentVehicleName={currentVehicle}
-          onSelectVehicle={handleSelectVehicle}
-          onDeleteVehicle={handleDeleteVehicle}
-          onOpenAddVehicle={() => {
-            setIsSavedVehiclesOpen(false)
-            setIsAddCarOpen(true)
-          }}
-        />
-
-        {/* Multi-Step Add Vehicle Flow */}
-        <AddVehicleModal
-          isOpen={isAddCarOpen}
-          onClose={() => setIsAddCarOpen(false)}
-          onVehicleAdded={handleVehicleAdded}
-        />
-
-        {/* Dedicated Membership Plans Page */}
-        {isMembershipOpen && (
-          <MembershipPage
-            onBack={() => setIsMembershipOpen(false)}
-            currentTier={userProfileData?.membershipTier || 'General Member'}
-            onSelectMembership={async (planName: string) => {
-              if (currentUser) {
-                try {
-                  const userDocRef = doc(db, 'users', currentUser.uid)
-                  await updateDoc(userDocRef, {
-                    membershipTier: planName,
-                    updatedAt: serverTimestamp(),
-                  })
-                } catch (e) {
-                  console.error('Failed to update membership tier in Firestore:', e)
-                }
+                  : undefined
               }
+              onSelectVehicle={handleSelectVehicle}
+              onBack={() => setIsBookingOpen(false)}
+              onBookingComplete={(newBooking) => {
+                handleBookingComplete(newBooking)
+              }}
+              onTrackOrder={() => {
+                setIsBookingOpen(false)
+                setCurrentTab('bookings')
+              }}
+            />
+          )}
+
+          {/* Dedicated My Garage / Saved Vehicles Management Screen */}
+          <SavedVehiclesModal
+            isOpen={isSavedVehiclesOpen}
+            onClose={() => setIsSavedVehiclesOpen(false)}
+            vehicles={savedVehicles}
+            currentVehicleName={currentVehicle}
+            onSelectVehicle={handleSelectVehicle}
+            onDeleteVehicle={handleDeleteVehicle}
+            onOpenAddVehicle={() => {
+              setIsSavedVehiclesOpen(false)
+              setIsAddCarOpen(true)
             }}
           />
-        )}
-      </main>
+
+          {/* Multi-Step Add Vehicle Flow */}
+          <AddVehicleModal
+            isOpen={isAddCarOpen}
+            onClose={() => setIsAddCarOpen(false)}
+            onVehicleAdded={handleVehicleAdded}
+          />
+
+          {/* Dedicated Membership Plans Page */}
+          {isMembershipOpen && (
+            <MembershipPage
+              onBack={() => setIsMembershipOpen(false)}
+              currentTier={userProfileData?.membershipTier || 'General Member'}
+              onSelectMembership={async (planName: string) => {
+                if (currentUser) {
+                  try {
+                    const userDocRef = doc(db, 'users', currentUser.uid)
+                    await updateDoc(userDocRef, {
+                      membershipTier: planName,
+                      updatedAt: serverTimestamp(),
+                    })
+                  } catch (e) {
+                    console.error('Failed to update membership tier in Firestore:', e)
+                  }
+                }
+              }}
+            />
+          )}
+        </main>
       )}
     </div>
   )
