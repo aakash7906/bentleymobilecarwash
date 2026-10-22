@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Truck, Sparkles, ShieldCheck } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth instance and auth methods
-import { auth } from '@/lib/firebase'
+import { auth } from '@/firebase'
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -12,18 +12,22 @@ import {
 } from 'firebase/auth'
 
 export interface LoginProps {
-  onLoginSuccess: (user: { name: string; email: string; uid?: string }) => void
-  onSwitchToSignup?: () => void
+  onLoginSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
+  onSwitchToSignup?: (role?: 'customer' | 'driver') => void
   onSkip?: () => void
+  initialRole?: 'customer' | 'driver'
 }
 
 export const Login: React.FC<LoginProps> = ({
   onLoginSuccess,
   onSwitchToSignup,
   onSkip,
+  initialRole = 'customer',
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
+  // Role State (Customer vs Driver)
+  const [selectedRole, setSelectedRole] = useState<'customer' | 'driver'>(initialRole)
 
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('')
@@ -74,12 +78,13 @@ export const Login: React.FC<LoginProps> = ({
       // Success Toast Notification
       showToast('Login successful! Welcome back.', 'success')
 
-      // Notify parent on successful login with real Firebase User data after brief pause
+      // Notify parent on successful login with real Firebase User data & role after brief pause
       setTimeout(() => {
         onLoginSuccess({
-          name: user.displayName || user.email?.split('@')[0] || 'Member',
+          name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
           email: user.email || loginEmail,
           uid: user.uid,
+          role: selectedRole,
         })
       }, 600)
     } catch (err: any) {
@@ -173,25 +178,26 @@ export const Login: React.FC<LoginProps> = ({
           <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
             {/* Header Titles */}
             <h1 className="text-2xl sm:text-[26px] font-extrabold text-gray-950 text-center tracking-tight">
-              Log in to your Account
+              {selectedRole === 'driver' ? 'Driver Partner Login' : 'Log in to your Account'}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 font-normal text-center mt-1.5 mb-6">
-              Welcome back, please enter your details.
+            <p className="text-xs sm:text-sm text-gray-500 font-normal text-center mt-1.5 mb-5">
+              {selectedRole === 'driver'
+                ? 'Sign in to access live car wash requests.'
+                : 'Welcome back, please enter your details.'}
             </p>
-
             {/* Login Form */}
             <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-4">
               {/* Email Address */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                  Email Address
+                  {selectedRole === 'driver' ? 'Driver Email Address' : 'Email Address'}
                 </label>
                 <input
                   type="email"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder={selectedRole === 'driver' ? 'driver@bentleycarwash.com' : 'Enter your email'}
                   className="w-full px-4 py-3 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
@@ -298,16 +304,36 @@ export const Login: React.FC<LoginProps> = ({
 
             {/* Bottom Switch Link */}
             {onSwitchToSignup && (
-              <div className="mt-7 text-xs sm:text-sm text-gray-800 text-center font-medium">
-                <span>Don’t have an account? </span>
+              <div className="mt-6 text-xs sm:text-sm text-gray-800 text-center font-medium">
+                <span>{selectedRole === 'driver' ? 'New driver partner? ' : 'Don’t have an account? '}</span>
                 <button
                   type="button"
-                  onClick={onSwitchToSignup}
+                  onClick={() => onSwitchToSignup(selectedRole)}
                   className="text-primary font-bold hover:underline cursor-pointer ml-0.5"
                 >
-                  Sign Up
+                  {selectedRole === 'driver' ? 'Register as Driver' : 'Sign Up'}
                 </button>
               </div>
+            )}
+
+            {/* Quick Driver Portal Switcher Link (Visible in Customer mode) */}
+            {selectedRole === 'customer' ? (
+              <button
+                type="button"
+                onClick={() => setSelectedRole('driver')}
+                className="mt-4 text-xs font-bold text-gray-700 hover:text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
+              >
+                <Truck className="w-3.5 h-3.5 text-primary" />
+                <span> Login to Driver Portal →</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSelectedRole('customer')}
+                className="mt-4 text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors cursor-pointer py-1"
+              >
+                ← Back to Customer Login
+              </button>
             )}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, SavedVehicle, BookingRecord, UserProfile } from '@/types'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile } from '@/types'
 import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
@@ -17,9 +17,10 @@ import { Signup } from '@/components/Signup'
 import { SplashScreen } from '@/components/SplashScreen'
 import { OnboardingScreen } from '@/components/OnboardingScreen'
 import { MembershipPage } from '@/components/MembershipPage'
+import { DriverDashboard } from '@/components/driver/DriverDashboard'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
-import { auth, db } from '@/lib/firebase'
+import { auth, db } from '@/firebase'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
 // STEP 2 & 3 INTEGRATION: Import Firestore real-time listeners and mutations
 import {
@@ -44,6 +45,15 @@ export const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+
+  // Driver vs Customer active portal state
+  const [currentRole, setCurrentRole] = useState<'customer' | 'driver'>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_current_role')
+      if (stored === 'driver' || stored === 'customer') return stored
+    } catch {}
+    return 'customer'
+  })
 
   // STEP 1 INTEGRATION: Firebase User state from Auth
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -114,6 +124,13 @@ export const App: React.FC = () => {
     } catch {}
   }, [currentVehicle])
 
+  // Sync currentRole with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_current_role', currentRole)
+    } catch {}
+  }, [currentRole])
+
   // STEP 1 INTEGRATION: Persistent Firebase Auth session listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -142,7 +159,11 @@ export const App: React.FC = () => {
       userDocRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          setUserProfileData(docSnap.data() as any)
+          const data = docSnap.data() as any
+          setUserProfileData(data)
+          if (data.role === 'driver') {
+            setCurrentRole('driver')
+          }
         }
       },
       (error) => {
@@ -423,6 +444,60 @@ export const App: React.FC = () => {
     }
   }
 
+  // Driver accept order workflow handler
+  const handleAcceptOrder = (bookingId: string) => {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId
+          ? {
+              ...b,
+              status: 'accepted' as const,
+              driverId: currentUser?.uid || 'drv-alex',
+              driverName: userProfileData?.fullName || currentUser?.displayName || 'Alex Rivera',
+              driverPhone: userProfileData?.phone || '+1 (800) 555-9274',
+              driverVehicle: 'Ford Transit Custom Mobile Wash',
+              driverVanNumber: 'Van #04',
+              driverCoords: b.driverCoords || [-79.4035, 43.6635],
+            }
+          : b
+      )
+    )
+  }
+
+  // Driver update booking status (en_route, in_progress, completed) and live GPS coordinates
+  const handleUpdateBookingStatus = (
+    bookingId: string,
+    newStatus: BookingStatus,
+    coords?: [number, number]
+  ) => {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId
+          ? {
+              ...b,
+              status: newStatus,
+              ...(coords ? { driverCoords: coords } : {}),
+            }
+          : b
+      )
+    )
+  }
+
+  // Unified Logout handler for both Customer and Driver portals
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+    } catch (e) {
+      console.error('Firebase Sign-out error:', e)
+    }
+    showToast('You have been logged out.', 'info')
+    setCurrentUser(null)
+    setUserProfileData(null)
+    setCurrentRole('customer')
+    setAuthMode('login')
+    setShowAuth(true)
+  }
+
   return (
     <div className="min-h-screen w-full bg-white flex justify-center selection:bg-primary selection:text-primary-foreground">
       {/* 1. Launch Splash Screen (Fixed 375x812 iPhone Layout) */}
@@ -450,12 +525,21 @@ export const App: React.FC = () => {
       {/* 3. Launch Login & Signup Screen */}
       {showAuth && authMode === 'login' && (
         <Login
-          onLoginSuccess={(_user) => {
+          initialRole={currentRole}
+          onLoginSuccess={(user) => {
             setShowAuth(false)
-            setCurrentTab('home')
+            if (user?.role === 'driver') {
+              setCurrentRole('driver')
+            } else {
+              setCurrentRole('customer')
+              setCurrentTab('home')
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
-          onSwitchToSignup={() => setAuthMode('signup')}
+          onSwitchToSignup={(role) => {
+            if (role) setCurrentRole(role)
+            setAuthMode('signup')
+          }}
           onSkip={() => {
             setShowAuth(false)
             setCurrentTab('home')
@@ -466,12 +550,21 @@ export const App: React.FC = () => {
 
       {showAuth && authMode === 'signup' && (
         <Signup
-          onSignupSuccess={(_user) => {
+          initialRole={currentRole}
+          onSignupSuccess={(user) => {
             setShowAuth(false)
-            setCurrentTab('home')
+            if (user?.role === 'driver') {
+              setCurrentRole('driver')
+            } else {
+              setCurrentRole('customer')
+              setCurrentTab('home')
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
-          onSwitchToLogin={() => setAuthMode('login')}
+          onSwitchToLogin={(role) => {
+            if (role) setCurrentRole(role)
+            setAuthMode('login')
+          }}
           onSkip={() => {
             setShowAuth(false)
             setCurrentTab('home')
@@ -480,12 +573,38 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Mobile, Tablet, iPad Pro & Desktop App Canvas */}
-      <main
-        className={`w-full max-w-full min-h-screen bg-white relative flex flex-col ${
-          !isAppReady ? 'hidden' : ''
-        }`}
-      >
+      {/* 4. Dedicated Driver Partner Portal */}
+      {isAppReady && currentRole === 'driver' && (
+        <div className="w-full flex justify-center">
+          <DriverDashboard
+            bookings={bookings}
+            onAcceptOrder={handleAcceptOrder}
+            onUpdateStatus={handleUpdateBookingStatus}
+            onSwitchToCustomer={() => {
+              setCurrentRole('customer')
+              setCurrentTab('home')
+            }}
+            onLogout={handleLogout}
+            driverName={userProfileData?.fullName || currentUser?.displayName || 'Alex Rivera'}
+            driverEmail={userProfileData?.email || currentUser?.email || 'driver@bentleycarwash.com'}
+          />
+        </div>
+      )}
+
+      {/* 5. Mobile, Tablet & Desktop App Canvas (Customer Portal) */}
+      {isAppReady && currentRole === 'customer' && (
+        <main
+          className="w-full max-w-full min-h-screen bg-white relative flex flex-col"
+        >
+          {/* Quick Driver Mode Switcher Pill for Customer View */}
+          <button
+            onClick={() => setCurrentRole('driver')}
+            className="fixed top-3 right-4 z-40 bg-secondary hover:bg-neutral-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
+            title="Switch to Driver Partner Mode"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Driver Mode</span>
+          </button>
         {/* Top Header (Rendered on non-home & non-bookings tabs; HomeTab & BookingsTab integrate their own headers) */}
         {currentTab !== 'home' && currentTab !== 'bookings' && (
           <Header
@@ -583,21 +702,10 @@ export const App: React.FC = () => {
                   : undefined
               }
               onUpdateProfile={handleUpdateProfile}
-              onLogout={async () => {
-                // STEP 1 & 2 INTEGRATION: Complete Firebase sign-out and session teardown
-                try {
-                  await signOut(auth)
-                } catch (e) {
-                  console.error('Firebase Sign-out error:', e)
-                }
-                // Toast notification on logout
-                showToast('You have been logged out.', 'info')
-                // Reset local states and redirect to Login screen
-                setCurrentUser(null)
-                setUserProfileData(null)
-                setAuthMode('login')
-                setShowAuth(true)
+              onSwitchToDriver={() => {
+                setCurrentRole('driver')
               }}
+              onLogout={handleLogout}
             />
           )}
         </div>
@@ -674,6 +782,7 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ interface ProfileTabProps {
   onOpenBooking?: () => void
   onOpenMembership?: () => void
   onLogout?: () => void
+  onSwitchToDriver?: () => void
   userProfile?: UserProfile
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
@@ -32,6 +33,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onOpenBooking,
   onOpenMembership,
   onLogout,
+  onSwitchToDriver,
   userProfile: externalProfile,
   onUpdateProfile,
   savedVehiclesCount,
@@ -249,6 +251,32 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         </div>
       </div>
+
+      {/* Driver Partner Mode Quick Launcher */}
+      {onSwitchToDriver && (
+        <div
+          onClick={onSwitchToDriver}
+          className="mt-3 p-3.5 rounded-2xl bg-secondary text-white shadow-md flex items-center justify-between cursor-pointer hover:bg-neutral-900 active:scale-[0.99] transition-all border border-neutral-700/60"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 text-emerald-400">
+              <span className="material-symbols-outlined text-[22px]">local_shipping</span>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs sm:text-sm font-bold text-white">Driver Partner Portal</span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                  Switch
+                </span>
+              </div>
+              <span className="text-[11px] text-gray-400">
+                View live orders, accept jobs &amp; navigate washes
+              </span>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+        </div>
+      )}
 
       {/* Profile Menu List Card */}
       <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-1 md:gap-2">

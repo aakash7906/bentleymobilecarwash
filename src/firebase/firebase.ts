@@ -3,9 +3,10 @@ import { getAnalytics, isSupported } from 'firebase/analytics'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { getFunctions } from 'firebase/functions'
 
-// Firebase Configuration from environment variables (with fallback to provided credentials)
-const firebaseConfig = {
+// Firebase Configuration from environment variables (with fallback to project credentials)
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAiQSYr5MlTd4576LnvbuF7gT-lfPlnM9I",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "nexen-platform.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "nexen-platform",
@@ -18,12 +19,13 @@ const firebaseConfig = {
 // Initialize Firebase App (prevents re-initialization during hot reloading)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-// Initialize core Firebase services for easy access across the project
+// Core Firebase services
 export const auth = getAuth(app)
 const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || 'carwash'
 
 export const db = getFirestore(app, databaseId)
 export const storage = getStorage(app)
+export const functions = getFunctions(app)
 
 // Initialize Firebase Analytics safely (only in browser environment supporting it)
 export let analytics: ReturnType<typeof getAnalytics> | null = null

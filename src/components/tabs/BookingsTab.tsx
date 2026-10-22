@@ -72,7 +72,12 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
 
   // Split bookings into active and past
   const activeBookings = bookings.filter(
-    (b) => b.status === 'scheduled' || b.status === 'en_route' || b.status === 'in_progress'
+    (b) =>
+      b.status === 'scheduled' ||
+      b.status === 'en_route' ||
+      b.status === 'in_progress' ||
+      b.status === 'pending' ||
+      b.status === 'accepted'
   )
   const pastBookings = bookings.filter(
     (b) => b.status === 'completed' || b.status === 'cancelled'
@@ -108,6 +113,20 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
 
   const renderStatusBadge = (status: BookingStatus) => {
     switch (status) {
+      case 'pending':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Pending Driver
+          </span>
+        )
+      case 'accepted':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-[10px] font-bold border border-teal-200 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+            Driver Accepted
+          </span>
+        )
       case 'scheduled':
         return (
           <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
@@ -399,6 +418,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
       {trackingModalOpen && activeTrackingBooking && (
         <OrderTrackingMapPage
           onBack={() => setTrackingModalOpen(false)}
+          booking={activeTrackingBooking}
           serviceTitle={activeTrackingBooking.title}
           serviceCategory={activeTrackingBooking.category}
           customerName={activeTrackingBooking.customerName || 'Sarah Jenkins'}
@@ -407,7 +427,12 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             activeTrackingBooking.address ||
             '21/22, 5th Avenue, Jamesford Road, Ontario, Canada'
           }
-          technicianName={activeTrackingBooking.technicianName || 'Alex Rivera'}
+          technicianName={activeTrackingBooking.driverName || activeTrackingBooking.technicianName || 'Alex Rivera'}
+          driverCoords={activeTrackingBooking.driverCoords}
+          customerCoords={activeTrackingBooking.customerCoords}
+          driverVanNumber={activeTrackingBooking.driverVanNumber || 'Van #04'}
+          driverPhone={activeTrackingBooking.driverPhone || '+1 (800) 555-9274'}
+          bookingStatus={activeTrackingBooking.status}
         />
       )}
 

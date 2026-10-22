@@ -16,6 +16,7 @@ node_modules
 dist
 dist-ssr
 build
+functions/lib
 *.local
 
 # Environment variables & local configs

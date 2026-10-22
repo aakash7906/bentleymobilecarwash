@@ -13,4 +13,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['maplibre-gl'],
   },
+  server: {
+    watch: {
+      ignored: ['**/functions/**', '**/dist/**'],
+    },
+  },
 })

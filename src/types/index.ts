@@ -88,7 +88,11 @@ export interface UserProfile {
   membershipTier?: string
 }
 
+export type UserRole = 'customer' | 'driver' | 'admin'
+
 export type BookingStatus =
+  | 'pending'
+  | 'accepted'
   | 'scheduled'
   | 'en_route'
   | 'in_progress'
@@ -114,6 +118,15 @@ export interface BookingRecord {
   customerPhone: string
   customerEmail?: string
   technicianName?: string
+  driverId?: string
+  driverName?: string
+  driverPhone?: string
+  driverVehicle?: string
+  driverVanNumber?: string
+  driverCoords?: [number, number]
+  customerCoords?: [number, number]
+  distanceKm?: number
+  estimatedMins?: number
   addons?: string[]
   paymentMethod?: string
   frequency?: 'one_time' | 'biweekly' | 'monthly'

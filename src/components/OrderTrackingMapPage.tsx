@@ -22,6 +22,8 @@ const TRACKING_ROUTE: [number, number][] = [
   [-79.3832, 43.6532],
 ]
 
+import { BookingStatus, BookingRecord } from '@/types'
+
 interface OrderTrackingMapPageProps {
   onBack: () => void
   serviceTitle?: string
@@ -30,17 +32,42 @@ interface OrderTrackingMapPageProps {
   customerPhone?: string
   customerAddress?: string
   technicianName?: string
+  driverCoords?: [number, number]
+  customerCoords?: [number, number]
+  driverVanNumber?: string
+  driverPhone?: string
+  bookingStatus?: BookingStatus
+  booking?: BookingRecord
 }
 
 export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   onBack,
   serviceTitle = 'Car Wash',
   serviceCategory = 'Exterior Cleaning',
-  customerName = 'Steve Miller',
-  customerPhone = '998 877 5561',
-  customerAddress = '21/22, 5th Avenue, Jamesford Road, Ontario,\nCanada',
-  technicianName = 'James Marlo',
+  customerName = 'Sarah Jenkins',
+  customerPhone = '+1 (998) 877-5561',
+  customerAddress = '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
+  technicianName = 'Alex Rivera',
+  driverCoords,
+  customerCoords,
+  driverVanNumber = 'Van #04',
+  driverPhone = '+1 (800) 555-9274',
+  bookingStatus = 'en_route',
+  booking,
 }) => {
+  const activeTechnicianCoords: [number, number] = driverCoords || booking?.driverCoords || TECHNICIAN_COORDS
+  const activeCustomerCoords: [number, number] = customerCoords || booking?.customerCoords || CUSTOMER_COORDS
+  const activeTechName = technicianName || booking?.driverName || booking?.technicianName || 'Alex Rivera'
+  const activeStatus = bookingStatus || booking?.status || 'en_route'
+
+  const activeRoute = [
+    activeTechnicianCoords,
+    [-79.3985, 43.6620] as [number, number],
+    [-79.3950, 43.6585] as [number, number],
+    [-79.3905, 43.6565] as [number, number],
+    [-79.3860, 43.6545] as [number, number],
+    activeCustomerCoords,
+  ]
   const mapRef = useRef<MapRef>(null)
   const [style, setStyle] = useState<StyleKey>('default')
   const selectedStyle = mapStyles[style]
@@ -117,7 +144,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50">
         <Map
           ref={mapRef}
-          center={[-79.3925, 43.6582]}
+          center={activeCustomerCoords}
           zoom={14.1}
           pitch={25}
           styles={
@@ -130,14 +157,14 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           {/* Driving Route Polyline from Technician Van to Customer */}
           <MapRoute
             id="order-tracking-route"
-            coordinates={TRACKING_ROUTE}
+            coordinates={activeRoute}
             color="var(--primary)"
             width={5.5}
             opacity={0.9}
           />
 
           {/* Technician Mobile Wash Van Live Marker */}
-          <MapMarker longitude={TECHNICIAN_COORDS[0]} latitude={TECHNICIAN_COORDS[1]}>
+          <MapMarker longitude={activeTechnicianCoords[0]} latitude={activeTechnicianCoords[1]}>
             <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
               {/* Outer Pulsing Green Beacon */}
               <div className="absolute w-12 h-12 rounded-full bg-status-active/30 animate-ping pointer-events-none" />
@@ -147,13 +174,13 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               </div>
               {/* Van Tooltip Pill */}
               <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-secondary text-white text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
-                {technicianName} • Van
+                {activeTechName} • {driverVanNumber}
               </div>
             </div>
           </MapMarker>
 
           {/* Customer Destination House Pin Marker */}
-          <MapMarker longitude={CUSTOMER_COORDS[0]} latitude={CUSTOMER_COORDS[1]}>
+          <MapMarker longitude={activeCustomerCoords[0]} latitude={activeCustomerCoords[1]}>
             <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
               {/* Destination Beacon Ping */}
               <div className="absolute w-11 h-11 rounded-full bg-primary/30 animate-ping pointer-events-none" />
@@ -163,7 +190,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               </div>
               {/* Destination Tooltip Pill */}
               <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
-                Destination
+                Your Vehicle Location
               </div>
             </div>
           </MapMarker>
