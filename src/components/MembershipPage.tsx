@@ -86,9 +86,15 @@ export const preloadMembershipImages = () => {
 interface MembershipPageProps {
   onBack: () => void
   onContactSupport?: () => void
+  onSelectMembership?: (planName: string) => void
+  currentTier?: string
 }
 
-export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
+export const MembershipPage: React.FC<MembershipPageProps> = ({
+  onBack,
+  onSelectMembership,
+  currentTier,
+}) => {
   // Global Toast Hook
   const { showToast } = useToast()
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null)
@@ -102,11 +108,15 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
   const handlePurchaseInquiry = () => {
     setInquirySuccess(true)
     const planName = selectedPlan?.name || 'Membership'
+    if (onSelectMembership) {
+      onSelectMembership(planName)
+    }
     setTimeout(() => {
       // Auto close modal after brief confirmation and trigger global toast
       setInquirySuccess(false)
       setSelectedPlan(null)
-      showToast(`Subscribed to ${planName}! Our concierge will contact you shortly.`, 'success')
+      showToast(`Subscribed to ${planName}! Your profile membership is updated.`, 'success')
+      onBack()
     }, 1000)
   }
 

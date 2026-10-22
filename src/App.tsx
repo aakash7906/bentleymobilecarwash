@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile } from '@/types'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile, CartItem } from '@/types'
 import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
@@ -75,6 +75,8 @@ export const App: React.FC = () => {
     bio?: string
     avatar?: string
     isAvailable?: boolean
+    preferredVehicle?: string
+    membershipTier?: string
   } | null>(null)
 
   // Driver Profile State (Synced with localStorage & Firestore)
@@ -128,12 +130,28 @@ export const App: React.FC = () => {
     return INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)'
   })
 
+  // Global Shopping Cart State (Persisted in localStorage)
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_cart_items')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return []
+  })
+
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
   const [isAddCarOpen, setIsAddCarOpen] = useState(false)
   const [isSavedVehiclesOpen, setIsSavedVehiclesOpen] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
   const [isMembershipOpen, setIsMembershipOpen] = useState(false)
+
+  // Sync cartItems with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_cart_items', JSON.stringify(cartItems))
+    } catch {}
+  }, [cartItems])
 
   // Sync savedVehicles with localStorage
   useEffect(() => {
@@ -475,12 +493,13 @@ export const App: React.FC = () => {
         const userDocRef = doc(db, 'users', currentUser.uid)
         await updateDoc(userDocRef, {
           fullName: updated.name,
-          phone: updated.phone,
-          address: updated.address,
+          phone: updated.phone || '',
+          address: updated.address || '',
           city: updated.city || '',
           postalCode: updated.postalCode || '',
-          avatar: updated.avatar,
+          avatar: updated.avatar || '',
           preferredVehicle: updated.preferredVehicle || '',
+          membershipTier: updated.membershipTier || 'General Member',
           updatedAt: serverTimestamp(),
         })
       } catch (err) {
@@ -569,6 +588,60 @@ export const App: React.FC = () => {
     setCurrentRole('customer')
     setAuthMode('login')
     setShowAuth(true)
+  }
+
+  // STEP 6 INTEGRATION: Save product order to Firestore 'orders' collection
+  const handleCheckoutOrder = async (orderData: any): Promise<string> => {
+    const orderId = `BCW-${Math.floor(10000 + Math.random() * 90000)}`
+    if (currentUser) {
+      try {
+        const orderDocRef = doc(db, 'orders', orderId)
+        await setDoc(orderDocRef, {
+          id: orderId,
+          userId: currentUser.uid,
+          userEmail: currentUser.email || '',
+          ...orderData,
+          createdAt: orderData.createdAt || new Date().toISOString(),
+          serverTimestamp: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to sync product order to Firestore:', err)
+      }
+    }
+    return orderId
+  }
+
+  // Cart operations
+  const handleAddToCart = (product: any, quantity: number = 1) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id)
+      if (existing) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        )
+      }
+      return [...prev, { product, quantity }]
+    })
+    showToast(`${product.title} added to cart!`, 'success')
+  }
+
+  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
+    )
+  }
+
+  const handleRemoveCartItem = (productId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.product.id !== productId))
+    showToast('Item removed from cart.', 'info')
+  }
+
+  const handleClearCart = () => {
+    setCartItems([])
   }
 
   return (
@@ -700,6 +773,30 @@ export const App: React.FC = () => {
               currentVehicle={currentVehicle}
               onSelectVehicle={handleSelectVehicle}
               savedVehicles={savedVehicles}
+              activeBookings={bookings}
+              userProfile={
+                currentUser
+                  ? {
+                      name:
+                        userProfileData?.fullName ||
+                        currentUser.displayName ||
+                        currentUser.email?.split('@')[0] ||
+                        '',
+                      email: userProfileData?.email || currentUser.email || '',
+                      phone: userProfileData?.phone || currentUser.phoneNumber || '',
+                      address: userProfileData?.address || '',
+                      city: userProfileData?.city || '',
+                      postalCode: userProfileData?.postalCode || '',
+                    }
+                  : undefined
+              }
+              cartItems={cartItems}
+              onAddToCart={handleAddToCart}
+              onUpdateCartQuantity={handleUpdateCartQuantity}
+              onRemoveCartItem={handleRemoveCartItem}
+              onClearCart={handleClearCart}
+              onCheckoutOrder={handleCheckoutOrder}
+              onOpenTracking={() => navigateToTab('bookings')}
             />
           )}
 
@@ -743,27 +840,29 @@ export const App: React.FC = () => {
               onOpenBooking={() => navigateToTab('bookings')}
               onOpenMembership={() => setIsMembershipOpen(true)}
               savedVehiclesCount={savedVehicles.length}
+              savedVehiclesList={savedVehicles.map((v) => v.name)}
               userProfile={
                 currentUser
                   ? {
-                      // STEP 2 INTEGRATION: Prefer real Firestore 'fullName' from 'users' collection, fallback to displayName/email
                       name:
                         userProfileData?.fullName ||
                         currentUser.displayName ||
                         currentUser.email?.split('@')[0] ||
                         'Member',
                       email: userProfileData?.email || currentUser.email || '',
-                      phone: userProfileData?.phone || currentUser.phoneNumber || '+1 (998) 877-5561',
-                      address:
-                        userProfileData?.address ||
-                        '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
-                      city: userProfileData?.city || 'Ontario',
-                      postalCode: userProfileData?.postalCode || 'L4B 1X9',
+                      phone: userProfileData?.phone || currentUser.phoneNumber || '',
+                      address: userProfileData?.address || '',
+                      city: userProfileData?.city || '',
+                      postalCode: userProfileData?.postalCode || '',
                       avatar:
+                        userProfileData?.avatar ||
                         currentUser.photoURL ||
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-                      preferredVehicle: currentVehicle,
-                      membershipTier: 'VIP Platinum',
+                        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+                      preferredVehicle:
+                        userProfileData?.preferredVehicle ||
+                        (savedVehicles.length > 0 ? (savedVehicles.find((v) => v.isPrimary)?.name || savedVehicles[0].name) : currentVehicle) ||
+                        '',
+                      membershipTier: userProfileData?.membershipTier || 'General Member',
                     }
                   : undefined
               }
@@ -796,12 +895,12 @@ export const App: React.FC = () => {
                       userProfileData?.fullName ||
                       currentUser.displayName ||
                       currentUser.email?.split('@')[0] ||
-                      'Member',
+                      '',
                     email: userProfileData?.email || currentUser.email || '',
-                    phone: userProfileData?.phone || currentUser.phoneNumber || '+1 (998) 877-5561',
-                    address: userProfileData?.address || '21/22, 5th Avenue, Jamesford Road',
-                    city: userProfileData?.city || 'Ontario',
-                    postalCode: userProfileData?.postalCode || 'L4B 1X9',
+                    phone: userProfileData?.phone || currentUser.phoneNumber || '',
+                    address: userProfileData?.address || '',
+                    city: userProfileData?.city || '',
+                    postalCode: userProfileData?.postalCode || '',
                   }
                 : undefined
             }
@@ -842,6 +941,20 @@ export const App: React.FC = () => {
         {isMembershipOpen && (
           <MembershipPage
             onBack={() => setIsMembershipOpen(false)}
+            currentTier={userProfileData?.membershipTier || 'General Member'}
+            onSelectMembership={async (planName: string) => {
+              if (currentUser) {
+                try {
+                  const userDocRef = doc(db, 'users', currentUser.uid)
+                  await updateDoc(userDocRef, {
+                    membershipTier: planName,
+                    updatedAt: serverTimestamp(),
+                  })
+                } catch (e) {
+                  console.error('Failed to update membership tier in Firestore:', e)
+                }
+              }
+            }}
           />
         )}
       </main>

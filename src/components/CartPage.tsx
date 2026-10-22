@@ -28,6 +28,15 @@ interface CartPageProps {
   onClearCart: () => void
   onCheckoutSuccess?: (orderId: string, total: string) => void
   onContinueShopping?: () => void
+  userProfile?: {
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
+  onCheckoutOrder?: (orderData: any) => Promise<string>
 }
 
 export const CartPage: React.FC<CartPageProps> = ({
@@ -39,6 +48,8 @@ export const CartPage: React.FC<CartPageProps> = ({
   onClearCart,
   onCheckoutSuccess,
   onContinueShopping,
+  userProfile,
+  onCheckoutOrder,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -105,18 +116,43 @@ export const CartPage: React.FC<CartPageProps> = ({
     }
   }
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     setIsProcessing(true)
-    setTimeout(() => {
-      const generatedId = `#BCW-${Math.floor(10000 + Math.random() * 90000)}`
-      setPlacedOrderId(generatedId)
+    const fallbackId = `#BCW-${Math.floor(10000 + Math.random() * 90000)}`
+
+    try {
+      let finalOrderId = fallbackId
+      if (onCheckoutOrder) {
+        const orderData = {
+          items,
+          itemsSubtotal,
+          discountAmount,
+          shippingFee,
+          taxFee,
+          grandTotal,
+          paymentMethod,
+          shippingAddress: userProfile?.address || 'Ontario, Canada',
+          customerName: userProfile?.name || 'Customer',
+          customerEmail: userProfile?.email || '',
+          customerPhone: userProfile?.phone || '',
+          createdAt: new Date().toISOString(),
+        }
+        finalOrderId = await onCheckoutOrder(orderData)
+      } else {
+        await new Promise((r) => setTimeout(r, 800))
+      }
+
+      setPlacedOrderId(finalOrderId)
       setIsProcessing(false)
       setOrderComplete(true)
-      showToast(`Order ${generatedId} placed successfully!`, 'success')
+      showToast(`Order ${finalOrderId} placed successfully!`, 'success')
       if (onCheckoutSuccess) {
-        onCheckoutSuccess(generatedId, grandTotal)
+        onCheckoutSuccess(finalOrderId, grandTotal)
       }
-    }, 1000)
+    } catch (e) {
+      setIsProcessing(false)
+      showToast('Failed to place order. Please try again.', 'error')
+    }
   }
 
   const handleFinishCheckout = () => {
@@ -199,7 +235,9 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
                 <div className="truncate">
                   <span className="text-[11px] font-bold text-gray-800 block truncate">
-                    Delivering to Ontario (5th Avenue)
+                    {userProfile?.address
+                      ? `Delivering to ${userProfile.address}`
+                      : 'Delivering to registered address'}
                   </span>
                   <span className="text-[10px] text-gray-500">
                     Hand-delivered by your service technician

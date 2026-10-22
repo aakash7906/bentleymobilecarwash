@@ -42,23 +42,34 @@ interface OrderTrackingMapPageProps {
 
 export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   onBack,
-  serviceTitle = 'Car Wash',
-  serviceCategory = 'Exterior Cleaning',
-  customerName = 'Sarah Jenkins',
-  customerPhone = '+1 (998) 877-5561',
-  customerAddress = '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
-  technicianName = 'Alex Rivera',
+  serviceTitle,
+  serviceCategory,
+  customerName,
+  customerPhone,
+  customerAddress,
+  technicianName,
   driverCoords,
   customerCoords,
-  driverVanNumber = 'Van #04',
-  driverPhone = '+1 (800) 555-9274',
-  bookingStatus = 'en_route',
+  driverVanNumber,
+  driverPhone,
+  bookingStatus,
   booking,
 }) => {
-  const activeTechnicianCoords: [number, number] = driverCoords || booking?.driverCoords || TECHNICIAN_COORDS
-  const activeCustomerCoords: [number, number] = customerCoords || booking?.customerCoords || CUSTOMER_COORDS
-  const activeTechName = technicianName || booking?.driverName || booking?.technicianName || 'Alex Rivera'
-  const activeStatus = bookingStatus || booking?.status || 'en_route'
+  const activeTitle = booking?.title || serviceTitle || 'Car Wash'
+  const activeTechName = booking?.driverName || technicianName || booking?.technicianName || 'Alex Rivera'
+  const activeTechPhone = booking?.driverPhone || driverPhone || '+1 (800) 555-9274'
+  const activeVan = booking?.driverVanNumber || driverVanNumber || 'Van #04'
+  const activeCustomer = booking?.customerName || customerName || 'Customer'
+  const activePhone = booking?.customerPhone || customerPhone || ''
+  const activeAddress = booking?.address || customerAddress || 'Address on file'
+  const activeStatus = booking?.status || bookingStatus || 'en_route'
+  const activeMins = booking?.estimatedMins || 8
+  const activeKm = booking?.distanceKm || 2.4
+
+  const activeTechnicianCoords: [number, number] =
+    booking?.driverCoords || driverCoords || TECHNICIAN_COORDS
+  const activeCustomerCoords: [number, number] =
+    booking?.customerCoords || customerCoords || CUSTOMER_COORDS
 
   const activeRoute = [
     activeTechnicianCoords,
@@ -84,8 +95,8 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'technician',
-      text: `Hello ${customerName}! I'm on 5th Avenue with the mobile wash unit. Arriving in ~10 mins!`,
-      time: '02:22 PM',
+      text: `Hello ${activeCustomer}! I'm on the way with your mobile wash unit. Arriving shortly!`,
+      time: 'Just now',
     },
   ])
   const [inputMsg, setInputMsg] = useState('')
@@ -129,10 +140,16 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         {/* Center Title with Category Pill */}
         <div className="flex flex-col items-center">
           <span className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-medium tracking-tight mb-0.5">
-            {serviceTitle}
+            {activeTitle}
           </span>
           <h1 className="text-base sm:text-lg font-bold text-status-active tracking-tight leading-tight">
-            Technician is Arriving
+            {activeStatus === 'in_progress'
+              ? 'Detailing in Progress'
+              : activeStatus === 'en_route'
+              ? 'Technician is Arriving'
+              : activeStatus === 'completed'
+              ? 'Wash Completed'
+              : 'Technician Assigned'}
           </h1>
         </div>
 
@@ -174,7 +191,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               </div>
               {/* Van Tooltip Pill */}
               <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-secondary text-white text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
-                {activeTechName} • {driverVanNumber}
+                {activeTechName} • {activeVan}
               </div>
             </div>
           </MapMarker>
@@ -227,11 +244,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active" />
             </span>
             <span className="text-xs sm:text-sm font-bold text-gray-900 tracking-tight">
-              {technicianName} is ~8 mins away
+              {activeTechName} is ~{activeMins} mins away
             </span>
           </div>
           <span className="text-xs font-semibold text-gray-500 font-mono bg-surface-alt px-2.5 py-0.5 rounded-full">
-            2.4 km
+            {activeKm} km
           </span>
         </div>
 
@@ -241,15 +258,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             {/* Technician Avatar */}
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-              alt={technicianName}
+              alt={activeTechName}
               className="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-xs"
             />
             <div className="flex flex-col">
               <h3 className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
-                {technicianName}
+                {activeTechName}
               </h3>
               <span className="text-xs font-semibold text-status-active mt-0.5">
-                Verified Technician
+                Verified Technician • {activeVan}
               </span>
             </div>
           </div>
@@ -284,10 +301,10 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           <div className="w-full border-b border-dashed border-gray-300 mt-2 mb-2.5" />
           <div className="w-full text-left flex flex-col gap-0.5">
             <h4 className="font-bold text-sm text-gray-900">
-              {customerName}, {customerPhone}
+              {activeCustomer}{activePhone ? `, ${activePhone}` : ''}
             </h4>
             <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">
-              {customerAddress}
+              {activeAddress}
             </p>
           </div>
         </div>

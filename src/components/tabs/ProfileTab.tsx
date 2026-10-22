@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { UserProfile } from '@/types'
-import { USER_INFO, USER_SAVED_VEHICLES } from '@/data/mockData'
 import { preloadMembershipImages } from '@/components/MembershipPage'
 import { EditProfilePage } from '@/components/EditProfilePage'
 import { useToast } from '@/context/ToastContext'
@@ -15,6 +14,7 @@ interface ProfileTabProps {
   userProfile?: UserProfile
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
+  savedVehiclesList?: string[]
 }
 
 interface MenuItem {
@@ -35,6 +35,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   userProfile: externalProfile,
   onUpdateProfile,
   savedVehiclesCount,
+  savedVehiclesList,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -49,17 +50,16 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       // fallback
     }
     return {
-      name: USER_INFO.name || 'Sarah Jenkins',
-      email: USER_INFO.email || 'sarah.jenkins@gmail.com',
-      phone: '+1 (998) 877-5561',
-      address: '21/22, 5th Avenue, Jamesford Road, Ontario, Canada',
-      city: 'Ontario',
-      postalCode: 'L4B 1X9',
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      postalCode: '',
       avatar:
-        USER_INFO.avatar ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      preferredVehicle: USER_INFO.currentVehicle || 'Audi R8 GT',
-      membershipTier: 'VIP Platinum',
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      preferredVehicle: '',
+      membershipTier: 'General Member',
     }
   })
 
@@ -197,7 +197,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               directions_car
             </span>
             <span className="font-semibold text-gray-900 truncate max-w-[140px]">
-              {profile.preferredVehicle || 'Audi R8 GT'}
+              {profile.preferredVehicle || 'No Vehicle Added'}
             </span>
           </div>
 
@@ -206,13 +206,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               location_on
             </span>
             <span className="font-semibold text-gray-900 truncate max-w-[130px]">
-              {profile.city || 'Ontario'}
+              {profile.city || profile.address ? (profile.city || profile.address.split(',')[0]) : 'Location not set'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* VIP Membership Banner */}
+      {/* VIP / Membership Banner */}
       <div
         onClick={onOpenMembership}
         onMouseEnter={preloadMembershipImages}
@@ -234,18 +234,20 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold tracking-tight">Bentley Membership</span>
+              <span className="text-sm font-extrabold tracking-tight">
+                {profile.membershipTier || 'Bentley Membership'}
+              </span>
               <span className="px-1.5 py-0.5 rounded bg-white text-primary text-[10px] font-black uppercase">
-                VIP
+                {profile.membershipTier?.includes('Platinum') ? 'VIP' : 'MEMBER'}
               </span>
             </div>
             <span className="text-[11px] text-white/90">
-              Gold, Platinum &amp; Custom wash bundles
+              {profile.membershipTier ? `${profile.membershipTier} Plan Active` : 'Gold, Platinum & Custom wash bundles'}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-1 text-xs font-bold text-white relative z-10 pl-2">
-          <span>View</span>
+          <span>{profile.membershipTier ? 'Change' : 'View'}</span>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         </div>
       </div>
@@ -299,7 +301,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         userProfile={profile}
         onClose={() => setIsEditProfileOpen(false)}
         onSave={handleSaveProfile}
-        savedVehicles={USER_SAVED_VEHICLES}
+        savedVehicles={savedVehiclesList && savedVehiclesList.length > 0 ? savedVehiclesList : (profile.preferredVehicle ? [profile.preferredVehicle] : [])}
       />
     </div>
   )

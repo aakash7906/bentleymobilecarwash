@@ -84,8 +84,29 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
 
           {/* Vehicle Cards List */}
           <div className="flex flex-col gap-3">
-            {vehicles.map((veh) => {
-              const isActive = veh.name === currentVehicleName
+            {vehicles.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 border border-gray-200/80 shadow-xs flex flex-col items-center text-center gap-3 animate-in fade-in">
+                <div className="w-16 h-16 rounded-2xl bg-surface-alt flex items-center justify-center text-gray-400">
+                  <Car className="w-8 h-8 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Your Garage is Empty</h3>
+                  <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                    Add your car, SUV, or truck to unlock personalized detailing prices and save your license plate.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenAddVehicle}
+                  className="mt-2 px-5 py-2.5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add First Vehicle</span>
+                </button>
+              </div>
+            ) : (
+              vehicles.map((veh) => {
+                const isActive = veh.name === currentVehicleName
 
               return (
                 <div
@@ -188,8 +209,9 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
                   </div>
                 </div>
               )
-            })}
-          </div>
+            })
+          )}
+        </div>
 
           {/* Quick Add Button Card */}
           <button

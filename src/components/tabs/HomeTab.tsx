@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { ServiceItem, ProductItem, CartItem, SavedVehicle } from '@/types'
-import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
+import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord } from '@/types'
+import { SERVICES_CATALOG } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
 
@@ -22,8 +22,23 @@ interface HomeTabProps {
   onAddCar: () => void
   currentVehicle: string
   onSelectVehicle: (vehicle: string) => void
-  onOpenTracking?: () => void
+  onOpenTracking?: (booking?: BookingRecord) => void
   savedVehicles?: SavedVehicle[]
+  activeBookings?: BookingRecord[]
+  userProfile?: {
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
+  cartItems: CartItem[]
+  onAddToCart: (product: ProductItem, quantity?: number) => void
+  onUpdateCartQuantity: (productId: string, quantity: number) => void
+  onRemoveCartItem: (productId: string) => void
+  onClearCart: () => void
+  onCheckoutOrder?: (orderData: any) => Promise<string>
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -34,6 +49,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onSelectVehicle,
   onOpenTracking,
   savedVehicles,
+  activeBookings = [],
+  userProfile,
+  cartItems,
+  onAddToCart,
+  onUpdateCartQuantity,
+  onRemoveCartItem,
+  onClearCart,
+  onCheckoutOrder,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -41,8 +64,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [currentAddress, setCurrentAddress] = useState('5th Avenue, Jamesford Road, Ontario...')
+  const [currentAddress, setCurrentAddress] = useState(
+    userProfile?.address || 'Ontario, Canada'
+  )
   const [isLocating, setIsLocating] = useState(false)
+
+  // Sync user address if profile updates
+  React.useEffect(() => {
+    if (userProfile?.address) {
+      setCurrentAddress(userProfile.address)
+    }
+  }, [userProfile?.address])
 
   // Fetch live user GPS location & reverse geocode to address
   const handleFetchLiveLocation = () => {
@@ -115,51 +147,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     )
   }
 
-  // Real cart items state initialized with featured care essentials
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      product: BENTLEY_PRODUCTS[0], // Bentley 007 Tire Shine (1 Gal)
-      quantity: 1,
-    },
-    {
-      product: BENTLEY_PRODUCTS[2], // Bentley Glisten Ceramic Silica (250ml)
-      quantity: 1,
-    },
-  ])
-
   const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0)
 
   const handleAddToCart = (product: ProductItem, quantity: number = 1) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id)
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        )
-      }
-      return [...prev, { product, quantity }]
-    })
-    // Global Toast for Add to Cart
-    showToast(`${product.title} added to cart!`, 'success')
-  }
-
-  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    )
-  }
-
-  const handleRemoveCartItem = (productId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.product.id !== productId))
-    showToast('Item removed from cart.', 'info')
-  }
-
-  const handleClearCart = () => {
-    setCartItems([])
+    onAddToCart(product, quantity)
   }
 
   // Detect vehicle type for vehicle-aware pricing
@@ -361,43 +352,43 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 YOUR VEHICLES
               </span>
               <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-                {(savedVehicles && savedVehicles.length > 0
-                  ? savedVehicles
-                  : USER_SAVED_VEHICLES.map((name, i) => ({
-                      id: `v-${i}`,
-                      name,
-                      type: 'Sedan' as const,
-                      licensePlate: undefined,
-                    }))
-                ).map((veh) => (
-                  <div
-                    key={veh.id}
-                    onClick={() => {
-                      onSelectVehicle(veh.name)
-                      setIsDropdownOpen(false)
-                    }}
-                    className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
-                      veh.name === currentVehicle
-                        ? 'bg-primary-light text-primary font-bold'
-                        : 'hover:bg-gray-50 text-gray-800 font-medium'
-                    }`}
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs sm:text-sm truncate">{veh.name}</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
-                        {veh.licensePlate && (
-                          <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 rounded">
-                            {veh.licensePlate}
-                          </span>
-                        )}
+                {savedVehicles && savedVehicles.length > 0 ? (
+                  savedVehicles.map((veh) => (
+                    <div
+                      key={veh.id}
+                      onClick={() => {
+                        onSelectVehicle(veh.name)
+                        setIsDropdownOpen(false)
+                      }}
+                      className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
+                        veh.name === currentVehicle
+                          ? 'bg-primary-light text-primary font-bold'
+                          : 'hover:bg-gray-50 text-gray-800 font-medium'
+                      }`}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs sm:text-sm truncate">{veh.name}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
+                          {veh.licensePlate && (
+                            <span className="text-[10px] font-mono font-semibold text-primary">
+                              • {veh.licensePlate}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      {veh.isPrimary && (
+                        <span className="text-[9px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded-full shrink-0">
+                          Primary
+                        </span>
+                      )}
                     </div>
-                    {veh.name === currentVehicle && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
-                    )}
+                  ))
+                ) : (
+                  <div className="py-2 px-3 text-xs text-gray-500">
+                    No vehicles saved. Click Add Car to register.
                   </div>
-                ))}
+                )}
               </div>
               <button
                 type="button"
@@ -687,48 +678,84 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </section>
 
       {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Technician is Arriving (Elevated above bottom nav) */}
-      <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
-        <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
-          <div
-            onClick={() => {
-              if (onOpenTracking) onOpenTracking()
-              else setIsTrackingMapOpen(true)
-            }}
-            className="w-full bg-status-active hover:bg-status-active-hover text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-white/25 filter drop-shadow-[0_6px_16px_var(--status-active-glow)]"
-          >
-            {/* Left Content */}
-            <div className="flex flex-col items-start gap-0.5">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
-                Car Wash
-              </span>
-              <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">
-                Technician is Arriving
-              </span>
-            </div>
+      {(() => {
+        // Find most relevant active booking (in_progress, en_route, accepted, or scheduled)
+        const liveBooking =
+          activeBookings.find((b) => b.status === 'en_route') ||
+          activeBookings.find((b) => b.status === 'in_progress') ||
+          activeBookings.find((b) => b.status === 'accepted') ||
+          activeBookings.find((b) => b.status === 'scheduled')
 
-            {/* Right Mins Countdown Card (Compact) */}
-            <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
-              <span className="text-status-active text-sm sm:text-base font-extrabold leading-none">
-                33
-              </span>
-              <span className="text-status-active text-[9px] font-bold leading-tight">
-                mins
-              </span>
+        if (!liveBooking) return null
+
+        const statusLabel =
+          liveBooking.status === 'en_route'
+            ? 'Technician is Arriving'
+            : liveBooking.status === 'in_progress'
+            ? 'Detailing in Progress'
+            : liveBooking.status === 'accepted'
+            ? 'Technician Assigned'
+            : 'Appointment Scheduled'
+
+        const mins = liveBooking.estimatedMins || 25
+
+        return (
+          <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
+            <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
+              <div
+                onClick={() => {
+                  if (onOpenTracking) {
+                    onOpenTracking(liveBooking)
+                  } else {
+                    setIsTrackingMapOpen(true)
+                  }
+                }}
+                className="w-full bg-status-active hover:bg-status-active-hover text-white rounded-xl sm:rounded-2xl px-3.5 py-1.5 sm:py-2 shadow-lg flex items-center justify-between cursor-pointer active:scale-98 transition-all border border-white/25 filter drop-shadow-[0_6px_16px_var(--status-active-glow)]"
+              >
+                {/* Left Content */}
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
+                    {liveBooking.title || 'Car Wash'}
+                  </span>
+                  <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">
+                    {statusLabel}
+                  </span>
+                </div>
+
+                {/* Right Mins Countdown Card (Compact) */}
+                <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
+                  <span className="text-status-active text-sm sm:text-base font-extrabold leading-none">
+                    {mins}
+                  </span>
+                  <span className="text-status-active text-[9px] font-bold leading-tight">
+                    mins
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* 10. Direct Order Tracking Map Modal from Floating Button */}
       {isTrackingMapOpen && (
         <OrderTrackingMapPage
           onBack={() => setIsTrackingMapOpen(false)}
-          serviceTitle="Car Wash"
-          serviceCategory="Exterior Cleaning"
-          customerName="Steve Miller"
-          customerPhone="998 877 5561"
-          customerAddress={`21/22, 5th Avenue, Jamesford Road, Ontario,\nCanada`}
-          technicianName="James Marlo"
+          booking={
+            activeBookings.find((b) => b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') ||
+            activeBookings[0]
+          }
+          serviceTitle={activeBookings[0]?.title || 'Car Wash'}
+          serviceCategory={activeBookings[0]?.category || 'Exterior Cleaning'}
+          customerName={userProfile?.name || 'Customer'}
+          customerPhone={userProfile?.phone || ''}
+          customerAddress={userProfile?.address || currentAddress}
+          technicianName={activeBookings[0]?.technicianName || activeBookings[0]?.driverName || 'Alex Rivera'}
+          driverCoords={activeBookings[0]?.driverCoords}
+          customerCoords={activeBookings[0]?.customerCoords}
+          driverVanNumber={activeBookings[0]?.driverVanNumber || 'Van #04'}
+          driverPhone={activeBookings[0]?.driverPhone || '+1 (800) 555-9274'}
+          bookingStatus={activeBookings[0]?.status || 'scheduled'}
         />
       )}
 
@@ -755,10 +782,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       <CartPage
         isOpen={isCartOpen}
         items={cartItems}
+        userProfile={userProfile}
         onClose={() => setIsCartOpen(false)}
-        onUpdateQuantity={handleUpdateCartQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={handleClearCart}
+        onUpdateQuantity={onUpdateCartQuantity}
+        onRemoveItem={onRemoveCartItem}
+        onClearCart={onClearCart}
+        onCheckoutSuccess={(orderId, total) => {
+          showToast(`Order ${orderId} placed for $${total}!`, 'success')
+        }}
+        onCheckoutOrder={onCheckoutOrder}
         onContinueShopping={() => setIsCartOpen(false)}
       />
     </div>

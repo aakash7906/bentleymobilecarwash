@@ -15,7 +15,6 @@ import {
   Award,
 } from 'lucide-react'
 import { UserProfile } from '@/types'
-import { USER_SAVED_VEHICLES } from '@/data/mockData'
 
 interface EditProfilePageProps {
   isOpen: boolean
@@ -26,12 +25,12 @@ interface EditProfilePageProps {
 }
 
 const AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
 ]
 
 export const EditProfilePage: React.FC<EditProfilePageProps> = ({
@@ -39,19 +38,17 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   userProfile,
   onClose,
   onSave,
-  savedVehicles = USER_SAVED_VEHICLES,
+  savedVehicles = [],
 }) => {
-  const [name, setName] = useState(userProfile.name)
-  const [email, setEmail] = useState(userProfile.email)
-  const [phone, setPhone] = useState(userProfile.phone || '+1 (998) 877-5561')
-  const [address, setAddress] = useState(
-    userProfile.address || '21/22, 5th Avenue, Jamesford Road, Ontario, Canada'
-  )
-  const [city, setCity] = useState(userProfile.city || 'Ontario')
-  const [postalCode, setPostalCode] = useState(userProfile.postalCode || 'L4B 1X9')
-  const [avatar, setAvatar] = useState(userProfile.avatar)
+  const [name, setName] = useState(userProfile.name || '')
+  const [email, setEmail] = useState(userProfile.email || '')
+  const [phone, setPhone] = useState(userProfile.phone || '')
+  const [address, setAddress] = useState(userProfile.address || '')
+  const [city, setCity] = useState(userProfile.city || '')
+  const [postalCode, setPostalCode] = useState(userProfile.postalCode || '')
+  const [avatar, setAvatar] = useState(userProfile.avatar || AVATAR_PRESETS[0])
   const [preferredVehicle, setPreferredVehicle] = useState(
-    userProfile.preferredVehicle || 'Audi R8 GT'
+    userProfile.preferredVehicle || (savedVehicles[0] || '')
   )
 
   const [showCustomAvatarInput, setShowCustomAvatarInput] = useState(false)
@@ -98,7 +95,7 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   }
 
   const allVehicles = Array.from(
-    new Set(['Audi R8 GT', ...savedVehicles, preferredVehicle])
+    new Set([...savedVehicles, preferredVehicle].filter(Boolean))
   )
 
   return (
@@ -247,6 +244,9 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
                   onChange={(e) => setPreferredVehicle(e.target.value)}
                   className="w-full bg-surface-alt border border-gray-200 rounded-xl py-2.5 pl-10 pr-8 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-primary focus:bg-white transition-colors appearance-none cursor-pointer"
                 >
+                  {allVehicles.length === 0 && (
+                    <option value="">No registered vehicles (Add one in Saved Vehicles)</option>
+                  )}
                   {allVehicles.map((veh, idx) => (
                     <option key={idx} value={veh}>
                       {veh}

@@ -15,7 +15,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
-import { SERVICES_CATALOG, USER_SAVED_VEHICLES, USER_INFO } from '@/data/mockData'
+import { SERVICES_CATALOG } from '@/data/mockData'
 import { InvoiceModal } from '@/components/InvoiceModal'
 
 interface BookingPageProps {
@@ -105,7 +105,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onBack,
   onBookingComplete,
   onTrackOrder,
-  savedVehicles,
+  savedVehicles = [],
   onSelectVehicle,
   userProfile,
 }) => {
@@ -113,18 +113,20 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [selectedService, setSelectedService] = useState<ServiceItem>(
     initialService || SERVICES_CATALOG[0]
   )
-  const [selectedVehicle, setSelectedVehicle] = useState<string>(currentVehicle)
+  const [selectedVehicle, setSelectedVehicle] = useState<string>(
+    currentVehicle || (savedVehicles[0]?.name || '')
+  )
 
   // Frequency & Subscription
   const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
-  // Booking location (Autofilled from Firestore profile if present)
+  // Booking location (Autofilled dynamically from Firestore profile)
   const [locationType, setLocationType] = useState<'mobile' | 'shop'>('mobile')
-  const [address, setAddress] = useState(userProfile?.address || '1420 Water Street')
-  const [city, setCity] = useState(userProfile?.city || 'Kelowna, BC')
-  const [postalCode, setPostalCode] = useState(userProfile?.postalCode || 'V1Y 1J4')
+  const [address, setAddress] = useState(userProfile?.address || '')
+  const [city, setCity] = useState(userProfile?.city || '')
+  const [postalCode, setPostalCode] = useState(userProfile?.postalCode || '')
   const [addressNotes, setAddressNotes] = useState('')
 
   // Date & Time
@@ -135,10 +137,28 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Add-ons
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
 
-  // Customer Contact Info (Autofilled from Firestore profile if present)
-  const [customerName, setCustomerName] = useState(userProfile?.name || USER_INFO.name)
-  const [customerEmail, setCustomerEmail] = useState(userProfile?.email || USER_INFO.email)
-  const [customerPhone, setCustomerPhone] = useState(userProfile?.phone || '(250) 351-9155')
+  // Customer Contact Info (Autofilled dynamically from Firestore profile)
+  const [customerName, setCustomerName] = useState(userProfile?.name || '')
+  const [customerEmail, setCustomerEmail] = useState(userProfile?.email || '')
+  const [customerPhone, setCustomerPhone] = useState(userProfile?.phone || '')
+
+  // Sync state if userProfile finishes loading from Firestore
+  React.useEffect(() => {
+    if (userProfile) {
+      if (userProfile.name && !customerName) setCustomerName(userProfile.name)
+      if (userProfile.email && !customerEmail) setCustomerEmail(userProfile.email)
+      if (userProfile.phone && !customerPhone) setCustomerPhone(userProfile.phone)
+      if (userProfile.address && !address) setAddress(userProfile.address)
+      if (userProfile.city && !city) setCity(userProfile.city)
+      if (userProfile.postalCode && !postalCode) setPostalCode(userProfile.postalCode)
+    }
+  }, [userProfile])
+
+  React.useEffect(() => {
+    if (currentVehicle) {
+      setSelectedVehicle(currentVehicle)
+    }
+  }, [currentVehicle])
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
@@ -397,15 +417,12 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 }}
                 className="text-xs font-semibold text-primary bg-primary-light py-1.5 px-3 rounded-lg border-0 cursor-pointer focus:outline-none"
               >
-                {(savedVehicles && savedVehicles.length > 0
-                  ? savedVehicles
-                  : USER_SAVED_VEHICLES.map((name, i) => ({
-                      id: `v-${i}`,
-                      name,
-                      type: 'Sedan' as const,
-                      licensePlate: undefined,
-                    }))
-                ).map((veh) => (
+                {savedVehicles.length === 0 && (
+                  <option value={selectedVehicle || 'Custom Vehicle'}>
+                    {selectedVehicle || 'Custom Vehicle'}
+                  </option>
+                )}
+                {savedVehicles.map((veh) => (
                   <option key={veh.id} value={veh.name}>
                     {veh.name} {veh.licensePlate ? `• ${veh.licensePlate}` : ''}
                   </option>
