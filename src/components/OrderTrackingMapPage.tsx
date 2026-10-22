@@ -87,7 +87,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
       {/* 1. TOP HEADER */}
       <div className="bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3 border-b border-gray-100 flex items-center justify-between z-20 shrink-0">
         {/* Circular Back Button */}

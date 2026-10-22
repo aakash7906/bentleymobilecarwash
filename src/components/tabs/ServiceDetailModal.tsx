@@ -26,7 +26,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-white pb-12">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-white pb-12">
         {/* Top Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <button

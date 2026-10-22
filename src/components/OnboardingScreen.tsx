@@ -31,7 +31,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onNext }) =>
         - Fluid width up to max-w-md on mobile, md:max-w-xl on tablets to match the app frame
         - Framed smartphone/tablet view with rounded corners on desktop/tablet
       */}
-      <div className="relative w-full max-w-md md:max-w-xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden select-none bg-secondary shadow-2xl flex flex-col justify-between p-5 min-[400px]:p-6 pb-10 min-[400px]:pb-14 sm:pb-16">
+      <div className="relative w-full max-w-full md:max-w-xl lg:max-w-2xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden select-none bg-secondary shadow-2xl flex flex-col justify-between p-5 min-[400px]:p-6 pb-10 min-[400px]:pb-14 sm:pb-16">
         {/* Full Screen Image: Clean Ford Truck with Water & Foam Wash */}
         <img
           src={truckWashBg}

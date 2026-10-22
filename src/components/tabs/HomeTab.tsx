@@ -14,6 +14,7 @@ import shopTireShineImg from '@/assets/home/shop-tire-shine.jpg'
 import { OrderTrackingMapPage } from '@/components/OrderTrackingMapPage'
 import { ProductDetailPage } from '@/components/ProductDetailPage'
 import { CartPage } from '@/components/CartPage'
+import { useToast } from '@/context/ToastContext'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -34,8 +35,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenTracking,
   savedVehicles,
 }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -45,13 +47,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   // Fetch live user GPS location & reverse geocode to address
   const handleFetchLiveLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      setToastMessage('Geolocation is not supported by your browser')
-      setTimeout(() => setToastMessage(null), 3000)
+      showToast('Geolocation is not supported by your browser', 'warning')
       return
     }
 
     setIsLocating(true)
-    setToastMessage('Detecting your live location...')
+    showToast('Detecting your live location...', 'info', 2000)
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -74,38 +75,37 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             const formatted = [street, city, state].filter(Boolean).join(', ')
             if (formatted) {
               setCurrentAddress(formatted)
-              setToastMessage('Live location detected successfully!')
+              showToast(`Location detected: ${formatted}`, 'success')
             } else if (data.display_name) {
-              setCurrentAddress(data.display_name.split(',').slice(0, 3).join(', '))
-              setToastMessage('Live location detected successfully!')
+              const displayShort = data.display_name.split(',').slice(0, 3).join(', ')
+              setCurrentAddress(displayShort)
+              showToast(`Location detected: ${displayShort}`, 'success')
             } else {
               setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-              setToastMessage('Live coordinates updated!')
+              showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
             }
           } else {
             setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-            setToastMessage('Live coordinates updated!')
+            showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
           }
         } catch {
           setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-          setToastMessage('Live coordinates updated!')
+          showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
         } finally {
           setIsLocating(false)
-          setTimeout(() => setToastMessage(null), 3000)
         }
       },
       (err) => {
         setIsLocating(false)
         let msg = 'Unable to fetch your location'
         if (err.code === 1) {
-          msg = 'Location permission denied. Please allow location access in your browser.'
+          msg = 'Location permission denied. Please allow GPS access.'
         } else if (err.code === 2) {
           msg = 'Location unavailable. Please check your GPS/network.'
         } else if (err.code === 3) {
           msg = 'Location request timed out. Please try again.'
         }
-        setToastMessage(msg)
-        setTimeout(() => setToastMessage(null), 3500)
+        showToast(msg, 'error')
       },
       {
         enableHighAccuracy: true,
@@ -141,10 +141,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       }
       return [...prev, { product, quantity }]
     })
-    setToastMessage(`Added ${quantity > 1 ? `${quantity}x ` : ''}"${product.title}" to Cart!`)
-    setTimeout(() => {
-      setToastMessage(null)
-    }, 2400)
+    // Global Toast for Add to Cart
+    showToast(`${product.title} added to cart!`, 'success')
   }
 
   const handleUpdateCartQuantity = (productId: string, quantity: number) => {
@@ -157,6 +155,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   const handleRemoveCartItem = (productId: string) => {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId))
+    showToast('Item removed from cart.', 'info')
   }
 
   const handleClearCart = () => {
@@ -260,16 +259,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="flex flex-col w-full pb-32 relative select-none">
-      {/* Toast Alert for Add to Cart */}
-      {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
-          <span className="material-symbols-outlined text-[18px] text-emerald-400">
-            check_circle
-          </span>
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* 1. TOP HEADER: Bentley Mascot Logo & Red Action Buttons */}
       <div className="px-4 sm:px-5 pt-3 sm:pt-4 flex items-center justify-between">
         <img
@@ -474,12 +463,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 1: Car Wash */}
           <div
             onClick={() => handleSelectCategory('Car Wash')}
-            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-4 h-32 sm:h-36 md:h-40 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base md:text-lg font-bold text-secondary z-10 leading-tight">
               Car Wash
             </span>
-            <div className="absolute -right-2 -bottom-2 w-26 sm:w-30 h-24 sm:h-28 overflow-hidden pointer-events-none flex items-end justify-end">
+            <div className="absolute -right-2 -bottom-2 w-26 sm:w-30 md:w-36 h-24 sm:h-28 md:h-32 overflow-hidden pointer-events-none flex items-end justify-end">
               <img
                 src={catCarWashImg}
                 alt="Car Wash"
@@ -491,12 +480,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 2: Exterior Detailing */}
           <div
             onClick={() => handleSelectCategory('Exterior Detailing')}
-            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-4 h-32 sm:h-36 md:h-40 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base md:text-lg font-bold text-secondary z-10 leading-tight">
               Exterior Detailing
             </span>
-            <div className="absolute right-1 bottom-1 w-[85%] max-w-[210px] sm:max-w-[250px] h-20 sm:h-24 pointer-events-none flex items-end justify-end">
+            <div className="absolute right-1 bottom-1 w-[85%] max-w-[210px] sm:max-w-[250px] md:max-w-[280px] h-20 sm:h-24 md:h-28 pointer-events-none flex items-end justify-end">
               <img
                 src={catExteriorImg}
                 alt="Exterior Detailing"
@@ -511,12 +500,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 3: Interior Detailing */}
           <div
             onClick={() => handleSelectCategory('Interior Detailing')}
-            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.62] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-4 h-32 sm:h-36 md:h-40 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base md:text-lg font-bold text-secondary z-10 leading-tight">
               Interior Detailing
             </span>
-            <div className="absolute right-0 bottom-0 left-0 h-16 sm:h-20 pointer-events-none flex items-end overflow-hidden">
+            <div className="absolute right-0 bottom-0 left-0 h-16 sm:h-20 md:h-24 pointer-events-none flex items-end overflow-hidden">
               <img
                 src={catInteriorImg}
                 alt="Interior Detailing"
@@ -528,12 +517,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* Card 4: Tire Shine */}
           <div
             onClick={() => handleSelectCategory('Tire Shine')}
-            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-3.5 h-32 sm:h-36 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+            className="flex-[0.38] bg-surface-alt hover:bg-gray-200 rounded-[20px] p-3 sm:p-4 h-32 sm:h-36 md:h-40 flex flex-col justify-between overflow-hidden relative cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
           >
-            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base font-bold text-secondary z-10 leading-tight">
+            <span className="font-['Urbanist',sans-serif] text-sm sm:text-base md:text-lg font-bold text-secondary z-10 leading-tight">
               Tire Shine
             </span>
-            <div className="absolute -right-2 -bottom-2 w-24 sm:w-28 h-22 sm:h-26 pointer-events-none flex items-end justify-end overflow-hidden">
+            <div className="absolute -right-2 -bottom-2 w-24 sm:w-28 md:w-34 h-22 sm:h-26 md:h-30 pointer-events-none flex items-end justify-end overflow-hidden">
               <img
                 src={catTireShineImg}
                 alt="Tire Shine"
@@ -722,7 +711,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Technician is Arriving (Elevated above bottom nav) */}
       <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
-        <div className="max-w-[340px] sm:max-w-sm mx-auto pointer-events-auto">
+        <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
           <div
             onClick={() => {
               if (onOpenTracking) onOpenTracking()

@@ -26,6 +26,14 @@ interface BookingPageProps {
   onTrackOrder?: () => void
   savedVehicles?: SavedVehicle[]
   onSelectVehicle?: (vehicleName: string) => void
+  userProfile?: {
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
 }
 
 interface AddOnOption {
@@ -99,6 +107,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onTrackOrder,
   savedVehicles,
   onSelectVehicle,
+  userProfile,
 }) => {
   // Service selection
   const [selectedService, setSelectedService] = useState<ServiceItem>(
@@ -111,11 +120,11 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
-  // Booking location
+  // Booking location (Autofilled from Firestore profile if present)
   const [locationType, setLocationType] = useState<'mobile' | 'shop'>('mobile')
-  const [address, setAddress] = useState('1420 Water Street')
-  const [city, setCity] = useState('Kelowna, BC')
-  const [postalCode, setPostalCode] = useState('V1Y 1J4')
+  const [address, setAddress] = useState(userProfile?.address || '1420 Water Street')
+  const [city, setCity] = useState(userProfile?.city || 'Kelowna, BC')
+  const [postalCode, setPostalCode] = useState(userProfile?.postalCode || 'V1Y 1J4')
   const [addressNotes, setAddressNotes] = useState('')
 
   // Date & Time
@@ -126,10 +135,10 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Add-ons
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
 
-  // Customer Contact Info
-  const [customerName, setCustomerName] = useState(USER_INFO.name)
-  const [customerEmail, setCustomerEmail] = useState(USER_INFO.email)
-  const [customerPhone, setCustomerPhone] = useState('(250) 351-9155')
+  // Customer Contact Info (Autofilled from Firestore profile if present)
+  const [customerName, setCustomerName] = useState(userProfile?.name || USER_INFO.name)
+  const [customerEmail, setCustomerEmail] = useState(userProfile?.email || USER_INFO.email)
+  const [customerPhone, setCustomerPhone] = useState(userProfile?.phone || '(250) 351-9155')
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
@@ -213,7 +222,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Confirmation Success View
   if (isSuccess) {
     return (
-      <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col justify-between p-6 max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto">
+      <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col justify-between p-6 w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto">
         <div className="flex flex-col items-center text-center pt-8">
           <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5 animate-in zoom-in duration-300">
             <CheckCircle2 className="w-12 h-12 stroke-[2.2]" />
@@ -312,7 +321,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-32">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-32">
         {/* Top Header */}
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <button
@@ -799,7 +808,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
         {/* Sticky Bottom Bar */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 p-4 shadow-lg">
-          <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 font-medium">Estimated Total</span>
               <span className="text-lg font-black text-primary font-mono leading-tight">

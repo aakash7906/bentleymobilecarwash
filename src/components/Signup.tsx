@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
+import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and registration functions
 import { auth, db } from '@/lib/firebase'
 import {
@@ -23,6 +24,9 @@ export const Signup: React.FC<SignupProps> = ({
   onSwitchToLogin,
   onSkip,
 }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
+
   // Signup Form States
   const [fullName, setFullName] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
@@ -32,36 +36,71 @@ export const Signup: React.FC<SignupProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(true)
 
-  // STEP 1 INTEGRATION: Loading and error message states
+  // STEP 1 INTEGRATION: Loading state
   const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // -------------------------------------------------------------
+  // VALIDATION HELPER: RFC 5322 Standard Email Regex Pattern
+  // Validates standard formats: name@domain.tld, disallows spaces & invalid chars
+  // -------------------------------------------------------------
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email.trim())
+  }
+
+  // -------------------------------------------------------------
+  // VALIDATION HELPER: Strict Password Criteria Checker
+  // Requirements: Minimum 6 chars, at least 1 letter and at least 1 digit
+  // -------------------------------------------------------------
+  const validatePasswordStrength = (password: string): { isValid: boolean; message?: string } => {
+    if (password.length < 6) {
+      return { isValid: false, message: 'Password must be at least 6 characters long.' }
+    }
+    if (!/[A-Za-z]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one letter.' }
+    }
+    if (!/[0-9]/.test(password)) {
+      return { isValid: false, message: 'Password must contain at least one number.' }
+    }
+    return { isValid: true }
+  }
 
   // STEP 1 & 2 INTEGRATION: Real Firebase User Registration + Firestore Document Creation
   const handleSignupSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
+    // 1. Mandatory Fields Check
     if (!fullName.trim() || !signupEmail.trim() || !signupPassword) {
-      setErrorMessage('Please fill in all required fields.')
+      showToast('Please fill in all required fields.', 'error')
       return
     }
 
+    // 2. Strict Email Regex Validation
+    if (!isValidEmail(signupEmail)) {
+      showToast('Please enter a valid email address (e.g., name@example.com).', 'error')
+      return
+    }
+
+    // 3. Password Complexity & Length Validation
+    const passwordValidation = validatePasswordStrength(signupPassword)
+    if (!passwordValidation.isValid) {
+      showToast(passwordValidation.message || 'Password does not meet requirements.', 'error')
+      return
+    }
+
+    // 4. Password Confirmation Equality Check
     if (signupPassword !== confirmPassword) {
-      setErrorMessage('Passwords do not match. Please verify.')
+      showToast('Passwords do not match. Please verify and re-type.', 'error')
       return
     }
 
-    if (signupPassword.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.')
-      return
-    }
-
+    // 5. Terms of Service Acceptance
     if (!agreeTerms) {
-      setErrorMessage('Please accept the Terms of Service to proceed.')
+      showToast('Please accept the Terms of Service to proceed.', 'error')
       return
     }
 
     setLoading(true)
-    setErrorMessage(null)
 
     try {
       // -------------------------------------------------------------
@@ -95,24 +134,29 @@ export const Signup: React.FC<SignupProps> = ({
         updatedAt: serverTimestamp(),
       })
 
+      // Show Success Toast Notification before triggering session redirect
+      showToast('Account created successfully! Welcome to Bentley Car Wash.', 'success')
+
       // -------------------------------------------------------------
       // Step 2.4: Trigger App Success Callback to continue user session
       // -------------------------------------------------------------
-      onSignupSuccess({
-        name: fullName.trim(),
-        email: user.email || signupEmail,
-        uid: user.uid,
-      })
+      setTimeout(() => {
+        onSignupSuccess({
+          name: fullName.trim(),
+          email: user.email || signupEmail,
+          uid: user.uid,
+        })
+      }, 700)
     } catch (err: any) {
       console.error('Firebase Signup Error:', err)
       if (err.code === 'auth/email-already-in-use') {
-        setErrorMessage('This email is already registered. Please log in instead.')
+        showToast('This email is already registered. Please log in instead.', 'error')
       } else if (err.code === 'auth/invalid-email') {
-        setErrorMessage('Invalid email format. Please check your email address.')
+        showToast('Invalid email format. Please check your email address.', 'error')
       } else if (err.code === 'auth/weak-password') {
-        setErrorMessage('Password is too weak. Please use a stronger password.')
+        showToast('Password is too weak. Please include letters and numbers.', 'error')
       } else {
-        setErrorMessage(err.message || 'Failed to create account. Please try again.')
+        showToast(err.message || 'Failed to create account. Please try again.', 'error')
       }
     } finally {
       setLoading(false)
@@ -122,21 +166,23 @@ export const Signup: React.FC<SignupProps> = ({
   // STEP 1 INTEGRATION: Google Sign-in for Signup screen as well
   const handleGoogleSignUp = async () => {
     setLoading(true)
-    setErrorMessage(null)
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-      onSignupSuccess({
-        name: user.displayName || 'Google User',
-        email: user.email || '',
-        uid: user.uid,
-      })
+      showToast('Google registration successful! Welcome.', 'success')
+      setTimeout(() => {
+        onSignupSuccess({
+          name: user.displayName || 'Google User',
+          email: user.email || '',
+          uid: user.uid,
+        })
+      }, 600)
     } catch (err: any) {
       console.error('Firebase Google Signup Error:', err)
       if (err.code !== 'auth/popup-closed-by-user') {
-        setErrorMessage(err.message || 'Google sign-up failed. Please try again.')
+        showToast(err.message || 'Google sign-up failed. Please try again.', 'error')
       }
     } finally {
       setLoading(false)
@@ -144,8 +190,8 @@ export const Signup: React.FC<SignupProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground">
-      <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground flex justify-center">
+      <div className="w-full max-w-md min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
 
         {/* Top Section with Mascot Logo */}
         <div className="flex flex-col items-center w-full">
@@ -167,13 +213,6 @@ export const Signup: React.FC<SignupProps> = ({
             <p className="text-xs sm:text-sm text-gray-500 font-normal text-center mt-1.5 mb-5">
               Sign up now to get started with an account.
             </p>
-
-            {/* STEP 1 INTEGRATION: Error alert banner */}
-            {errorMessage && (
-              <div className="w-full mb-3.5 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 font-medium animate-in fade-in">
-                {errorMessage}
-              </div>
-            )}
 
             {/* Sign Up Form */}
             <form onSubmit={handleSignupSubmit} className="w-full flex flex-col gap-3.5">

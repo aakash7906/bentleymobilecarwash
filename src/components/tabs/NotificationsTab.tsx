@@ -7,7 +7,7 @@ interface NotificationsTabProps {
 
 export const NotificationsTab: React.FC<NotificationsTabProps> = ({ onBack }) => {
   return (
-    <div className="flex flex-col w-full pb-28 px-5">
+    <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
 
       <div className="mt-4 flex flex-col gap-4">
         <span className="text-xs font-semibold text-gray-800">May 30</span>

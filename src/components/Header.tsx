@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="w-full bg-white select-none">
       {/* Main Top Navigation Bar */}
-      <div className="w-full flex items-center justify-between px-5 py-3">
+      <div className="w-full flex items-center justify-between px-5 sm:px-6 md:px-8 py-3">
         {showBack ? (
           <div className="w-full flex items-center justify-between">
             <button

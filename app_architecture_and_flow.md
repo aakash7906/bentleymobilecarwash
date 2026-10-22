@@ -122,6 +122,113 @@ graph TD
 
 ---
 
-## 6. Verification
-- `npm run build` (`tsc -b && vite build`) passes with zero errors.
-- Visual layout, typography, colors, and interactive flows verified via browser testing.
+## 6. Firebase & Cloud Firestore Integration Architecture
+
+### Database ID: `carwash`
+The app is connected to the dedicated `carwash` Firestore database with real-time bi-directional synchronization:
+
+```mermaid
+graph TD
+  Auth[Firebase Authentication] -->|User Session (uid)| App[App.tsx Orchestrator]
+  App <-->|onSnapshot & updateDoc| UsersCol["users/{uid} (Profile, Address, Phone)"]
+  App <-->|onSnapshot & setDoc & deleteDoc| VehiclesCol["users/{uid}/vehicles/{vehicleId}"]
+  App <-->|onSnapshot & setDoc & updateDoc| BookingsCol["bookings/{bookingId} (where userId == uid)"]
+  
+  BookingPage[BookingPage.tsx] -->|Autofill from Profile & Confirm| App
+  ProfileTab[ProfileTab.tsx / EditProfilePage] -->|Live Updates| App
+  BookingsTab[BookingsTab.tsx] -->|Live Reschedule / Cancel / Rating| App
+  AddVehicle[AddVehicleModal.tsx] -->|New Registered Car| App
+```
+
+### Firestore Schema Details:
+1. **Users Collection (`users/{uid}`)**:
+   - `uid`: Unique identifier from Firebase Auth
+   - `fullName`: Full name of user
+   - `email`: Authenticated email
+   - `phone`: Mobile number for booking notifications
+   - `address`, `city`, `postalCode`: Location for mobile detailing unit dispatch
+   - `preferredVehicle`: Active vehicle identifier
+   - `role`: `'customer'`
+   - `createdAt`, `updatedAt`: Firestore `serverTimestamp()`
+
+2. **Vehicles Subcollection (`users/{uid}/vehicles/{vehicleId}`)**:
+   - `id`: Vehicle ID
+   - `name`: Generated display name (e.g., "Audi R8 GT")
+   - `brand`, `model`, `variant`, `year`, `color`
+   - `type`: `Sedan | SUV | Truck | Coupe | Van | Hatchback`
+   - `licensePlate`: Formatted uppercase plate
+   - `isPrimary`: Boolean
+   - `userId`: Parent user UID
+   - `createdAt`, `updatedAt`: Firestore `serverTimestamp()`
+
+3. **Bookings Collection (`bookings/{bookingId}`)**:
+   - `id`: Unique booking reference (e.g. `BTL-894210`)
+   - `userId`: Linked user UID (queried via real-time listener `where('userId', '==', currentUser.uid)`)
+   - `userEmail`, `customerName`, `customerPhone`
+   - `title`: Service title
+   - `category`: Service category
+   - `vehicle`: Vehicle name & category
+   - `price`, `totalNumeric`: Numerical fee calculation
+   - `date`, `time`: Appointment date and time slot
+   - `locationType`: `'mobile' | 'shop'`
+   - `address`: Detailed dispatch address
+   - `status`: `'scheduled' | 'en_route' | 'in_progress' | 'completed' | 'cancelled'`
+   - `frequency`: `'one_time' | 'biweekly' | 'monthly'`
+   - `rating`, `review`, `ratedAt`: Post-service review details
+   - `createdAt`, `serverTimestamp`: Timestamps
+
+---
+
+## 7. Global ToastContext & Toaster Notification Architecture
+
+### Centralized Toast System (`src/context/ToastContext.tsx`):
+The application utilizes a centralized React Context + Hook architecture that replaces scattered inline alerts with a unified, animated, accessible `<Toaster />` overlay.
+
+```mermaid
+graph TD
+  ToastProvider[ToastProvider (main.tsx)] --> Toaster["<Toaster /> Global Root Overlay (z-[9999])"]
+  ToastProvider --> AppContext[All Child Components & Views]
+  AppContext -->|useToast() hook| ShowToast["showToast(message, type, duration)"]
+  ShowToast -->|Success / Error / Info / Warning| Toaster
+```
+
+### Coverage across All User Flows:
+1. **Authentication & Account (`Login.tsx`, `Signup.tsx`):**
+   - Success: `"Welcome back, [User]!"` / `"Account created successfully! Welcome to Bentley Car Wash."`
+   - Validation & Errors: Invalid email format, password requirements (<6 chars, 1 letter, 1 number), password mismatch, empty fields.
+   - Firebase Auth Errors: `"Invalid email or password"`, `"Email already in use"`, `"Too many failed attempts"`, `"Network error"`.
+   - Password Reset: `"Password reset link sent to your email! Check your inbox."`
+2. **Booking & Appointment Lifecycle (`App.tsx`, `BookingsTab.tsx`):**
+   - New Booking Confirmation: `"Your booking has been scheduled for [Date] at [Time]!"`
+   - Reschedule: `"Appointment rescheduled successfully!"`
+   - Cancellation: `"Your booking #[ID] has been cancelled."`
+   - Rating & Reviews: `"Thank you for rating our service!"`
+3. **Vehicle Garage Management (`App.tsx`, `SavedVehiclesModal.tsx`):**
+   - Add Vehicle: `"[Vehicle Name] added to your garage!"`
+   - Delete Vehicle: `"Vehicle removed successfully."`
+   - Switch Vehicle: `"Active vehicle switched to [Vehicle Name]."`
+4. **E-Commerce & Bentley Care Shop (`HomeTab.tsx`, `CartPage.tsx`):**
+   - Add to Cart: `"[Product Title] added to cart!"`
+   - Remove from Cart: `"Item removed from cart."`
+   - Promo Codes:
+     - `"Promo code BENTLEY10 applied! 10% saved."`
+     - `"Promo code BENTLEY20 applied! 20% saved."`
+     - `"Invalid or expired promo code."`
+   - Order Confirmation: `"Order #[ID] placed successfully!"`
+5. **Location & Live GPS Detection (`HomeTab.tsx`):**
+   - Location Detected: `"Location detected: [Street, City, State]"`
+   - Permission Denied: `"Location permission denied. Please allow GPS access."`
+6. **Profile & Preferences (`ProfileTab.tsx`, `EditProfilePage.tsx`):**
+   - Profile Saved: `"Profile updated successfully!"`
+   - Logout: `"You have been logged out."`
+   - Informative alerts: `"Security settings coming soon!"`, `"Bentley Privacy Policy: Your data is 100% secure."`
+7. **Memberships & Subscriptions (`MembershipPage.tsx`):**
+   - Plan Subscription: `"Subscribed to [Plan Name]! Our concierge will contact you shortly."`
+
+---
+
+## 8. Verification & Status
+- **Build Quality:** Production build (`tsc -b && vite build`) executes cleanly with zero TypeScript or style errors.
+- **Global Accessibility:** All modals, async actions, and tabs can trigger feedback via `useToast()` without props-drilling.
+- **Responsive Architecture:** Clean full-width fluid layouts active on mobile, iPad Mini, iPad Pro, and desktop screens with zero visual clipping.
+

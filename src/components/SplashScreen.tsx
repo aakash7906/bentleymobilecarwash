@@ -81,7 +81,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         - Background gradient driven by index.css design tokens
       */}
       <div
-        className="relative w-full max-w-md md:max-w-xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none cursor-pointer flex flex-col items-center justify-center p-6"
+        className="relative w-full max-w-full md:max-w-xl lg:max-w-2xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none cursor-pointer flex flex-col items-center justify-center p-6"
         style={{
           background:
             'radial-gradient(circle at 50% 48%, var(--surface-subtle) 0%, var(--bg-canvas) 60%, var(--border-light) 100%)',

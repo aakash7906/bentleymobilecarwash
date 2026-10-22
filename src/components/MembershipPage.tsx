@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ChevronLeft, Check, Phone, Mail, X, ShieldCheck } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 
 export interface MembershipPlan {
   id: string
@@ -88,6 +89,8 @@ interface MembershipPageProps {
 }
 
 export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null)
   const [inquirySuccess, setInquirySuccess] = useState(false)
 
@@ -98,17 +101,18 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({ onBack }) => {
 
   const handlePurchaseInquiry = () => {
     setInquirySuccess(true)
+    const planName = selectedPlan?.name || 'Membership'
     setTimeout(() => {
-      // Auto close modal after brief confirmation
+      // Auto close modal after brief confirmation and trigger global toast
       setInquirySuccess(false)
       setSelectedPlan(null)
-      alert(`Thank you! Our concierge will contact you regarding the ${selectedPlan?.name}.`)
-    }, 1200)
+      showToast(`Subscribed to ${planName}! Our concierge will contact you shortly.`, 'success')
+    }, 1000)
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-right duration-200">
-      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-white">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-white">
         {/* Top Header */}
         <div className="sticky top-0 z-30 bg-white px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-100">
           <button

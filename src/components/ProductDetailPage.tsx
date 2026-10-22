@@ -97,7 +97,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col bg-white pb-32">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-white pb-32">
         {/* 1. TOP HEADER */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <button
@@ -348,7 +348,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
         {/* 5. STICKY BOTTOM ACTION BAR */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/80 px-4 sm:px-5 py-3 shadow-lg">
-          <div className="max-w-md md:max-w-xl mx-auto flex items-center gap-3">
+          <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center gap-3">
             {/* Price Preview */}
             <div className="flex flex-col shrink-0">
               <span className="text-[10px] text-gray-500 font-semibold uppercase">

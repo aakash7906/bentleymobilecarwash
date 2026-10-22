@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react'
 import { CartItem } from '@/types'
+import { useToast } from '@/context/ToastContext'
 
 interface CartPageProps {
   isOpen: boolean
@@ -39,6 +40,9 @@ export const CartPage: React.FC<CartPageProps> = ({
   onCheckoutSuccess,
   onContinueShopping,
 }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
+
   const [promoCode, setPromoCode] = useState('')
   const [discountPercent, setDiscountPercent] = useState(0)
   const [promoError, setPromoError] = useState<string | null>(null)
@@ -79,17 +83,25 @@ export const CartPage: React.FC<CartPageProps> = ({
     const cleaned = promoCode.trim().toUpperCase()
     if (!cleaned) {
       setPromoError('Please enter a coupon code')
+      showToast('Please enter a coupon code', 'warning')
       return
     }
 
     if (cleaned === 'BENTLEY10' || cleaned === 'VIP10') {
       setDiscountPercent(0.1)
       setPromoSuccess('Promo code "BENTLEY10" applied: 10% OFF!')
+      showToast('Promo code BENTLEY10 applied! 10% saved.', 'success')
+    } else if (cleaned === 'BENTLEY20') {
+      setDiscountPercent(0.2)
+      setPromoSuccess('Promo code "BENTLEY20" applied: 20% OFF!')
+      showToast('Promo code BENTLEY20 applied! $15 saved.', 'success')
     } else if (cleaned === 'FREESHIP') {
       setDiscountPercent(0.05)
       setPromoSuccess('Special 5% loyalty coupon applied!')
+      showToast('Special 5% loyalty coupon applied!', 'success')
     } else {
       setPromoError('Invalid coupon code. Try "BENTLEY10"')
+      showToast('Invalid or expired promo code.', 'error')
     }
   }
 
@@ -100,6 +112,7 @@ export const CartPage: React.FC<CartPageProps> = ({
       setPlacedOrderId(generatedId)
       setIsProcessing(false)
       setOrderComplete(true)
+      showToast(`Order ${generatedId} placed successfully!`, 'success')
       if (onCheckoutSuccess) {
         onCheckoutSuccess(generatedId, grandTotal)
       }
@@ -115,7 +128,7 @@ export const CartPage: React.FC<CartPageProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen flex flex-col bg-white pb-36">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-white pb-36">
         {/* 1. TOP HEADER */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
           <button
@@ -399,7 +412,7 @@ export const CartPage: React.FC<CartPageProps> = ({
         {/* 3. STICKY BOTTOM CHECKOUT BAR */}
         {items.length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/80 px-4 sm:px-5 py-3 shadow-lg">
-            <div className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center justify-between gap-4">
               <div className="flex flex-col">
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   Total Payment

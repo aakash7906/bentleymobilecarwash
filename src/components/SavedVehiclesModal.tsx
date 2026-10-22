@@ -22,41 +22,23 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
   onOpenAddVehicle,
 }) => {
   const [vehicleToDelete, setVehicleToDelete] = useState<SavedVehicle | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   if (!isOpen) return null
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(null), 2500)
-  }
-
   const handleSetActive = (vehicle: SavedVehicle) => {
     onSelectVehicle(vehicle.name)
-    showToast(`Set "${vehicle.name}" as your active vehicle!`)
   }
 
   const confirmDelete = () => {
     if (vehicleToDelete) {
       onDeleteVehicle(vehicleToDelete.id)
-      showToast(`Removed "${vehicleToDelete.name}" from your garage.`)
       setVehicleToDelete(null)
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-center animate-in fade-in duration-200">
-      <div className="w-full max-w-md md:max-w-xl min-h-screen bg-[#f7f9fb] flex flex-col shadow-2xl relative overflow-y-auto">
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
-            <span className="material-symbols-outlined text-[18px] text-emerald-400">
-              check_circle
-            </span>
-            <span>{toastMessage}</span>
-          </div>
-        )}
-
+      <div className="w-full min-h-screen bg-[#f7f9fb] flex flex-col shadow-2xl relative overflow-y-auto">
         {/* 1. TOP HEADER */}
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
           <button

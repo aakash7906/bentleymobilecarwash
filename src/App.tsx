@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, SavedVehicle, BookingRecord } from '@/types'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord, UserProfile } from '@/types'
 import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
@@ -17,13 +17,27 @@ import { Signup } from '@/components/Signup'
 import { SplashScreen } from '@/components/SplashScreen'
 import { OnboardingScreen } from '@/components/OnboardingScreen'
 import { MembershipPage } from '@/components/MembershipPage'
+import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
 import { auth, db } from '@/lib/firebase'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
-// STEP 2 INTEGRATION: Import Firestore real-time listener to fetch user document
-import { doc, onSnapshot } from 'firebase/firestore'
+// STEP 2 & 3 INTEGRATION: Import Firestore real-time listeners and mutations
+import {
+  doc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  setDoc,
+  deleteDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore'
 
 export const App: React.FC = () => {
+  // Global Toast Hook for cross-application user notifications
+  const { showToast } = useToast()
+
   const [currentTab, setCurrentTab] = useState<TabType>('home')
   const [previousTab, setPreviousTab] = useState<TabType>('home')
   const [showSplash, setShowSplash] = useState(true)
@@ -139,6 +153,70 @@ export const App: React.FC = () => {
     return () => unsubDoc()
   }, [currentUser])
 
+  // STEP 3 INTEGRATION: Real-time listener for user vehicles subcollection ('users/{uid}/vehicles')
+  useEffect(() => {
+    if (!currentUser) return
+
+    const vehiclesColRef = collection(db, 'users', currentUser.uid, 'vehicles')
+    const unsubVehicles = onSnapshot(
+      vehiclesColRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const loadedVehicles: SavedVehicle[] = snapshot.docs.map((docSnap) => ({
+            ...(docSnap.data() as SavedVehicle),
+            id: docSnap.id,
+          }))
+          setSavedVehicles(loadedVehicles)
+          // Set active vehicle if not currently in list
+          if (loadedVehicles.length > 0) {
+            const hasActive = loadedVehicles.some((v) => v.name === currentVehicle)
+            if (!hasActive) {
+              const primaryVeh = loadedVehicles.find((v) => v.isPrimary) || loadedVehicles[0]
+              setCurrentVehicle(primaryVeh.name)
+            }
+          }
+        }
+      },
+      (error) => {
+        console.error('Error listening to user vehicles in Firestore:', error)
+      }
+    )
+
+    return () => unsubVehicles()
+  }, [currentUser])
+
+  // STEP 4 INTEGRATION: Real-time listener for user bookings ('bookings' collection filtered by userId)
+  useEffect(() => {
+    if (!currentUser) return
+
+    const bookingsQuery = query(
+      collection(db, 'bookings'),
+      where('userId', '==', currentUser.uid)
+    )
+
+    const unsubBookings = onSnapshot(
+      bookingsQuery,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const loadedBookings: BookingRecord[] = snapshot.docs.map((docSnap) => ({
+            ...(docSnap.data() as BookingRecord),
+            id: docSnap.id,
+          }))
+          // Sort latest bookings first
+          loadedBookings.sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          )
+          setBookings(loadedBookings)
+        }
+      },
+      (error) => {
+        console.error('Error listening to user bookings in Firestore:', error)
+      }
+    )
+
+    return () => unsubBookings()
+  }, [currentUser])
+
   const isAppReady = !showSplash && !showOnboarding && !showAuth
 
   const navigateToTab = (tab: TabType) => {
@@ -156,9 +234,26 @@ export const App: React.FC = () => {
     setIsBookingOpen(true)
   }
 
-  const handleVehicleAdded = (newVehicle: SavedVehicle) => {
+  // STEP 3 INTEGRATION: Save vehicle to Firestore subcollection & update local state
+  const handleVehicleAdded = async (newVehicle: SavedVehicle) => {
     setSavedVehicles((prev) => [newVehicle, ...prev.filter((v) => v.id !== newVehicle.id)])
     setCurrentVehicle(newVehicle.name)
+    // Toast notification for adding vehicle
+    showToast(`${newVehicle.name} added to your garage!`, 'success')
+
+    if (currentUser) {
+      try {
+        const vehicleDocRef = doc(db, 'users', currentUser.uid, 'vehicles', newVehicle.id)
+        await setDoc(vehicleDocRef, {
+          ...newVehicle,
+          userId: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to sync new vehicle to Firestore:', err)
+      }
+    }
   }
 
   const handleSelectVehicle = (vehicleName: string) => {
@@ -169,9 +264,12 @@ export const App: React.FC = () => {
         isPrimary: v.name === vehicleName,
       }))
     )
+    // Toast notification for switching active vehicle
+    showToast(`Active vehicle switched to ${vehicleName}.`, 'info')
   }
 
-  const handleDeleteVehicle = (vehicleId: string) => {
+  // STEP 3 INTEGRATION: Delete vehicle from Firestore & local state
+  const handleDeleteVehicle = async (vehicleId: string) => {
     setSavedVehicles((prev) => {
       const remaining = prev.filter((v) => v.id !== vehicleId)
       const wasActive = prev.find((v) => v.id === vehicleId)?.name === currentVehicle
@@ -180,21 +278,67 @@ export const App: React.FC = () => {
       }
       return remaining
     })
+    // Toast notification for vehicle deletion
+    showToast('Vehicle removed successfully.', 'info')
+
+    if (currentUser) {
+      try {
+        const vehicleDocRef = doc(db, 'users', currentUser.uid, 'vehicles', vehicleId)
+        await deleteDoc(vehicleDocRef)
+      } catch (err) {
+        console.error('Failed to delete vehicle from Firestore:', err)
+      }
+    }
   }
 
-  const handleBookingComplete = (newBooking: BookingRecord) => {
+  // STEP 4 INTEGRATION: Save booking to Firestore 'bookings' collection
+  const handleBookingComplete = async (newBooking: BookingRecord) => {
     setBookings((prev) => [newBooking, ...prev])
+    // Toast notification for successful booking creation
+    const slotInfo = newBooking.date && newBooking.time ? ` for ${newBooking.date} at ${newBooking.time}` : ''
+    showToast(`Your booking has been scheduled${slotInfo}!`, 'success')
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', newBooking.id)
+        await setDoc(bookingDocRef, {
+          ...newBooking,
+          userId: currentUser.uid,
+          userEmail: currentUser.email || '',
+          createdAt: newBooking.createdAt || new Date().toISOString(),
+          serverTimestamp: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to sync booking to Firestore:', err)
+      }
+    }
   }
 
-  const handleCancelBooking = (bookingId: string) => {
+  // STEP 4 INTEGRATION: Cancel booking in Firestore
+  const handleCancelBooking = async (bookingId: string) => {
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId ? { ...b, status: 'cancelled' as const } : b
       )
     )
+    // Toast notification for booking cancellation
+    showToast(`Your booking #${bookingId.slice(0, 8)} has been cancelled.`, 'info')
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', bookingId)
+        await updateDoc(bookingDocRef, {
+          status: 'cancelled',
+          cancelledAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to update booking status in Firestore:', err)
+      }
+    }
   }
 
-  const handleRescheduleBooking = (
+  // STEP 4 INTEGRATION: Reschedule booking in Firestore
+  const handleRescheduleBooking = async (
     bookingId: string,
     newDate: string,
     newTime: string
@@ -211,9 +355,26 @@ export const App: React.FC = () => {
           : b
       )
     )
+    // Toast notification for appointment reschedule
+    showToast('Appointment rescheduled successfully!', 'success')
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', bookingId)
+        await updateDoc(bookingDocRef, {
+          date: newDate,
+          time: newTime,
+          status: 'scheduled',
+          rescheduledAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to reschedule booking in Firestore:', err)
+      }
+    }
   }
 
-  const handleRateBooking = (
+  // STEP 4 INTEGRATION: Rate and review booking in Firestore
+  const handleRateBooking = async (
     bookingId: string,
     rating: number,
     review: string
@@ -221,10 +382,49 @@ export const App: React.FC = () => {
     setBookings((prev) =>
       prev.map((b) => (b.id === bookingId ? { ...b, rating, review } : b))
     )
+    // Toast notification for submitted review
+    showToast('Thank you for rating our service!', 'success')
+
+    if (currentUser) {
+      try {
+        const bookingDocRef = doc(db, 'bookings', bookingId)
+        await updateDoc(bookingDocRef, {
+          rating,
+          review,
+          ratedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to save rating in Firestore:', err)
+      }
+    }
+  }
+
+  // STEP 5 INTEGRATION: Update user profile document directly in Firestore 'users' collection
+  const handleUpdateProfile = async (updated: UserProfile) => {
+    // Toast notification for profile update
+    showToast('Profile updated successfully!', 'success')
+
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid)
+        await updateDoc(userDocRef, {
+          fullName: updated.name,
+          phone: updated.phone,
+          address: updated.address,
+          city: updated.city || '',
+          postalCode: updated.postalCode || '',
+          avatar: updated.avatar,
+          preferredVehicle: updated.preferredVehicle || '',
+          updatedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to update user profile in Firestore:', err)
+      }
+    }
   }
 
   return (
-    <div className="min-h-screen w-full bg-canvas flex justify-center selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-screen w-full bg-white flex justify-center selection:bg-primary selection:text-primary-foreground">
       {/* 1. Launch Splash Screen (Fixed 375x812 iPhone Layout) */}
       {showSplash && (
         <SplashScreen
@@ -280,9 +480,9 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Mobile, Tablet & Desktop App Canvas */}
+      {/* Mobile, Tablet, iPad Pro & Desktop App Canvas */}
       <main
-        className={`w-full max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl min-h-screen bg-white relative shadow-2xl flex flex-col border-x border-gray-100 ${
+        className={`w-full max-w-full min-h-screen bg-white relative flex flex-col ${
           !isAppReady ? 'hidden' : ''
         }`}
       >
@@ -382,6 +582,7 @@ export const App: React.FC = () => {
                     }
                   : undefined
               }
+              onUpdateProfile={handleUpdateProfile}
               onLogout={async () => {
                 // STEP 1 & 2 INTEGRATION: Complete Firebase sign-out and session teardown
                 try {
@@ -389,6 +590,8 @@ export const App: React.FC = () => {
                 } catch (e) {
                   console.error('Firebase Sign-out error:', e)
                 }
+                // Toast notification on logout
+                showToast('You have been logged out.', 'info')
                 // Reset local states and redirect to Login screen
                 setCurrentUser(null)
                 setUserProfileData(null)
@@ -415,6 +618,22 @@ export const App: React.FC = () => {
             initialService={bookingService}
             currentVehicle={currentVehicle}
             savedVehicles={savedVehicles}
+            userProfile={
+              currentUser
+                ? {
+                    name:
+                      userProfileData?.fullName ||
+                      currentUser.displayName ||
+                      currentUser.email?.split('@')[0] ||
+                      'Member',
+                    email: userProfileData?.email || currentUser.email || '',
+                    phone: userProfileData?.phone || currentUser.phoneNumber || '+1 (998) 877-5561',
+                    address: userProfileData?.address || '21/22, 5th Avenue, Jamesford Road',
+                    city: userProfileData?.city || 'Ontario',
+                    postalCode: userProfileData?.postalCode || 'L4B 1X9',
+                  }
+                : undefined
+            }
             onSelectVehicle={handleSelectVehicle}
             onBack={() => setIsBookingOpen(false)}
             onBookingComplete={(newBooking) => {

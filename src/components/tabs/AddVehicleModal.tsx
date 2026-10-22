@@ -81,7 +81,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-center overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="w-full max-w-md md:max-w-xl min-h-screen bg-white flex flex-col pb-10 shadow-2xl">
+      <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl min-h-screen bg-white flex flex-col pb-10 shadow-2xl">
         {/* Top Header */}
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
           <button

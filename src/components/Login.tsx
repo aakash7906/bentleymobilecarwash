@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
+import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth instance and auth methods
 import { auth } from '@/lib/firebase'
 import {
@@ -21,50 +22,79 @@ export const Login: React.FC<LoginProps> = ({
   onSwitchToSignup,
   onSkip,
 }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
+
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
 
-  // STEP 1 INTEGRATION: Loading, error and success notification states
+  // STEP 1 INTEGRATION: Loading state
   const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [resetSent, setResetSent] = useState(false)
 
-  // STEP 1 INTEGRATION: Real Firebase Email & Password Sign-in handler
+  // -------------------------------------------------------------
+  // VALIDATION HELPER: Standard Email Regex Pattern
+  // -------------------------------------------------------------
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email.trim())
+  }
+
+  // STEP 1 INTEGRATION: Real Firebase Email & Password Sign-in handler with Validation & Toasters
   const handleLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!loginEmail || !loginPassword) {
-      setErrorMessage('Please enter both email and password.')
+
+    // 1. Mandatory Fields Validation
+    if (!loginEmail.trim() || !loginPassword) {
+      showToast('Please enter both your email and password.', 'error')
+      return
+    }
+
+    // 2. Client-side Email Format Validation
+    if (!isValidEmail(loginEmail)) {
+      showToast('Please enter a valid email address (e.g. name@example.com).', 'error')
+      return
+    }
+
+    // 3. Password Minimum Length Pre-Check
+    if (loginPassword.length < 6) {
+      showToast('Password must be at least 6 characters long.', 'error')
       return
     }
 
     setLoading(true)
-    setErrorMessage(null)
 
     try {
       // Authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword)
       const user = userCredential.user
 
-      // Notify parent on successful login with real Firebase User data
-      onLoginSuccess({
-        name: user.displayName || user.email?.split('@')[0] || 'Member',
-        email: user.email || loginEmail,
-        uid: user.uid,
-      })
+      // Success Toast Notification
+      showToast('Login successful! Welcome back.', 'success')
+
+      // Notify parent on successful login with real Firebase User data after brief pause
+      setTimeout(() => {
+        onLoginSuccess({
+          name: user.displayName || user.email?.split('@')[0] || 'Member',
+          email: user.email || loginEmail,
+          uid: user.uid,
+        })
+      }, 600)
     } catch (err: any) {
       console.error('Firebase Login Error:', err)
-      // User-friendly error message mapping
+      // User-friendly error message mapping with Toaster
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setErrorMessage('Invalid email or password. Please try again.')
+        showToast('Invalid email or password. Please verify and try again.', 'error')
+      } else if (err.code === 'auth/invalid-email') {
+        showToast('Invalid email address format. Please check your email.', 'error')
       } else if (err.code === 'auth/too-many-requests') {
-        setErrorMessage('Too many failed attempts. Please try again in a few minutes.')
+        showToast('Too many failed attempts. Please try again in a few minutes.', 'error')
       } else if (err.code === 'auth/network-request-failed') {
-        setErrorMessage('Network error. Please check your internet connection.')
+        showToast('Network error. Please check your internet connection.', 'error')
       } else {
-        setErrorMessage(err.message || 'Failed to login. Please try again.')
+        showToast(err.message || 'Failed to login. Please try again.', 'error')
       }
     } finally {
       setLoading(false)
@@ -74,49 +104,59 @@ export const Login: React.FC<LoginProps> = ({
   // STEP 1 INTEGRATION: Real Firebase Google Sign-In with popup
   const handleGoogleSignIn = async () => {
     setLoading(true)
-    setErrorMessage(null)
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-      onLoginSuccess({
-        name: user.displayName || 'Google User',
-        email: user.email || '',
-        uid: user.uid,
-      })
+      showToast('Google sign-in successful!', 'success')
+      setTimeout(() => {
+        onLoginSuccess({
+          name: user.displayName || 'Google User',
+          email: user.email || '',
+          uid: user.uid,
+        })
+      }, 600)
     } catch (err: any) {
       console.error('Firebase Google Sign-In Error:', err)
       if (err.code !== 'auth/popup-closed-by-user') {
-        setErrorMessage(err.message || 'Google sign-in failed. Please try again.')
+        showToast(err.message || 'Google sign-in failed. Please try again.', 'error')
       }
     } finally {
       setLoading(false)
     }
   }
 
-  // STEP 1 INTEGRATION: Real Firebase Password Reset Email
+  // STEP 1 INTEGRATION: Real Firebase Password Reset Email with Toasters
   const handleForgotPassword = async () => {
-    if (!loginEmail) {
-      setErrorMessage('Please enter your email address above to reset password.')
+    if (!loginEmail.trim()) {
+      showToast('Please enter your email address to reset password.', 'error')
       return
     }
+
+    if (!isValidEmail(loginEmail)) {
+      showToast('Please enter a valid email address to receive reset link.', 'error')
+      return
+    }
+
     setLoading(true)
-    setErrorMessage(null)
     try {
       await sendPasswordResetEmail(auth, loginEmail.trim())
-      setResetSent(true)
-      setTimeout(() => setResetSent(false), 5000)
+      showToast('Password reset link sent to your email! Check your inbox.', 'success')
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to send password reset email.')
+      if (err.code === 'auth/user-not-found') {
+        showToast('No registered account found with this email address.', 'error')
+      } else {
+        showToast(err.message || 'Failed to send password reset email.', 'error')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground">
-      <div className="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground flex justify-center">
+      <div className="w-full max-w-md min-h-screen flex flex-col justify-between px-6 pt-10 pb-8 bg-white">
 
         {/* Top Section with Mascot Logo */}
         <div className="flex flex-col items-center w-full">
@@ -138,20 +178,6 @@ export const Login: React.FC<LoginProps> = ({
             <p className="text-xs sm:text-sm text-gray-500 font-normal text-center mt-1.5 mb-6">
               Welcome back, please enter your details.
             </p>
-
-            {/* STEP 1 INTEGRATION: Error alert banner */}
-            {errorMessage && (
-              <div className="w-full mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 font-medium animate-in fade-in">
-                {errorMessage}
-              </div>
-            )}
-
-            {/* STEP 1 INTEGRATION: Password reset success banner */}
-            {resetSent && (
-              <div className="w-full mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium animate-in fade-in">
-                Password reset link sent! Check your inbox.
-              </div>
-            )}
 
             {/* Login Form */}
             <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-4">

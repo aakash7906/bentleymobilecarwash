@@ -3,6 +3,7 @@ import { UserProfile } from '@/types'
 import { USER_INFO, USER_SAVED_VEHICLES } from '@/data/mockData'
 import { preloadMembershipImages } from '@/components/MembershipPage'
 import { EditProfilePage } from '@/components/EditProfilePage'
+import { useToast } from '@/context/ToastContext'
 
 interface ProfileTabProps {
   onBack: () => void
@@ -35,6 +36,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onUpdateProfile,
   savedVehiclesCount,
 }) => {
+  // Global Toast Hook
+  const { showToast } = useToast()
+
   // Dynamic user profile state with local persistence
   const [profile, setProfile] = useState<UserProfile>(() => {
     if (externalProfile) return externalProfile
@@ -60,7 +64,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   })
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   useEffect(() => {
     // Preload membership images in background as soon as profile is open
@@ -80,10 +83,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     } catch {
       // ignore
     }
-    setToastMessage('Profile details updated!')
-    setTimeout(() => {
-      setToastMessage(null)
-    }, 2400)
+    showToast('Profile updated successfully!', 'success')
     if (onUpdateProfile) {
       onUpdateProfile(updated)
     }
@@ -101,7 +101,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       icon: 'receipt_long',
       title: 'Quote & Bookings',
       subtitle: 'Schedule or view appointments',
-      action: onOpenBooking || (() => alert('Viewing past quotes...')),
+      action: onOpenBooking || (() => showToast('Viewing past quotes & appointments', 'info')),
     },
     {
       icon: 'directions_car',
@@ -126,13 +126,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       icon: 'shield',
       title: 'Security',
       subtitle: 'Further secure your account for safety',
-      action: () => alert('Account security settings'),
+      action: () => showToast('Security settings coming soon!', 'info'),
     },
     {
       icon: 'privacy_tip',
       title: 'Privacy & Policy',
       subtitle: 'Know our privacy and policies',
-      action: () => alert('Privacy policy'),
+      action: () => showToast('Bentley Privacy Policy: Your data is 100% secure.', 'info'),
     },
     {
       icon: 'help',
@@ -143,17 +143,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   ]
 
   return (
-    <div className="flex flex-col w-full pb-28 px-5">
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
-          <span className="material-symbols-outlined text-[18px] text-emerald-400">
-            check_circle
-          </span>
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
+    <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
       {/* User Information Card (Clickable to Edit) */}
       <div
         onClick={() => setIsEditProfileOpen(true)}
