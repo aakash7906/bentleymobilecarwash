@@ -88,6 +88,22 @@ export interface UserProfile {
   membershipTier?: string
 }
 
+export interface DriverProfile {
+  name: string
+  email: string
+  phone: string
+  vanModel: string
+  licensePlate: string
+  serviceArea: string
+  driverLicenseNumber?: string
+  bio?: string
+  avatar: string
+  isAvailable?: boolean
+  rating?: number
+  totalJobs?: number
+  emergencyContact?: string
+}
+
 export type UserRole = 'customer' | 'driver' | 'admin'
 
 export type BookingStatus =

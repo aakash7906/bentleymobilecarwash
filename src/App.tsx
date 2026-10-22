@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile } from '@/types'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile } from '@/types'
 import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
@@ -67,7 +67,39 @@ export const App: React.FC = () => {
     address?: string
     postalCode?: string
     role?: string
+    driverPhone?: string
+    driverVan?: string
+    driverPlate?: string
+    serviceArea?: string
+    driverLicenseNumber?: string
+    bio?: string
+    avatar?: string
+    isAvailable?: boolean
   } | null>(null)
+
+  // Driver Profile State (Synced with localStorage & Firestore)
+  const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_driver_profile')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return {
+      name: 'Alex Rivera',
+      email: 'driver@bentleycarwash.com',
+      phone: '+1 (800) 555-9274',
+      vanModel: 'Mercedes-Benz Sprinter 2500',
+      licensePlate: 'BC-8492',
+      serviceArea: 'Ontario & Greater Toronto Area',
+      driverLicenseNumber: 'DL-ON-992014-B',
+      bio: 'Certified IDA Mobile Detailing Specialist with 6+ years experience.',
+      emergencyContact: '+1 (998) 555-0199',
+      avatar:
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      isAvailable: true,
+      rating: 4.95,
+      totalJobs: 142,
+    }
+  })
 
   // Persistent Saved Vehicles State (Synced with localStorage)
   const [savedVehicles, setSavedVehicles] = useState<SavedVehicle[]>(() => {
@@ -163,6 +195,19 @@ export const App: React.FC = () => {
           setUserProfileData(data)
           if (data.role === 'driver') {
             setCurrentRole('driver')
+            setDriverProfile((prev) => ({
+              ...prev,
+              name: data.fullName || prev.name,
+              email: data.email || prev.email,
+              phone: data.driverPhone || data.phone || prev.phone,
+              vanModel: data.driverVan || prev.vanModel,
+              licensePlate: data.driverPlate || prev.licensePlate,
+              serviceArea: data.serviceArea || prev.serviceArea,
+              driverLicenseNumber: data.driverLicenseNumber || prev.driverLicenseNumber,
+              bio: data.bio || prev.bio,
+              avatar: data.avatar || prev.avatar,
+              isAvailable: data.isAvailable !== undefined ? data.isAvailable : prev.isAvailable,
+            }))
           }
         }
       },
@@ -444,6 +489,34 @@ export const App: React.FC = () => {
     }
   }
 
+  // Driver update profile handler
+  const handleUpdateDriverProfile = async (updated: DriverProfile) => {
+    setDriverProfile(updated)
+    try {
+      localStorage.setItem('bentley_driver_profile', JSON.stringify(updated))
+    } catch {}
+
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid)
+        await updateDoc(userDocRef, {
+          fullName: updated.name,
+          driverPhone: updated.phone,
+          driverVan: updated.vanModel,
+          driverPlate: updated.licensePlate,
+          serviceArea: updated.serviceArea,
+          driverLicenseNumber: updated.driverLicenseNumber || '',
+          bio: updated.bio || '',
+          avatar: updated.avatar,
+          isAvailable: updated.isAvailable,
+          updatedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.error('Failed to update driver profile in Firestore:', err)
+      }
+    }
+  }
+
   // Driver accept order workflow handler
   const handleAcceptOrder = (bookingId: string) => {
     setBookings((prev) =>
@@ -453,10 +526,10 @@ export const App: React.FC = () => {
               ...b,
               status: 'accepted' as const,
               driverId: currentUser?.uid || 'drv-alex',
-              driverName: userProfileData?.fullName || currentUser?.displayName || 'Alex Rivera',
-              driverPhone: userProfileData?.phone || '+1 (800) 555-9274',
-              driverVehicle: 'Ford Transit Custom Mobile Wash',
-              driverVanNumber: 'Van #04',
+              driverName: driverProfile.name,
+              driverPhone: driverProfile.phone,
+              driverVehicle: driverProfile.vanModel,
+              driverVanNumber: driverProfile.licensePlate,
               driverCoords: b.driverCoords || [-79.4035, 43.6635],
             }
           : b
@@ -575,7 +648,7 @@ export const App: React.FC = () => {
 
       {/* 4. Dedicated Driver Partner Portal */}
       {isAppReady && currentRole === 'driver' && (
-        <div className="w-full flex justify-center">
+        <div className="w-full min-h-screen">
           <DriverDashboard
             bookings={bookings}
             onAcceptOrder={handleAcceptOrder}
@@ -585,8 +658,10 @@ export const App: React.FC = () => {
               setCurrentTab('home')
             }}
             onLogout={handleLogout}
-            driverName={userProfileData?.fullName || currentUser?.displayName || 'Alex Rivera'}
-            driverEmail={userProfileData?.email || currentUser?.email || 'driver@bentleycarwash.com'}
+            driverName={driverProfile.name}
+            driverEmail={driverProfile.email}
+            driverProfile={driverProfile}
+            onUpdateDriverProfile={handleUpdateDriverProfile}
           />
         </div>
       )}
@@ -596,15 +671,6 @@ export const App: React.FC = () => {
         <main
           className="w-full max-w-full min-h-screen bg-white relative flex flex-col"
         >
-          {/* Quick Driver Mode Switcher Pill for Customer View */}
-          <button
-            onClick={() => setCurrentRole('driver')}
-            className="fixed top-3 right-4 z-40 bg-secondary hover:bg-neutral-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
-            title="Switch to Driver Partner Mode"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Driver Mode</span>
-          </button>
         {/* Top Header (Rendered on non-home & non-bookings tabs; HomeTab & BookingsTab integrate their own headers) */}
         {currentTab !== 'home' && currentTab !== 'bookings' && (
           <Header
@@ -702,9 +768,6 @@ export const App: React.FC = () => {
                   : undefined
               }
               onUpdateProfile={handleUpdateProfile}
-              onSwitchToDriver={() => {
-                setCurrentRole('driver')
-              }}
               onLogout={handleLogout}
             />
           )}
