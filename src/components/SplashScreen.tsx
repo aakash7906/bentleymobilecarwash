@@ -67,26 +67,22 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-secondary/80 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+      className={`fixed inset-0 z-[9999] w-full h-full min-h-screen flex items-center justify-center select-none cursor-pointer overflow-hidden transition-opacity duration-300 ease-in-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       onClick={handleDismiss}
       title={dismissible ? 'Tap anywhere to continue' : undefined}
+      style={{
+        background:
+          'radial-gradient(circle at 50% 48%, var(--surface-subtle) 0%, var(--bg-canvas) 60%, var(--border-light) 100%)',
+      }}
     >
-      {/* 
-        Responsive Mobile & Tablet App Container:
-        - 100dvh dynamic viewport height on all mobile devices
-        - Fluid width up to max-w-md on mobile, md:max-w-xl matching app layout on tablets
-        - Framed rounded view with elevation on desktop & tablets
-        - Background gradient driven by index.css design tokens
+      {/*
+        Full Screen Responsive Splash Container:
+        - 100% width and 100% height across all mobile, tablet, iPad, and desktop viewports
+        - Zero letterboxing, zero outer gray frames or borders
       */}
-      <div
-        className="relative w-full max-w-full md:max-w-xl lg:max-w-2xl h-full min-h-[100dvh] sm:min-h-0 sm:h-[844px] md:h-[880px] sm:max-h-[94vh] sm:rounded-[36px] overflow-hidden shadow-2xl select-none cursor-pointer flex flex-col items-center justify-center p-6"
-        style={{
-          background:
-            'radial-gradient(circle at 50% 48%, var(--surface-subtle) 0%, var(--bg-canvas) 60%, var(--border-light) 100%)',
-        }}
-      >
+      <div className="relative w-full h-full min-h-screen flex flex-col items-center justify-center p-6">
         {/* Center Section: HD Mascot Logo */}
         <div className="flex flex-col items-center justify-center w-full flex-1 relative px-4">
           <div className="w-60 min-[380px]:w-68 sm:w-80 md:w-96 max-w-[82%] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
