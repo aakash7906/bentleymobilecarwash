@@ -11,9 +11,16 @@ export interface ServiceItem {
   image: string
   description: string
   included: string[]
+  badge?: string
+  tieredPricing?: {
+    car: number
+    suv: number
+    truck: number
+  }
+  isSpecialty?: boolean
 }
 
-export type VehicleCategory = 'Sedan' | 'SUV' | 'Truck' | 'Coupe' | 'Van' | 'Hatchback'
+export type VehicleCategory = 'Sedan' | 'SUV' | 'Truck' | 'Coupe' | 'Van' | 'Hatchback' | 'RV' | 'Boat'
 
 export interface SavedVehicle {
   id: string

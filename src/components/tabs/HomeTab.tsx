@@ -162,82 +162,59 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     setCartItems([])
   }
 
-  // Recommended for you cards matching user screenshot
+  // Detect vehicle type for vehicle-aware pricing
+  const activeVehicleObj = savedVehicles?.find((v) => v.name === currentVehicle)
+  const activeVehicleType = activeVehicleObj?.type || 'Sedan'
+  const premiumPriceNumeric =
+    activeVehicleType === 'SUV'
+      ? 240
+      : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
+      ? 280
+      : 190
+
+  // Recommended for you cards featuring Bentley's Official Cleaning Packages
+  const supremeItem = SERVICES_CATALOG.find((s) => s.id === 'supreme-package') || SERVICES_CATALOG[1]
+  const deluxeItem = SERVICES_CATALOG.find((s) => s.id === 'deluxe-package') || SERVICES_CATALOG[0]
+  const premiumItem = SERVICES_CATALOG.find((s) => s.id === 'premium-detail') || SERVICES_CATALOG[2]
+
   const recommendedCards = [
     {
-      id: 'rec-car-wash',
-      title: 'Car Wash',
-      category: 'Exterior Cleaning',
-      price: '$50.00',
-      image: recCarWashImg,
+      id: supremeItem.id,
+      title: supremeItem.title,
+      category: supremeItem.category,
+      price: supremeItem.price,
+      image: supremeItem.image,
+      badge: 'Best Value',
       serviceItem: {
-        id: 'rec-car-wash',
-        title: 'Car Wash',
-        category: 'Exterior Cleaning',
-        price: '$50.00',
-        priceNumeric: 50,
-        estTime: '30–45 mins',
+        ...supremeItem,
         vehicleModel: currentVehicle,
-        image: recCarWashImg,
-        description:
-          'Deep exterior foam wash using top-down gentle microfiber technique, wheel cleaning, tire degreasing, and streak-free chamois finish.',
-        included: [
-          'Gentle pH-balanced snow foam soak',
-          'Wheel, rim, and wheel-well agitation',
-          'Tire scrub & protective dressing',
-          'Streak-free spot-free rinse & hand dry',
-        ],
-      } as ServiceItem,
+      },
     },
     {
-      id: 'rec-tiger-body-kit',
-      title: 'Tiger Body Kit',
-      category: 'Body Kit',
-      price: '$120.00',
-      image: catExteriorImg,
+      id: premiumItem.id,
+      title: premiumItem.title,
+      category: premiumItem.category,
+      price: `$${premiumPriceNumeric}.00`,
+      image: premiumItem.image,
+      badge: `${activeVehicleType} Rate`,
       serviceItem: {
-        id: 'rec-tiger-body-kit',
-        title: 'Tiger Body Kit',
-        category: 'Body Kit',
-        price: '$120.00',
-        priceNumeric: 120,
-        estTime: '1.5–2 hrs',
-        vehicleModel: currentVehicle,
-        image: catExteriorImg,
-        description:
-          'Precision exterior aerodynamic kit fitting, front splitter alignment, side skirt reinforcement, and protective gloss sealing.',
-        included: [
-          'Aero kit fitment and test mounting',
-          'Front lip & rear diffuser securement',
-          'Paint protection seal on newly mounted parts',
-          'Final torque check & alignment audit',
-        ],
-      } as ServiceItem,
+        ...premiumItem,
+        price: `$${premiumPriceNumeric}.00`,
+        priceNumeric: premiumPriceNumeric,
+        vehicleModel: `${activeVehicleType} (${currentVehicle})`,
+      },
     },
     {
-      id: 'rec-interior-detail',
-      title: 'Interior Detailing',
-      category: 'Interior Cleaning',
-      price: '$75.00',
-      image: catInteriorImg,
+      id: deluxeItem.id,
+      title: deluxeItem.title,
+      category: deluxeItem.category,
+      price: deluxeItem.price,
+      image: deluxeItem.image,
+      badge: 'Popular',
       serviceItem: {
-        id: 'rec-interior-detail',
-        title: 'Interior Detailing',
-        category: 'Interior Cleaning',
-        price: '$75.00',
-        priceNumeric: 75,
-        estTime: '1–1.5 hrs',
+        ...deluxeItem,
         vehicleModel: currentVehicle,
-        image: catInteriorImg,
-        description:
-          'Comprehensive cabin refresh including deep steam extraction, dashboard UV protection, crevice detailing, and odor neutralization.',
-        included: [
-          'High-power crevice vacuuming',
-          'Upholstery shampoo & extraction',
-          'Console & air vent steam sanitization',
-          'Leather conditioner & UV coat',
-        ],
-      } as ServiceItem,
+      },
     },
   ]
 

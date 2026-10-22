@@ -15,11 +15,41 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 }) => {
   const [isOrderSummary, setIsOrderSummary] = useState(false)
   const [booked, setBooked] = useState(false)
+  const [selectedTier, setSelectedTier] = useState<'car' | 'suv' | 'truck'>(() => {
+    if (service?.vehicleModel?.toLowerCase().includes('suv')) return 'suv'
+    if (
+      service?.vehicleModel?.toLowerCase().includes('truck') ||
+      service?.vehicleModel?.toLowerCase().includes('van')
+    )
+      return 'truck'
+    return 'car'
+  })
 
   if (!service) return null
 
+  const activePrice =
+    service.tieredPricing && service.tieredPricing[selectedTier]
+      ? `$${service.tieredPricing[selectedTier]}.00`
+      : service.price
+  const activeNumeric =
+    service.tieredPricing && service.tieredPricing[selectedTier]
+      ? service.tieredPricing[selectedTier]
+      : service.priceNumeric
+
   const handleAction = () => {
-    onBookNow(service)
+    const preparedService: ServiceItem = {
+      ...service,
+      price: activePrice,
+      priceNumeric: activeNumeric,
+      vehicleModel: service.tieredPricing
+        ? selectedTier === 'car'
+          ? 'Car (Sedan/Coupe/Hatchback)'
+          : selectedTier === 'suv'
+          ? 'SUV'
+          : 'Truck / Van'
+        : service.vehicleModel,
+    }
+    onBookNow(preparedService)
     setIsOrderSummary(false)
     onClose()
   }
@@ -57,17 +87,27 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
               className="w-full h-full object-cover"
               style={{ objectFit: 'cover', width: '100%', height: '100%' }}
             />
+            {service.badge && (
+              <span className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-primary/95 text-white text-[11px] font-bold tracking-wider uppercase backdrop-blur-xs shadow-sm">
+                {service.badge}
+              </span>
+            )}
+            <span className="absolute top-3 right-3 px-3 py-1 rounded-lg bg-black/70 text-white text-[11px] font-semibold tracking-wide backdrop-blur-xs">
+              ⏱ {service.estTime}
+            </span>
           </div>
 
           {/* Pricing & Category */}
           <div className="flex items-center justify-between pt-1">
-            <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
+            <span className="px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-bold">
               {service.category}
             </span>
             <div className="text-right">
-              <span className="text-[11px] text-gray-500 block">Starting at</span>
-              <span className="text-base font-bold text-primary font-mono">
-                {service.price}
+              <span className="text-[11px] text-gray-500 block">
+                {service.tieredPricing ? 'Vehicle Pricing' : 'Total Package Price'}
+              </span>
+              <span className="text-lg font-bold text-primary font-mono">
+                {activePrice}
               </span>
             </div>
           </div>
@@ -80,6 +120,57 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
               <span className="text-gray-600 font-medium">Est. Time <strong className="text-primary">({service.estTime})</strong></span>
             </div>
           </div>
+
+          {/* Tiered Vehicle Selector if applicable */}
+          {service.tieredPricing && (
+            <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-gray-50 border border-gray-100">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-gray-900">Select Vehicle Category:</span>
+                <span className="text-[11px] text-gray-500">Tiered Pricing</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier('car')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
+                    selectedTier === 'car'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-base">🚗</span>
+                  <span>Car</span>
+                  <span className="text-[11px] opacity-90 font-mono">${service.tieredPricing.car}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier('suv')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
+                    selectedTier === 'suv'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-base">🚙</span>
+                  <span>SUV</span>
+                  <span className="text-[11px] opacity-90 font-mono">${service.tieredPricing.suv}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier('truck')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
+                    selectedTier === 'truck'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-base">🛻</span>
+                  <span>Truck / Van</span>
+                  <span className="text-[11px] opacity-90 font-mono">${service.tieredPricing.truck}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action Button ("Add" or "Book Now ->") */}
           <div className="py-2">
@@ -96,7 +187,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                   <ArrowRight className="w-4 h-4 text-white" />
                 </>
               ) : (
-                <span>Add</span>
+                <span>Book This Package</span>
               )}
             </button>
           </div>

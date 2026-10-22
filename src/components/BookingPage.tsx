@@ -150,8 +150,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Vehicle Sizing calculation
   const selectedVehicleObj = savedVehicles?.find((v) => v.name === selectedVehicle)
   const vehicleType = selectedVehicleObj?.type || 'Sedan'
-  const vehicleSizeSurcharge =
-    vehicleType === 'SUV' ? 15 : vehicleType === 'Truck' || vehicleType === 'Van' ? 25 : 0
+  const isTieredService = !!selectedService.tieredPricing
+  const vehicleSizeSurcharge = isTieredService
+    ? 0 // Vehicle size rate is built into the package tiered pricing
+    : vehicleType === 'SUV'
+    ? 15
+    : vehicleType === 'Truck' || vehicleType === 'Van'
+    ? 25
+    : 0
 
   const toggleAddon = (id: string) => {
     setSelectedAddonIds((prev) =>
@@ -160,7 +166,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   }
 
   // Pricing calculations
-  const basePrice = selectedService.priceNumeric || 49
+  const basePrice =
+    isTieredService && selectedService.tieredPricing
+      ? vehicleType === 'SUV'
+        ? selectedService.tieredPricing.suv
+        : vehicleType === 'Truck' || vehicleType === 'Van'
+        ? selectedService.tieredPricing.truck
+        : selectedService.tieredPricing.car
+      : selectedService.priceNumeric || 49
   const addonsTotal = selectedAddonIds.reduce((sum, id) => {
     const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
     return sum + (addon ? addon.price : 0)
@@ -758,7 +771,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             <span className="text-xs font-bold text-gray-900">Summary & Pricing</span>
 
             <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>{selectedService.title}</span>
+              <span className="flex items-center gap-1">
+                <span>{selectedService.title}</span>
+                {isTieredService && (
+                  <span className="text-[10px] text-primary font-bold bg-primary-light px-1.5 py-0.5 rounded">
+                    {vehicleType} Rate
+                  </span>
+                )}
+              </span>
               <span className="font-mono">${basePrice}.00</span>
             </div>
 
