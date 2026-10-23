@@ -8,7 +8,8 @@ interface InvoiceModalProps {
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) => {
-  const invoiceNumber = `INV-${booking.id.replace('bkg-', '').toUpperCase()}-${new Date(booking.createdAt).getFullYear()}`
+  const invoiceYear = booking.createdAt?.toDate ? booking.createdAt.toDate().getFullYear() : (booking.createdAt ? new Date(booking.createdAt).getFullYear() : new Date().getFullYear())
+  const invoiceNumber = `INV-${booking.id.replace('bkg-', '').toUpperCase()}-${invoiceYear}`
   const taxRate = 0.05 // 5% GST
   const total = booking.totalNumeric || parseFloat(booking.price.replace(/[^0-9.]/g, '')) || 0
   const subtotal = total / (1 + taxRate)

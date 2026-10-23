@@ -102,10 +102,12 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const isUserInteractingRef = useRef(false)
   const userInteractionTimeoutRef = useRef<any>(null)
+  const isMiddleDraggingRef = useRef(false)
 
   // Resolve current active style URL from styles or mapStyle
   const activeStyleUrl = useMemo(() => {
@@ -134,14 +136,101 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         pitch,
         bearing,
         interactive,
+        dragPan: true,
+        dragRotate: true,
+        scrollZoom: true,
+        boxZoom: true,
+        doubleClickZoom: true,
+        touchZoomRotate: true,
         attributionControl: false,
       })
 
       mapRef.current = mapInstance
 
+      // Enable middle-click (scroll wheel press) drag-to-pan in addition to standard left-click
+      const targetEl = wrapperRef.current || containerRef.current
+      let isMiddleClickDragging = false
+      let lastClientPos: { x: number; y: number } | null = null
+
+      const handleAuxClick = (e: MouseEvent) => {
+        // Prevent default browser behavior on middle click (autoscroll, paste, etc.)
+        if (e.button === 1) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }
+
+      const handleMouseDown = (e: MouseEvent) => {
+        // e.button === 1 is scroll wheel press (middle click)
+        if (e.button === 1 && mapInstance) {
+          e.preventDefault()
+          e.stopPropagation()
+          isMiddleClickDragging = true
+          isMiddleDraggingRef.current = true
+          lastClientPos = { x: e.clientX, y: e.clientY }
+          if (targetEl) targetEl.style.cursor = 'grabbing'
+          document.body.style.cursor = 'grabbing'
+          document.body.style.userSelect = 'none'
+        }
+      }
+
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isMiddleClickDragging || !lastClientPos || !mapInstance) return
+
+        // If middle mouse button is no longer held (e.buttons & 4 is 0)
+        if ((e.buttons & 4) === 0 && e.button !== 1) {
+          handleMouseUp(e)
+          return
+        }
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        const dx = e.clientX - lastClientPos.x
+        const dy = e.clientY - lastClientPos.y
+        if (dx === 0 && dy === 0) return
+
+        lastClientPos = { x: e.clientX, y: e.clientY }
+
+        // Accurately project screen delta onto geographic coordinates for instantaneous 1:1 panning
+        try {
+          const currentCenter = mapInstance.getCenter()
+          const centerPx = mapInstance.project(currentCenter)
+          const targetPx: [number, number] = [centerPx.x - dx, centerPx.y - dy]
+          const newCenter = mapInstance.unproject(targetPx)
+          mapInstance.jumpTo({ center: newCenter })
+        } catch (err) {
+          console.warn('Map drag pan translation error:', err)
+        }
+      }
+
+      const handleMouseUp = (e?: MouseEvent | Event) => {
+        const isMiddle = e && 'button' in e ? e.button === 1 : false
+        if (isMiddleClickDragging || isMiddle || !e) {
+          isMiddleClickDragging = false
+          isMiddleDraggingRef.current = false
+          lastClientPos = null
+          if (targetEl) targetEl.style.cursor = ''
+          document.body.style.cursor = ''
+          document.body.style.userSelect = ''
+        }
+      }
+
+      // Use capture: true & passive: false so browser autoscroll is reliably intercepted
+      if (targetEl) {
+        targetEl.addEventListener('auxclick', handleAuxClick, { capture: true, passive: false })
+        targetEl.addEventListener('mousedown', handleMouseDown, { capture: true, passive: false })
+      }
+      window.addEventListener('mousemove', handleMouseMove, { capture: true, passive: false })
+      window.addEventListener('mouseup', handleMouseUp, { capture: true, passive: false })
+      window.addEventListener('blur', handleMouseUp)
+
       mapInstance.on('load', () => {
         setIsLoaded(true)
         if (mapInstance) {
+          // Explicitly ensure dragPan and all navigation handlers are active
+          mapInstance.dragPan.enable()
+          mapInstance.scrollZoom.enable()
           mapInstance.resize()
           if (onLoad) onLoad(mapInstance)
         }
@@ -199,7 +288,9 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
           mapInstance?.resize()
         }, 150)
       })
-      resizeObserver.observe(containerRef.current)
+      if (containerRef.current) {
+        resizeObserver.observe(containerRef.current)
+      }
 
       return () => {
         clearTimeout(timer1)
@@ -207,6 +298,15 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         if (resizeTimer) clearTimeout(resizeTimer)
         if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current)
         resizeObserver.disconnect()
+        if (targetEl) {
+          targetEl.removeEventListener('auxclick', handleAuxClick)
+          targetEl.removeEventListener('mousedown', handleMouseDown)
+        }
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+        window.removeEventListener('blur', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
         if (mapInstance) {
           mapInstance.remove()
         }
@@ -224,7 +324,6 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     if (!mapRef.current || !isLoaded || !center) return
     // Respect user drag: do not hijack camera if user is exploring or followUser is false
     if (isUserInteractingRef.current || !followUser) return
-
     const [lng, lat] = center
     if (
       !prevCenterRef.current ||
@@ -257,6 +356,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
   return (
     <MapContext.Provider value={{ map: mapRef.current, isLoaded }}>
       <div
+        ref={wrapperRef}
         className={`relative overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
         style={{
           touchAction: 'none',

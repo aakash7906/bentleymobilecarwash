@@ -1,7 +1,7 @@
 import { addDoc, collection, doc, setDoc, type DocumentData, type DocumentReference, type CollectionReference } from "firebase/firestore";
 import { db } from "../firebase";
 
-function cleanUndefined<T extends Record<string, any>>(data: T): Record<string, any> {
+export function cleanUndefined<T extends Record<string, any>>(data: T): Record<string, any> {
   if (!data || typeof data !== "object") return data;
   if (data instanceof Date) return data;
   if (typeof (data as any)?.toDate === "function" || typeof (data as any)?.toMillis === "function") return data;

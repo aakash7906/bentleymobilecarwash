@@ -18,10 +18,13 @@ import { Signup } from '@/pages/Auth/SignupPage'
 import { SplashScreen } from '@/pages/Auth/SplashScreen'
 import { OnboardingScreen } from '@/pages/Auth/OnboardingPage'
 // import { MembershipPage } from '@/pages/Membership/MembershipPage'
+import { ContactUsPage } from '@/pages/Contact/ContactUsPage'
+import { AboutUsPage } from '@/pages/About/AboutUsPage'
 import { DriverDashboard } from '@/pages/Driver/DriverDashboardPage'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
 import { auth, db } from '@/firebase'
+import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
 // STEP 2 & 3 INTEGRATION: Import Firestore real-time listeners and mutations
 import {
@@ -83,6 +86,7 @@ export const App: React.FC = () => {
 
   // STEP 2 INTEGRATION: Live user profile data fetched from Firestore 'users' collection
   const [userProfileData, setUserProfileData] = useState<{
+    Name?: string
     name?: string
     fullName?: string
     email?: string
@@ -170,6 +174,8 @@ export const App: React.FC = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
   const [_isMembershipOpen, setIsMembershipOpen] = useState(false)
+  const [isContactUsOpen, setIsContactUsOpen] = useState(false)
+  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false)
 
   // Tracks if the user's cart has been initialized/merged from Firestore for this session
   const syncedUserCartRef = React.useRef<string | null>(null)
@@ -253,7 +259,7 @@ export const App: React.FC = () => {
             setCurrentRole('driver')
             setDriverProfile((prev) => ({
               ...prev,
-              name: data.name || data.fullName || prev.name,
+              name: data.Name || data.name || data.fullName || prev.name,
               email: data.email || prev.email,
               phone: data.driverPhone || data.phone || prev.phone,
               vanModel: data.driverVan || data.driverDetails?.vehicle || data.driverDetails?.vanNumber || prev.vanModel,
@@ -334,6 +340,7 @@ export const App: React.FC = () => {
           try {
             await setDoc(userDocRef, {
               uid: currentUser.uid,
+              Name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
               name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
               email: currentUser.email || '',
               role: currentRole || 'customer',
@@ -408,10 +415,12 @@ export const App: React.FC = () => {
           ...(docSnap.data() as BookingRecord),
           id: docSnap.id,
         }))
-        // Sort latest bookings first
-        loadedBookings.sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        )
+        // Sort latest bookings first (handles Firestore Timestamp, string date, or null)
+        loadedBookings.sort((a, b) => {
+          const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime()
+          const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime()
+          return timeB - timeA
+        })
         setBookings(loadedBookings)
       },
       (error) => {
@@ -610,13 +619,15 @@ export const App: React.FC = () => {
     if (currentUser) {
       try {
         const bookingDocRef = doc(db, 'bookings', newBooking.id)
-        await setDoc(bookingDocRef, {
+        const payload = cleanUndefined({
           ...newBooking,
+          licensePlate: newBooking.licensePlate || '',
           userId: currentUser.uid,
           userEmail: currentUser.email || '',
-          createdAt: newBooking.createdAt || new Date().toISOString(),
+          createdAt: serverTimestamp(),
           serverTimestamp: serverTimestamp(),
         })
+        await setDoc(bookingDocRef, payload)
       } catch (err) {
         console.error('Failed to sync booking to Firestore:', err)
       }
@@ -717,7 +728,9 @@ export const App: React.FC = () => {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
         await setDoc(userDocRef, {
+          Name: updated.name,
           name: updated.name,
+          fullName: updated.name,
           phone: updated.phone || '',
           address: updated.address || '',
           city: updated.city || '',
@@ -744,7 +757,9 @@ export const App: React.FC = () => {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
         await setDoc(userDocRef, {
+          Name: updated.name,
           name: updated.name,
+          fullName: updated.name,
           driverPhone: updated.phone,
           driverVan: updated.vanModel,
           driverPlate: updated.licensePlate,
@@ -865,25 +880,29 @@ export const App: React.FC = () => {
     setShowAuth(true)
   }
 
-  // STEP 6 INTEGRATION: Save product order to Firestore 'orders' collection
+  // STEP 6 INTEGRATION: Save product order to Firestore 'orders' collection using original Firestore document ID
   const handleCheckoutOrder = async (orderData: any): Promise<string> => {
-    const orderId = `BCW-${Math.floor(10000 + Math.random() * 90000)}`
-    if (currentUser) {
-      try {
-        const orderDocRef = doc(db, 'orders', orderId)
-        await setDoc(orderDocRef, {
-          id: orderId,
-          userId: currentUser.uid,
-          userEmail: currentUser.email || '',
-          ...orderData,
-          createdAt: orderData.createdAt || new Date().toISOString(),
-          serverTimestamp: serverTimestamp(),
-        })
-      } catch (err) {
-        console.error('Failed to sync product order to Firestore:', err)
-      }
+    try {
+      // Use Firestore's native auto-generated document ID
+      const orderDocRef = doc(collection(db, 'orders'))
+      const orderId = orderDocRef.id
+
+      const payload = cleanUndefined({
+        ...orderData,
+        id: orderId,
+        userId: currentUser ? currentUser.uid : 'guest',
+        userEmail: currentUser?.email || orderData.customerEmail || '',
+        createdAt: serverTimestamp(),
+        serverTimestamp: serverTimestamp(),
+      })
+      await setDoc(orderDocRef, payload)
+      return orderId
+    } catch (err) {
+      console.error('Failed to sync product order to Firestore:', err)
+      // Even in error, generate a genuine Firestore doc ID
+      const fallbackDocRef = doc(collection(db, 'orders'))
+      return fallbackDocRef.id
     }
-    return orderId
   }
 
   // Cart operations
@@ -1055,6 +1074,7 @@ export const App: React.FC = () => {
                   currentUser
                     ? {
                       name:
+                        userProfileData?.Name ||
                         userProfileData?.fullName ||
                         currentUser.displayName ||
                         currentUser.email?.split('@')[0] ||
@@ -1125,12 +1145,15 @@ export const App: React.FC = () => {
                 onNavigateToNotifications={() => navigateToTab('notifications')}
                 onOpenBooking={() => navigateToTab('bookings')}
                 onOpenMembership={() => setIsMembershipOpen(true)}
+                onOpenContactUs={() => setIsContactUsOpen(true)}
+                onOpenAboutUs={() => setIsAboutUsOpen(true)}
                 savedVehiclesCount={savedVehicles.length}
                 savedVehiclesList={savedVehicles.map((v) => v.name)}
                 userProfile={
                   currentUser
                     ? {
                       name:
+                        userProfileData?.Name ||
                         userProfileData?.name ||
                         userProfileData?.fullName ||
                         currentUser.displayName ||
@@ -1187,6 +1210,7 @@ export const App: React.FC = () => {
               }}
               userProfile={{
                 name:
+                  userProfileData?.Name ||
                   userProfileData?.name ||
                   userProfileData?.fullName ||
                   currentUser?.displayName ||
@@ -1229,6 +1253,40 @@ export const App: React.FC = () => {
             isOpen={isAddCarOpen}
             onClose={() => setIsAddCarOpen(false)}
             onVehicleAdded={handleVehicleAdded}
+          />
+
+          {/* Dedicated Contact Us Full Page Modal */}
+          <ContactUsPage
+            isOpen={isContactUsOpen}
+            onClose={() => setIsContactUsOpen(false)}
+            userProfile={
+              currentUser
+                ? {
+                    name:
+                      userProfileData?.Name ||
+                      userProfileData?.fullName ||
+                      currentUser?.displayName ||
+                      currentUser?.email?.split('@')[0] ||
+                      '',
+                    email: userProfileData?.email || currentUser?.email || '',
+                    phone: userProfileData?.phone || currentUser?.phoneNumber || '',
+                  }
+                : undefined
+            }
+          />
+
+          {/* Dedicated About Us Full Page Modal */}
+          <AboutUsPage
+            isOpen={isAboutUsOpen}
+            onClose={() => setIsAboutUsOpen(false)}
+            onBookNow={() => {
+              setIsAboutUsOpen(false)
+              setIsBookingOpen(true)
+            }}
+            onContactUs={() => {
+              setIsAboutUsOpen(false)
+              setIsContactUsOpen(true)
+            }}
           />
 
           {/* Dedicated Membership Plans Page - Temporarily commented out from UI */}

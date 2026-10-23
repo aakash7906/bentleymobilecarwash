@@ -21,6 +21,8 @@ import { useToast } from '@/context/ToastContext'
 import { StripeCardForm } from '@/components/StripeCardForm'
 import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
+import { db } from '@/firebase'
+import { collection, doc } from 'firebase/firestore'
 
 interface CartPageProps {
   isOpen: boolean
@@ -198,7 +200,8 @@ export const CartPage: React.FC<CartPageProps> = ({
       setIsProcessing(true)
     }
 
-    const fallbackId = `#BCW-${Math.floor(10000 + Math.random() * 90000)}`
+    const originalDocRef = doc(collection(db, 'orders'))
+    const fallbackId = originalDocRef.id
 
     try {
       let finalOrderId = fallbackId
@@ -744,9 +747,9 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
 
                 <div className="w-full bg-surface-alt rounded-2xl p-3 border border-gray-200 text-left flex flex-col gap-1.5 text-xs mt-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Order ID:</span>
-                    <span className="font-mono font-bold text-gray-900">{placedOrderId}</span>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-gray-500 shrink-0">Order ID:</span>
+                    <span className="font-mono font-bold text-gray-900 break-all text-right text-[11px]">{placedOrderId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Items Ordered:</span>

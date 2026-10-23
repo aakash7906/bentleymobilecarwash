@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, Loader2, Truck } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Truck, Check } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and registration functions
@@ -36,6 +36,7 @@ export const Signup: React.FC<SignupProps> = ({
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreeTerms, setAgreeTerms] = useState(true)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -176,6 +177,7 @@ export const Signup: React.FC<SignupProps> = ({
       // -------------------------------------------------------------
       const rawUserPayload: Record<string, any> = {
         uid: user.uid,
+        Name: fullName.trim(),
         name: fullName.trim(),
         fullName: fullName.trim(),
         email: user.email || signupEmail.trim(),
@@ -252,6 +254,7 @@ export const Signup: React.FC<SignupProps> = ({
       if (!userDoc.exists()) {
         const rawGoogleData: Record<string, any> = {
           uid: user.uid,
+          Name: user.displayName || 'Member',
           name: user.displayName || 'Google User',
           fullName: user.displayName || 'Google User',
           email: user.email || '',
@@ -348,11 +351,10 @@ export const Signup: React.FC<SignupProps> = ({
                     }
                   }}
                   placeholder={selectedRole === 'driver' ? 'e.g. Alex Rivera' : 'Enter full name'}
-                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                    touched.fullName && errors.fullName
-                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                  }`}
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.fullName && errors.fullName
+                    ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                    : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                    }`}
                 />
                 {touched.fullName && errors.fullName && (
                   <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
@@ -388,11 +390,10 @@ export const Signup: React.FC<SignupProps> = ({
                           }
                         }}
                         placeholder="+1 (800) 555-9274"
-                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                          touched.driverPhone && errors.driverPhone
-                            ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                            : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                        }`}
+                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.driverPhone && errors.driverPhone
+                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                          }`}
                       />
                       {touched.driverPhone && errors.driverPhone && (
                         <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
@@ -423,11 +424,10 @@ export const Signup: React.FC<SignupProps> = ({
                           }
                         }}
                         placeholder="e.g. Van #04"
-                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                          touched.driverVan && errors.driverVan
-                            ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                            : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                        }`}
+                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.driverVan && errors.driverVan
+                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                          }`}
                       />
                       {touched.driverVan && errors.driverVan && (
                         <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
@@ -460,11 +460,10 @@ export const Signup: React.FC<SignupProps> = ({
                         }
                       }}
                       placeholder="e.g. BC-9042-DRV"
-                      className={`w-full px-4 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors uppercase font-mono ${
-                        touched.driverPlate && errors.driverPlate
-                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                      }`}
+                      className={`w-full px-4 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors uppercase font-mono ${touched.driverPlate && errors.driverPlate
+                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                        }`}
                     />
                     {touched.driverPlate && errors.driverPlate && (
                       <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
@@ -510,11 +509,10 @@ export const Signup: React.FC<SignupProps> = ({
                     }
                   }}
                   placeholder="name@example.com"
-                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                    errors.email
-                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                  }`}
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${errors.email
+                    ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                    : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                    }`}
                 />
                 {errors.email && (
                   <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
@@ -569,11 +567,10 @@ export const Signup: React.FC<SignupProps> = ({
                       }
                     }}
                     placeholder="Create password (min. 6 characters)"
-                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                      errors.password
-                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                    }`}
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${errors.password
+                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                      }`}
                   />
                   <button
                     type="button"
@@ -631,11 +628,10 @@ export const Signup: React.FC<SignupProps> = ({
                       }
                     }}
                     placeholder="Repeat password"
-                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                      errors.confirmPassword
-                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                    }`}
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${errors.confirmPassword
+                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                      }`}
                   />
                   <button
                     type="button"
@@ -657,6 +653,28 @@ export const Signup: React.FC<SignupProps> = ({
                 )}
               </div>
 
+              {/* Terms of Service Checkbox */}
+              <div className="flex items-center gap-2.5 pt-1">
+                <label
+                  onClick={() => setAgreeTerms(!agreeTerms)}
+                  className="flex items-center gap-2.5 cursor-pointer select-none"
+                >
+                  <div
+                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${agreeTerms
+                      ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'border border-[var(--border-light)] bg-[var(--surface-alt)]'
+                      }`}
+                  >
+                    {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-[var(--text-muted)]">
+                    I have read and agree to the{' '}
+                    <span className="text-[var(--primary)] font-semibold underline cursor-pointer">
+                      Terms of Service
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               {/* Red Get Started Button with Loading State */}
               <button

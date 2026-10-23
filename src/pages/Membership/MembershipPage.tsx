@@ -279,14 +279,14 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
             <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col gap-2.5">
               <div className="flex items-center gap-2">
                 <a
-                  href="tel:+12502580035"
+                  href="tel:+12503519155"
                   className="flex-1 py-2.5 px-3 rounded-lg border border-gray-200 text-gray-800 hover:bg-gray-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5 text-gray-600" />
-                  <span>Call (250) 258-0035</span>
+                  <span>Call (250) 351-9155</span>
                 </a>
                 <a
-                  href="mailto:bentleymobiledetail@gmail.com"
+                  href="mailto:bentleymobilecarwash@gmail.com"
                   className="flex-1 py-2.5 px-3 rounded-lg border border-gray-200 text-gray-800 hover:bg-gray-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Mail className="w-3.5 h-3.5 text-gray-600" />

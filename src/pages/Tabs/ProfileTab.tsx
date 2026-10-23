@@ -3,6 +3,8 @@ import { User } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'
 import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
+import { ContactUsPage } from '@/pages/Contact/ContactUsPage'
+import { AboutUsPage } from '@/pages/About/AboutUsPage'
 import { useToast } from '@/context/ToastContext'
 
 interface ProfileTabProps {
@@ -11,6 +13,8 @@ interface ProfileTabProps {
   onNavigateToNotifications: () => void
   onOpenBooking?: () => void
   onOpenMembership?: () => void
+  onOpenContactUs?: () => void
+  onOpenAboutUs?: () => void
   onLogout?: () => void
   userProfile?: UserProfile
   onUpdateProfile?: (updated: UserProfile) => void
@@ -34,6 +38,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onNavigateToNotifications,
   onOpenBooking,
   onOpenMembership,
+  onOpenContactUs,
+  onOpenAboutUs,
   onLogout,
   userProfile: externalProfile,
   onUpdateProfile,
@@ -68,6 +74,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   })
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
+  const [isContactUsOpen, setIsContactUsOpen] = useState(false)
+  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false)
 
   useEffect(() => {
     // Preload membership images in background as soon as profile is open
@@ -120,29 +128,35 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       action: onNavigateToNotifications,
     },
     {
-      icon: 'person',
+      icon: 'headset_mic',
       title: 'Contact Us',
-      subtitle: 'Get to know us more',
-      action: () => window.open('tel:+12503519155'),
+      subtitle: 'Call, email or visit us in Kelowna',
+      action: onOpenContactUs || (() => setIsContactUsOpen(true)),
     },
     {
-      icon: 'shield',
-      title: 'Security',
-      subtitle: 'Further secure your account for safety',
-      action: () => showToast('Security settings coming soon!', 'info'),
+      icon: 'info',
+      title: 'About Us',
+      subtitle: 'Our story, mission & why choose us',
+      action: onOpenAboutUs || (() => setIsAboutUsOpen(true)),
     },
-    {
-      icon: 'privacy_tip',
-      title: 'Privacy & Policy',
-      subtitle: 'Know our privacy and policies',
-      action: () => showToast('Bentley Privacy Policy: Your data is 100% secure.', 'info'),
-    },
-    {
-      icon: 'help',
-      title: 'Help & Support',
-      subtitle: 'Get help and support',
-      action: () => window.open('mailto:bentleymobilecarwash@gmail.com'),
-    },
+    // {
+    //   icon: 'shield',
+    //   title: 'Security',
+    //   subtitle: 'Further secure your account for safety',
+    //   action: () => showToast('Security settings coming soon!', 'info'),
+    // },
+    // {
+    //   icon: 'privacy_tip',
+    //   title: 'Privacy & Policy',
+    //   subtitle: 'Know our privacy and policies',
+    //   action: () => showToast('Bentley Privacy Policy: Your data is 100% secure.', 'info'),
+    // },
+    // {
+    //   icon: 'help',
+    //   title: 'Help & Support',
+    //   subtitle: 'Concierge assistance & inquiries',
+    //   action: onOpenContactUs || (() => setIsContactUsOpen(true)),
+    // },
   ]
 
   return (
@@ -355,6 +369,21 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         onClose={() => setIsEditProfileOpen(false)}
         onSave={handleSaveProfile}
         savedVehicles={savedVehiclesList && savedVehiclesList.length > 0 ? savedVehiclesList : (profile.preferredVehicle ? [profile.preferredVehicle] : [])}
+      />
+
+      {/* Dedicated Contact Us Full Page Modal */}
+      <ContactUsPage
+        isOpen={isContactUsOpen}
+        onClose={() => setIsContactUsOpen(false)}
+        userProfile={profile}
+      />
+
+      {/* Dedicated About Us Full Page Modal */}
+      <AboutUsPage
+        isOpen={isAboutUsOpen}
+        onClose={() => setIsAboutUsOpen(false)}
+        onBookNow={onOpenBooking}
+        onContactUs={onOpenContactUs || (() => setIsContactUsOpen(true))}
       />
     </div>
   )

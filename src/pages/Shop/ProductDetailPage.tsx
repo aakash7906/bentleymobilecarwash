@@ -19,6 +19,8 @@ import { useToast } from '@/context/ToastContext'
 import { StripeCardForm } from '@/components/StripeCardForm'
 import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
+import { db } from '@/firebase'
+import { collection, doc } from 'firebase/firestore'
 
 interface ProductDetailPageProps {
   product: ProductItem | null
@@ -161,7 +163,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       setIsProcessing(true)
     }
 
-    let finalOrderId = `BCW-${Math.floor(10000 + Math.random() * 90000)}`
+    const originalDocRef = doc(collection(db, 'orders'))
+    let finalOrderId = originalDocRef.id
 
     try {
       if (onCheckoutOrder) {
@@ -192,6 +195,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         finalOrderId = await onCheckoutOrder(orderData)
       } else {
         await new Promise((r) => setTimeout(r, 600))
+        const originalDocRef = doc(collection(db, 'orders'))
+        finalOrderId = originalDocRef.id
       }
 
       setConfirmedOrderId(finalOrderId)
@@ -713,9 +718,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                 {/* Order Details Card */}
                 <div className="w-full bg-surface-alt rounded-2xl p-3 border border-gray-200 text-left flex flex-col gap-1.5 text-xs mt-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Order ID:</span>
-                    <span className="font-mono font-bold text-gray-900">#{confirmedOrderId || 'BCW-99214'}</span>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-gray-500 shrink-0">Order ID:</span>
+                    <span className="font-mono font-bold text-gray-900 break-all text-right text-[11px]">{confirmedOrderId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Product:</span>

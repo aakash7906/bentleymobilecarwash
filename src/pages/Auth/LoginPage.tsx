@@ -104,7 +104,9 @@ export const Login: React.FC<LoginProps> = ({
           // Self-heal: Ensure user document exists in Firestore
           await setDoc(userDocRef, {
             uid: user.uid,
+            Name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
             name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
+            fullName: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
             email: user.email || loginEmail.trim(),
             role: selectedRole,
             createdAt: serverTimestamp(),
@@ -175,7 +177,9 @@ export const Login: React.FC<LoginProps> = ({
           // Self-heal: Ensure user document exists in Firestore
           await setDoc(userDocRef, {
             uid: user.uid,
+            Name: user.displayName || 'Member',
             name: user.displayName || 'Member',
+            fullName: user.displayName || 'Member',
             email: user.email || '',
             role: selectedRole,
             createdAt: serverTimestamp(),
@@ -296,11 +300,10 @@ export const Login: React.FC<LoginProps> = ({
                     }
                   }}
                   placeholder={selectedRole === 'driver' ? 'driver@bentleycarwash.com' : 'Enter your email'}
-                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
-                    errors.email
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${errors.email
                       ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                       : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                  }`}
+                    }`}
                 />
                 {errors.email && (
                   <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
@@ -345,11 +348,10 @@ export const Login: React.FC<LoginProps> = ({
                       }
                     }}
                     placeholder="Enter password"
-                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors tracking-widest ${
-                      errors.password
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors tracking-widest ${errors.password
                         ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                         : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                    }`}
+                      }`}
                   />
                   <button
                     type="button"
@@ -379,11 +381,10 @@ export const Login: React.FC<LoginProps> = ({
                   className="flex items-center gap-2 cursor-pointer select-none"
                 >
                   <div
-                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors ${
-                      rememberMe
+                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors ${rememberMe
                         ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
                         : 'border border-[var(--border-light)] bg-[var(--bg-app)]'
-                    }`}
+                      }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>

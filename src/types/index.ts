@@ -171,7 +171,7 @@ export interface BookingRecord {
   cardLast4?: string
   frequency?: 'one_time' | 'biweekly' | 'monthly'
   serviceItem?: ServiceItem
-  createdAt: string
+  createdAt: any
   rating?: number
   review?: string
 }

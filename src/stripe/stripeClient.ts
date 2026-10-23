@@ -17,7 +17,7 @@ let stripePromise: Promise<Stripe | null> | null = null
 export const getStripe = (): Promise<Stripe | null> => {
   if (!stripePromise) {
     try {
-      stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY).catch((err) => {
+      stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY).catch((err: unknown) => {
         console.warn('Stripe.js failed to initialize (operating in test/simulation mode):', err)
         return null
       })
@@ -26,7 +26,7 @@ export const getStripe = (): Promise<Stripe | null> => {
       stripePromise = Promise.resolve(null)
     }
   }
-  return stripePromise
+  return stripePromise || Promise.resolve(null)
 }
 
 export interface StripeCardDetails {
