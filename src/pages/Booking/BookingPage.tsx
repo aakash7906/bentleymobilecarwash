@@ -17,6 +17,9 @@ import {
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
+import { StripeCardForm } from '@/components/StripeCardForm'
+import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
+import { useToast } from '@/context/ToastContext'
 
 interface BookingPageProps {
   initialService?: ServiceItem | null
@@ -34,6 +37,8 @@ interface BookingPageProps {
     city?: string
     postalCode?: string
   }
+  isGuest?: boolean
+  onRequestAuth?: () => void
 }
 
 interface AddOnOption {
@@ -108,6 +113,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   savedVehicles = [],
   onSelectVehicle,
   userProfile,
+  isGuest = false,
+  onRequestAuth,
 }) => {
   // Service selection
   const [selectedService] = useState<ServiceItem>(
@@ -120,6 +127,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Frequency & Subscription
   const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [showGuestAuthModal, setShowGuestAuthModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
   // Booking location (Autofilled dynamically from Firestore profile)
@@ -164,6 +172,16 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
+  const { showToast } = useToast()
+  const [stripeCardDetails, setStripeCardDetails] = useState<StripeCardDetails>({
+    cardNumber: '',
+    cardholderName: userProfile?.name || '',
+    expiry: '',
+    cvc: '',
+    postalCode: userProfile?.postalCode || '',
+  })
+  const [isStripeCardValid, setIsStripeCardValid] = useState(false)
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
 
   // Booking completion state
   const [isSuccess, setIsSuccess] = useState(false)
@@ -213,7 +231,43 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
   const grandTotal = (subtotal + tax).toFixed(2)
 
-  const handleConfirmBooking = () => {
+  const executeBookingConfirmation = async () => {
+    let stripeTx: any = null
+
+    if (paymentMethod === 'card') {
+      if (!isStripeCardValid) {
+        showToast('Please enter complete & valid card details for Stripe payment.', 'error')
+        return
+      }
+
+      setIsProcessingPayment(true)
+      try {
+        const paymentResult = await processStripePayment(
+          parseFloat(grandTotal),
+          'cad',
+          stripeCardDetails,
+          {
+            serviceTitle: selectedService.title,
+            customerName,
+            customerEmail,
+          }
+        )
+
+        if (!paymentResult.success) {
+          setIsProcessingPayment(false)
+          showToast(paymentResult.error || 'Stripe card payment authorization failed.', 'error')
+          return
+        }
+
+        stripeTx = paymentResult
+      } catch (err: any) {
+        setIsProcessingPayment(false)
+        showToast(err?.message || 'Payment processing error.', 'error')
+        return
+      }
+      setIsProcessingPayment(false)
+    }
+
     const ref = `BW-${Math.floor(100000 + Math.random() * 900000)}`
     const newBookingId = `bkg-${Math.floor(100000 + Math.random() * 900000)}`
     const fullAddress =
@@ -245,7 +299,13 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
         .filter(Boolean) as string[],
       paymentMethod:
-        paymentMethod === 'card' ? 'Credit / Debit Card' : 'Pay on Completion',
+        paymentMethod === 'card'
+          ? `Credit / Debit Card (Stripe •••• ${stripeTx?.last4 || '4242'})`
+          : 'Pay on Completion',
+      stripePaymentId: stripeTx?.paymentIntentId,
+      cardBrand: stripeTx?.cardBrand,
+      cardLast4: stripeTx?.last4,
+      paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
       frequency,
       serviceItem: selectedService,
       createdAt: new Date().toISOString(),
@@ -257,6 +317,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     if (onBookingComplete) {
       onBookingComplete(newBooking)
     }
+  }
+
+  const handleConfirmBooking = () => {
+    if (isGuest) {
+      setShowGuestAuthModal(true)
+      return
+    }
+    executeBookingConfirmation()
   }
 
   // Confirmation Success View
@@ -309,6 +377,15 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 {locationType === 'mobile' ? address : 'Bentley Studio (Kelowna)'}
               </span>
             </div>
+
+            {createdBooking?.stripePaymentId && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Stripe Payment:</span>
+                <span className="font-mono text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Paid ({createdBooking.cardBrand || 'Card'} •••• {createdBooking.cardLast4 || '4242'})
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
               <span className="font-bold text-gray-900">Total Estimated:</span>
@@ -780,9 +857,24 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Credit / Debit Card</span>
-                <span className="text-[10px] text-gray-500">Fast online checkout</span>
+                <span className="text-[10px] text-gray-500">Stripe instant payment</span>
               </button>
             </div>
+
+            {/* Embedded Stripe Card Form */}
+            {paymentMethod === 'card' && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <StripeCardForm
+                  onChange={(details, isValid) => {
+                    setStripeCardDetails(details)
+                    setIsStripeCardValid(isValid)
+                  }}
+                  disabled={isProcessingPayment}
+                  initialName={customerName}
+                  initialPostal={postalCode}
+                />
+              </div>
+            )}
           </div>
 
           {/* 9. Price Breakdown Box */}
@@ -859,12 +951,59 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <button
               onClick={handleConfirmBooking}
-              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isProcessingPayment}
+              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
-              <span>Confirm & Schedule</span>
+              {isProcessingPayment ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Processing Stripe Payment...</span>
+                </>
+              ) : (
+                <span>{paymentMethod === 'card' ? `Pay $${grandTotal} & Schedule` : 'Confirm & Schedule'}</span>
+              )}
             </button>
           </div>
         </div>
+
+        {/* Guest Auth Gate Modal */}
+        {showGuestAuthModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+
+              <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                Sign In to Schedule Technician
+              </h3>
+
+              <div className="w-full flex flex-col gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuestAuthModal(false)
+                    if (onRequestAuth) onRequestAuth()
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer"
+                >
+                  Sign In or Register (Recommended)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuestAuthModal(false)
+                    executeBookingConfirmation()
+                  }}
+                  className="w-full py-2.5 text-xs text-gray-500 hover:text-gray-800 font-semibold transition-colors cursor-pointer"
+                >
+                  Save as Guest Offline Booking
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

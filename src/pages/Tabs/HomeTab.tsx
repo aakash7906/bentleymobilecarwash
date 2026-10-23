@@ -64,6 +64,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const { showToast } = useToast()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
+  const [selectedTrackingBooking, setSelectedTrackingBooking] = useState<BookingRecord | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [currentAddress, setCurrentAddress] = useState(
@@ -680,14 +681,25 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Technician is Arriving (Elevated above bottom nav) */}
+      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status */}
       {(() => {
-        // Find most relevant active booking (in_progress, en_route, accepted, or scheduled)
-        const liveBooking =
-          activeBookings.find((b) => b.status === 'en_route') ||
-          activeBookings.find((b) => b.status === 'in_progress') ||
-          activeBookings.find((b) => b.status === 'accepted') ||
-          activeBookings.find((b) => b.status === 'scheduled')
+        // DYNAMIC STATUS PILL LOGIC:
+        // For logged-in users: ONLY show when a driver accepts that request and has started arriving
+        // (statuses: 'en_route', 'in_progress', or 'accepted' with driver assigned).
+        // Never show for 'scheduled' or 'pending' where no driver has accepted yet.
+        // For guest users: Maintain fallback behavior with available active bookings.
+        const isUser = Boolean(userProfile)
+        const liveBooking = isUser
+          ? activeBookings.find(
+              (b) =>
+                b.status === 'en_route' ||
+                b.status === 'in_progress' ||
+                b.status === 'accepted'
+            )
+          : activeBookings.find((b) => b.status === 'en_route') ||
+            activeBookings.find((b) => b.status === 'in_progress') ||
+            activeBookings.find((b) => b.status === 'accepted') ||
+            activeBookings.find((b) => b.status === 'scheduled')
 
         if (!liveBooking) return null
 
@@ -700,13 +712,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 ? 'Technician Assigned'
                 : 'Appointment Scheduled'
 
-        const mins = liveBooking.estimatedMins || 25
+        const mins =
+          liveBooking.estimatedMins ||
+          (liveBooking.status === 'en_route' ? 7 : liveBooking.status === 'in_progress' ? 15 : 25)
 
         return (
           <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
             <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
               <div
                 onClick={() => {
+                  setSelectedTrackingBooking(liveBooking)
                   if (onOpenTracking) {
                     onOpenTracking(liveBooking)
                   } else {
@@ -743,22 +758,26 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 10. Direct Order Tracking Map Modal from Floating Button */}
       {isTrackingMapOpen && (
         <OrderTrackingMapPage
-          onBack={() => setIsTrackingMapOpen(false)}
+          onBack={() => {
+            setIsTrackingMapOpen(false)
+            setSelectedTrackingBooking(null)
+          }}
           booking={
+            selectedTrackingBooking ||
             activeBookings.find((b) => b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') ||
             activeBookings[0]
           }
-          serviceTitle={activeBookings[0]?.title || 'Car Wash'}
-          serviceCategory={activeBookings[0]?.category || 'Exterior Cleaning'}
-          customerName={userProfile?.name || 'Customer'}
-          customerPhone={userProfile?.phone || ''}
-          customerAddress={userProfile?.address || currentAddress}
-          technicianName={activeBookings[0]?.technicianName || activeBookings[0]?.driverName || 'Alex Rivera'}
-          driverCoords={activeBookings[0]?.driverCoords}
-          customerCoords={activeBookings[0]?.customerCoords}
-          driverVanNumber={activeBookings[0]?.driverVanNumber || 'Van #04'}
-          driverPhone={activeBookings[0]?.driverPhone || '+1 (800) 555-9274'}
-          bookingStatus={activeBookings[0]?.status || 'scheduled'}
+          serviceTitle={(selectedTrackingBooking || activeBookings[0])?.title || 'Car Wash'}
+          serviceCategory={(selectedTrackingBooking || activeBookings[0])?.category || 'Exterior Cleaning'}
+          customerName={userProfile?.name || (selectedTrackingBooking || activeBookings[0])?.customerName || 'Customer'}
+          customerPhone={userProfile?.phone || (selectedTrackingBooking || activeBookings[0])?.customerPhone || ''}
+          customerAddress={userProfile?.address || (selectedTrackingBooking || activeBookings[0])?.address || currentAddress}
+          technicianName={(selectedTrackingBooking || activeBookings[0])?.technicianName || (selectedTrackingBooking || activeBookings[0])?.driverName || 'Alex Rivera'}
+          driverCoords={(selectedTrackingBooking || activeBookings[0])?.driverCoords}
+          customerCoords={(selectedTrackingBooking || activeBookings[0])?.customerCoords}
+          driverVanNumber={(selectedTrackingBooking || activeBookings[0])?.driverVanNumber || 'Van #04'}
+          driverPhone={(selectedTrackingBooking || activeBookings[0])?.driverPhone || '+1 (800) 555-9274'}
+          bookingStatus={(selectedTrackingBooking || activeBookings[0])?.status || 'scheduled'}
         />
       )}
 

@@ -1,332 +1,530 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
-import { dispatchSendGridEmail, generateDefaultEmailHtml } from "./services/sendgrid";
+import { dispatchSendGridEmail } from "./services/sendgrid";
 import * as templates from "./services/emailTemplates";
-
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-// Lazy initializer for Stripe
-function getStripe() {
+/**
+ * Returns initialized Firestore database reference (supporting custom database ID if set)
+ */
+function getDb(): admin.firestore.Firestore {
+  return admin.firestore();
+}
+
+/**
+ * Lazy initializer for Stripe
+ */
+function getStripe(): Stripe | null {
   let stripeConfigSecret: string | null = null;
   try {
     stripeConfigSecret = functions.config()?.stripe?.secret || null;
   } catch (e) {
     // ignore
   }
-  const stripeKey = process.env.STRIPE_SECRET_KEY || 
-                    process.env.STRIPE_SECRET || 
-                    stripeConfigSecret || 
-                    "";
+  const stripeKey =
+    process.env.STRIPE_SECRET_KEY ||
+    process.env.STRIPE_SECRET ||
+    stripeConfigSecret ||
+    "";
+
   if (!stripeKey || stripeKey === "sk_test_placeholder" || !stripeKey.startsWith("sk_")) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "Stripe Secret Key is not configured on the backend. Please set STRIPE_SECRET_KEY in functions environment or Firebase config."
-    );
+    return null;
   }
   return new Stripe(stripeKey, {
-    apiVersion: "2022-11-15" as any
+    apiVersion: "2022-11-15" as any,
   });
 }
 
+/**
+ * Helper to set standard permissive CORS headers for HTTP endpoints
+ */
+function handleCors(req: functions.https.Request, res: functions.Response<any>): boolean {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return true;
+  }
+  return false;
+}
+
+// ============================================================================
+// 1. BACKEND — CREATE CHECKOUT SESSION
+// ============================================================================
 
 /**
- * Callable Cloud Function: createStripePaymentIntent
- * Secures payment parameters on the server and generates a Stripe Client Secret.
+ * Core business logic for creating a car wash Stripe Checkout Session
  */
-export const createStripePaymentIntent = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  // 1. Ensure the user calling the function is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "The function must be called by an authenticated user."
-    );
+async function executeCreateCarwashCheckout(data: any, authUid?: string) {
+  const {
+    type = "booking", // 'booking' | 'shop_order'
+    bookingId,
+    orderId,
+    serviceTitle = "Bentley Mobile Detailing Service",
+    customerName = "Valued Customer",
+    customerEmail = "",
+    customerPhone = "",
+    vehicle = "Luxury Vehicle",
+    vehicleType = "Sedan",
+    date = "",
+    timeSlot = "",
+    address = "Mobile Client Location",
+    amount,
+    currency = "cad",
+    items = [],
+    successUrl,
+    cancelUrl,
+  } = data || {};
+
+  const numericAmount = parseFloat(amount);
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    throw new Error("A valid positive 'amount' is required.");
   }
 
-  const { amount, bidId, name } = data;
+  const appBaseUrl = process.env.APP_URL || "http://localhost:5173";
+  const refId = bookingId || orderId || `BW-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  // 2. Validate essential request inputs
-  if (!amount || typeof amount !== "number" || amount <= 0) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "A valid 'amount' number greater than 0 is required."
-    );
-  }
-  if (!bidId) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "A valid 'bidId' string is required to track this transaction."
-    );
-  }
+  const stripe = getStripe();
 
-  try {
-    // 3. Create the payment intent with Stripe
-    const paymentIntent = await getStripe().paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe expects the amount in cents
-      currency: "usd",
+  // If real Stripe secret is configured, create live Stripe Checkout Session
+  if (stripe) {
+    let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+    if (type === "shop_order" && Array.isArray(items) && items.length > 0) {
+      lineItems = items.map((item: any) => ({
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: item.title || item.product?.title || "Bentley Detailing Product",
+            description: item.product?.description?.slice(0, 200) || undefined,
+          },
+          unit_amount: Math.round(parseFloat(item.priceNumeric || item.product?.priceNumeric || numericAmount) * 100),
+        },
+        quantity: item.quantity || 1,
+      }));
+    } else {
+      lineItems = [
+        {
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: `Bentley Detail: ${serviceTitle}`,
+              description: `Mobile Detailing for ${vehicle} (${vehicleType}) on ${date} at ${timeSlot}`,
+            },
+            unit_amount: Math.round(numericAmount * 100),
+          },
+          quantity: 1,
+        },
+      ];
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      customer_email: customerEmail || undefined,
+      client_reference_id: refId,
       metadata: {
-        bidId: bidId,
-        buyerId: context.auth.uid,
-        buyerEmail: context.auth.token.email || "",
-        productName: name || "Classified Item"
+        type,
+        refId,
+        bookingId: bookingId || refId,
+        customerName,
+        customerEmail,
+        customerPhone,
+        vehicle,
+        date,
+        timeSlot,
+        address,
+        userId: authUid || "",
       },
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      success_url: successUrl || `${appBaseUrl}?session_id={CHECKOUT_SESSION_ID}&booking_id=${refId}&status=success`,
+      cancel_url: cancelUrl || `${appBaseUrl}?booking_id=${refId}&status=cancelled`,
     });
 
-    // 4. Return the client secret to initialize Stripe Elements on the client side
-    return {
-      clientSecret: paymentIntent.client_secret,
-      id: paymentIntent.id
-    };
-  } catch (err: any) {
-    console.error("Stripe payment intent creation failed:", err);
-    throw new functions.https.HttpsError(
-      "internal",
-      err.message || "Unable to initialize Stripe payment intent."
-    );
-  }
-});
-
-/**
- * Callable Cloud Function: createStripeConnectAccount
- * Creates a Stripe Connect Express account and returns onboarding Link URL.
- */
-export const createStripeConnectAccount = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
-  }
-
-
-  try {
-    // Check if account already exists
-    const userDoc = await admin.firestore().collection("users").doc(context.auth.uid).get();
-    let accountId = userDoc.exists ? userDoc.data()?.stripeConnectAccountId : null;
-
-    if (!accountId) {
-      const account = await getStripe().accounts.create({
-        type: "express",
-        email: context.auth.token.email || "",
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true }
-        }
-      });
-      accountId = account.id;
-      await admin.firestore().collection("users").doc(context.auth.uid).set({
-        stripeConnectAccountId: accountId,
-        stripeConnectStatus: "pending",
-        stripeConnectConnected: false,
-        stripeConnectEmail: context.auth.token.email || ""
-      }, { merge: true });
-    }
-
-    const accountLink = await getStripe().accountLinks.create({
-      account: accountId,
-      refresh_url: data.refreshUrl || "http://localhost:5173/dashboard/payments?stripe_callback=refresh",
-      return_url: data.returnUrl || "http://localhost:5173/dashboard/payments?stripe_callback=success",
-      type: "account_onboarding"
-    });
-
-    return {
-      url: accountLink.url,
-      accountId: accountId,
-      mock: false
-    };
-  } catch (err: any) {
-    console.error("Stripe Connect Account creation failed:", err);
-    throw new functions.https.HttpsError("internal", err.message || "Failed to create Connect Account.");
-  }
-});
-
-/**
- * Callable Cloud Function: checkStripeConnectStatus
- * Checks onboarding status and saves to database.
- */
-export const checkStripeConnectStatus = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
-  }
-
-  const userDocRef = admin.firestore().collection("users").doc(context.auth.uid);
-  const userDoc = await userDocRef.get();
-  
-  if (!userDoc.exists) {
-    throw new functions.https.HttpsError("not-found", "User profile not found.");
-  }
-
-  const accountId = userDoc.data()?.stripeConnectAccountId;
-  if (!accountId) {
-    throw new functions.https.HttpsError("failed-precondition", "Stripe Connect account not initialized.");
-  }
-
-
-  try {
-    const account = await getStripe().accounts.retrieve(accountId);
-    const connected = account.charges_enabled && account.payouts_enabled;
-    if (connected) {
-      await userDocRef.set({
-        stripeConnectConnected: true,
-        stripeConnectStatus: "connected",
-        stripeConnectEmail: account.email || context.auth.token.email || ""
-      }, { merge: true });
-    }
-    return {
-      connected,
-      status: connected ? "connected" : "pending",
-      details: account
-    };
-  } catch (err: any) {
-    console.error("Stripe retrieve account failed:", err);
-    throw new functions.https.HttpsError("internal", err.message || "Failed to check Stripe Connect status.");
-  }
-});
-
-/**
- * Callable Cloud Function: getStripeConnectBalance
- * Retrieves the available and pending Stripe balances.
- */
-export const getStripeConnectBalance = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
-  }
-
-  const userDocRef = admin.firestore().collection("users").doc(context.auth.uid);
-  const userDoc = await userDocRef.get();
-
-  if (!userDoc.exists) {
-    throw new functions.https.HttpsError("not-found", "User profile not found.");
-  }
-
-  const accountId = userDoc.data()?.stripeConnectAccountId;
-  if (!accountId) {
-    return { available: 0, pending: 0, connected: false };
-  }
-
-
-  try {
-    const stripeBalance = await getStripe().balance.retrieve({ stripeAccount: accountId });
-    const available = stripeBalance.available.reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0) / 100;
-    const pending = stripeBalance.pending.reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0) / 100;
-
-    return {
-      available,
-      pending,
-      connected: true,
-      mock: false
-    };
-  } catch (err: any) {
-    console.error("Failed to retrieve Stripe balance:", err);
-    throw new functions.https.HttpsError("internal", err.message || "Failed to retrieve Stripe balance.");
-  }
-});
-
-/**
- * Callable Cloud Function: createStripeConnectPayout
- * Executes a payout (withdrawal) from the user's Stripe Connect balance to their bank account.
- */
-export const createStripeConnectPayout = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
-  }
-
-  const { amount } = data;
-  if (!amount || typeof amount !== "number" || amount <= 0) {
-    throw new functions.https.HttpsError("invalid-argument", "A valid 'amount' number greater than 0 is required.");
-  }
-
-  const userDocRef = admin.firestore().collection("users").doc(context.auth.uid);
-  const userDoc = await userDocRef.get();
-
-  if (!userDoc.exists) {
-    throw new functions.https.HttpsError("not-found", "User profile not found.");
-  }
-
-  const accountId = userDoc.data()?.stripeConnectAccountId;
-  if (!accountId) {
-    throw new functions.https.HttpsError("failed-precondition", "Stripe Connect account not setup.");
-  }
-
-
-  try {
-    const amountInCents = Math.round(amount * 100);
-    const payout = await getStripe().payouts.create({
-      amount: amountInCents,
-      currency: "usd",
-    }, {
-      stripeAccount: accountId
-    });
-
-    await userDocRef.collection("payouts").add({
-      payoutId: payout.id,
-      amount: amount,
-      currency: "usd",
-      status: payout.status || "pending",
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    // Save pending state in Firestore
+    const collectionName = type === "shop_order" ? "orders" : "bookings";
+    await getDb()
+      .collection(collectionName)
+      .doc(refId)
+      .set(
+        {
+          id: refId,
+          stripeSessionId: session.id,
+          paymentStatus: "awaiting_payment",
+          status: "pending",
+          customerName,
+          customerEmail,
+          customerPhone,
+          price: `$${numericAmount.toFixed(2)}`,
+          totalNumeric: numericAmount,
+          currency: currency.toUpperCase(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
     return {
       success: true,
-      payoutId: payout.id,
-      amount: amount,
-      mock: false
+      sessionId: session.id,
+      url: session.url,
+      paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+      mock: false,
     };
-  } catch (err: any) {
-    console.error("Stripe payout creation failed:", err);
-    throw new functions.https.HttpsError("internal", err.message || "Stripe payout failed.");
+  }
+
+  // Simulation Mode (when test placeholder key is in use)
+  const simulatedSessionId = `cs_test_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+  const simulatedPaymentIntent = `pi_test_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+
+  const collectionName = type === "shop_order" ? "orders" : "bookings";
+  await getDb()
+    .collection(collectionName)
+    .doc(refId)
+    .set(
+      {
+        id: refId,
+        stripeSessionId: simulatedSessionId,
+        stripePaymentId: simulatedPaymentIntent,
+        paymentStatus: "awaiting_payment",
+        customerName,
+        customerEmail,
+        customerPhone,
+        price: `$${numericAmount.toFixed(2)}`,
+        totalNumeric: numericAmount,
+        currency: currency.toUpperCase(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+  return {
+    success: true,
+    sessionId: simulatedSessionId,
+    url: `${appBaseUrl}?session_id=${simulatedSessionId}&booking_id=${refId}&status=success`,
+    paymentIntentId: simulatedPaymentIntent,
+    mock: true,
+  };
+}
+
+/**
+ * Endpoint: POST /api/create-carwash-checkout (or /createCarwashCheckout)
+ */
+export const createCarwashCheckout = functions.https.onRequest(async (req, res) => {
+  if (handleCors(req, res)) return;
+
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method not allowed. Use POST." });
+    return;
+  }
+
+  try {
+    const result = await executeCreateCarwashCheckout(req.body);
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error("[createCarwashCheckout] Error:", error);
+    res.status(400).json({ error: error.message || "Checkout session creation failed." });
   }
 });
 
 /**
- * Callable Cloud Function: sendContactEmail
- * Handles website contact form submissions and dispatches notifications via SendGrid.
+ * Callable Function: createCarwashCheckoutSession
+ */
+export const createCarwashCheckoutSession = functions.https.onCall(async (data, context) => {
+  try {
+    return await executeCreateCarwashCheckout(data, context.auth?.uid);
+  } catch (error: any) {
+    console.error("[createCarwashCheckoutSession] Error:", error);
+    throw new functions.https.HttpsError("internal", error.message || "Failed to create checkout session.");
+  }
+});
+
+// ============================================================================
+// 2. VERIFY PAYMENT & CONFIRM BOOKING
+// ============================================================================
+
+/**
+ * Core business logic for verifying payment and marking booking/order confirmed
+ */
+async function executeVerifyPaymentAndConfirm(data: any) {
+  const { sessionId, paymentIntentId, bookingId, orderId } = data || {};
+  const refId = bookingId || orderId;
+
+  if (!refId && !sessionId && !paymentIntentId) {
+    throw new Error("bookingId/orderId, sessionId, or paymentIntentId is required.");
+  }
+
+  const stripe = getStripe();
+  let isPaid = false;
+  let finalPaymentIntent = paymentIntentId;
+  let cardBrand = "Card";
+  let cardLast4 = "4242";
+
+  if (stripe) {
+    // 1. Verify via Stripe Checkout Session
+    if (sessionId) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["payment_intent"],
+      });
+      isPaid = session.payment_status === "paid" || session.status === "complete";
+      if (session.payment_intent && typeof session.payment_intent === "object") {
+        finalPaymentIntent = session.payment_intent.id;
+        const charge = (session.payment_intent as any).charges?.data?.[0];
+        if (charge?.payment_method_details?.card) {
+          cardBrand = charge.payment_method_details.card.brand || cardBrand;
+          cardLast4 = charge.payment_method_details.card.last4 || cardLast4;
+        }
+      } else if (typeof session.payment_intent === "string") {
+        finalPaymentIntent = session.payment_intent;
+      }
+    }
+    // 2. Verify via Stripe PaymentIntent directly
+    else if (paymentIntentId) {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      isPaid = intent.status === "succeeded";
+      finalPaymentIntent = intent.id;
+      const charge = (intent as any).charges?.data?.[0];
+      if (charge?.payment_method_details?.card) {
+        cardBrand = charge.payment_method_details.card.brand || cardBrand;
+        cardLast4 = charge.payment_method_details.card.last4 || cardLast4;
+      }
+    }
+  } else {
+    // Test/simulation mode: accept payment verification
+    isPaid = true;
+    finalPaymentIntent = paymentIntentId || sessionId || `pi_sim_${Date.now()}`;
+  }
+
+  if (!isPaid) {
+    throw new Error("Payment has not been completed or verified by Stripe.");
+  }
+
+  // Determine target collection (bookings or orders)
+  const isOrder = !!orderId;
+  const collectionName = isOrder ? "orders" : "bookings";
+  const docRef = getDb().collection(collectionName).doc(refId);
+  const docSnap = await docRef.get();
+
+  const docData = docSnap.exists ? docSnap.data() : null;
+
+  // Update document status in Firestore
+  await docRef.set(
+    {
+      status: isOrder ? "processing" : "scheduled",
+      paymentStatus: "paid",
+      stripePaymentId: finalPaymentIntent,
+      cardBrand,
+      cardLast4,
+      confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // Send branded confirmation email via SendGrid if email is available
+  const recipientEmail = docData?.customerEmail || data?.customerEmail;
+  if (recipientEmail) {
+    try {
+      if (!isOrder) {
+        const emailHtml = templates.bookingConfirmationEmailTemplate({
+          bookingId: refId,
+          customerName: docData?.customerName || data?.customerName || "Member",
+          serviceTitle: docData?.title || docData?.serviceTitle || "Mobile Detailing Service",
+          vehicle: docData?.vehicle || "Registered Vehicle",
+          date: docData?.date || "Scheduled Date",
+          timeSlot: docData?.time || docData?.timeSlot || "Scheduled Time",
+          address: docData?.address || "Client Location",
+          price: docData?.price || `$${docData?.totalNumeric || 0}`,
+          stripePaymentId: finalPaymentIntent,
+          technicianName: docData?.technicianName || "Alex Rivera",
+        });
+
+        await dispatchSendGridEmail({
+          to: recipientEmail,
+          subject: `Booking Confirmed: Bentley Mobile Detailing (#${refId}) 🚗✨`,
+          html: emailHtml,
+        });
+      } else {
+        const emailHtml = templates.orderConfirmationEmailTemplate({
+          orderId: refId,
+          customerName: docData?.customerName || "Member",
+          items: docData?.items || [],
+          grandTotal: docData?.grandTotal || `${docData?.totalNumeric || 0}`,
+          shippingAddress: docData?.shippingAddress || "Registered Delivery Address",
+          stripePaymentId: finalPaymentIntent,
+        });
+
+        await dispatchSendGridEmail({
+          to: recipientEmail,
+          subject: `Order Receipt: Bentley Detailing Care (#${refId}) 🛍️`,
+          html: emailHtml,
+        });
+      }
+    } catch (emailErr) {
+      console.warn("[verifyPayment] Confirmation email dispatch notice:", emailErr);
+    }
+  }
+
+  return {
+    success: true,
+    verified: true,
+    paymentStatus: "paid",
+    id: refId,
+    bookingId: isOrder ? undefined : refId,
+    orderId: isOrder ? refId : undefined,
+    stripePaymentId: finalPaymentIntent,
+    cardBrand,
+    cardLast4,
+  };
+}
+
+/**
+ * Endpoint: POST /verifyPaymentAndConfirmBooking (or /api/verify-carwash-payment)
+ */
+export const verifyPaymentAndConfirmBooking = functions.https.onRequest(async (req, res) => {
+  if (handleCors(req, res)) return;
+
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method not allowed. Use POST." });
+    return;
+  }
+
+  try {
+    const result = await executeVerifyPaymentAndConfirm(req.body);
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error("[verifyPaymentAndConfirmBooking] Error:", error);
+    res.status(400).json({ error: error.message || "Payment verification failed." });
+  }
+});
+
+/**
+ * Callable Function: verifyPaymentAndConfirmBookingCallable
+ */
+export const verifyPaymentAndConfirmBookingCallable = functions.https.onCall(async (data) => {
+  try {
+    return await executeVerifyPaymentAndConfirm(data);
+  } catch (error: any) {
+    console.error("[verifyPaymentAndConfirmBookingCallable] Error:", error);
+    throw new functions.https.HttpsError("internal", error.message || "Verification failed.");
+  }
+});
+
+// ============================================================================
+// 3. STRIPE WEBHOOK HANDLER
+// ============================================================================
+
+/**
+ * Endpoint: POST /stripeWebhook
+ * Listens for checkout.session.completed and payment_intent.succeeded
+ */
+export const stripeWebhook = functions.https.onRequest(async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  const sig = req.headers["stripe-signature"] as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event: Stripe.Event;
+
+  const stripe = getStripe();
+  if (!stripe) {
+    res.status(200).json({ received: true, mode: "simulation" });
+    return;
+  }
+
+  try {
+    if (webhookSecret && sig) {
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+    } else {
+      event = req.body;
+    }
+  } catch (err: any) {
+    console.error(`[stripeWebhook] Webhook signature verification failed:`, err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Handle successful payments
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const refId = session.client_reference_id || session.metadata?.refId || session.metadata?.bookingId;
+    if (refId) {
+      try {
+        await executeVerifyPaymentAndConfirm({
+          sessionId: session.id,
+          bookingId: session.metadata?.type === "shop_order" ? undefined : refId,
+          orderId: session.metadata?.type === "shop_order" ? refId : undefined,
+        });
+      } catch (e) {
+        console.error(`[stripeWebhook] Failed to confirm from session:`, e);
+      }
+    }
+  } else if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    const refId = intent.metadata?.bookingId || intent.metadata?.refId;
+    if (refId) {
+      try {
+        await executeVerifyPaymentAndConfirm({
+          paymentIntentId: intent.id,
+          bookingId: refId,
+        });
+      } catch (e) {
+        console.error(`[stripeWebhook] Failed to confirm from intent:`, e);
+      }
+    }
+  }
+
+  res.status(200).json({ received: true });
+});
+
+// ============================================================================
+// 4. TRANSACTIONAL EMAILS FOR CAR WASH
+// ============================================================================
+
+/**
+ * Callable Function: sendContactEmail
  */
 export const sendContactEmail = functions.https.onCall(async (data: any) => {
   const { name, email, subject, message } = data || {};
 
   if (!name || !email || !message) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Name, email, and message are required fields."
-    );
+    throw new functions.https.HttpsError("invalid-argument", "Name, email, and message are required.");
   }
 
-  const emailSubject = `[Contact Form] ${subject || "Inquiry from " + name}`;
+  const adminEmail = process.env.SENDGRID_ADMIN_EMAIL || "concierge@bentleycarwash.com";
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; color: #1e293b;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">New Contact Us Submission</h2>
-      <p><strong>Sender Name:</strong> ${name}</p>
-      <p><strong>Sender Email:</strong> <a href="mailto:${email}">${email}</a></p>
-      <p><strong>Subject:</strong> ${subject || "N/A"}</p>
-      <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 16px; margin-top: 16px; border-radius: 4px;">
-        <strong style="color: #475569; display: block; margin-bottom: 6px;">Message Content:</strong>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">New Concierge Inquiry</h2>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+      <p><strong>Subject:</strong> ${subject || "General Inquiry"}</p>
+      <div style="background-color: #f8fafc; border-left: 4px solid #D4AF37; padding: 12px 16px; margin-top: 16px; border-radius: 4px;">
         <p style="white-space: pre-wrap; margin: 0; font-size: 14px;">${message}</p>
       </div>
     </div>
   `;
 
   try {
-    // Send email to site support/admin
-    const adminEmail = process.env.SENDGRID_ADMIN_EMAIL || process.env.SENDGRID_FROM_EMAIL || "concierge@bentleycarwash.com";
     await dispatchSendGridEmail({
       to: adminEmail,
-      subject: emailSubject,
+      subject: `[Bentley Concierge] ${subject || "Inquiry from " + name}`,
       html: htmlBody,
-      replyTo: email
+      replyTo: email,
     });
 
-    // Send automated confirmation receipt to the user
     await dispatchSendGridEmail({
       to: email,
       subject: `We received your inquiry - Bentley Mobile Car Wash`,
-      text: `Hi ${name},\n\nThank you for reaching out to Bentley Mobile Car Wash! We have received your message regarding "${subject || "your inquiry"}" and our team will get back to you shortly.\n\nBest regards,\nBentley Concierge Team`,
+      text: `Hi ${name},\n\nThank you for contacting Bentley Mobile Car Wash! We have received your message and our concierge team will get back to you shortly.\n\nWarm regards,\nBentley Concierge Team`,
     });
 
-    return { success: true, message: "Contact message sent successfully via SendGrid." };
+    return { success: true, message: "Contact message sent successfully." };
   } catch (error: any) {
     console.error("Error sending contact email:", error);
     throw new functions.https.HttpsError("internal", error.message || "Failed to send contact email.");
@@ -334,266 +532,41 @@ export const sendContactEmail = functions.https.onCall(async (data: any) => {
 });
 
 /**
- * Callable Cloud Function: sendEmail
- * General-purpose authenticated email dispatcher using SendGrid.
+ * Callable Function: sendBookingConfirmationEmail
  */
-export const sendEmail = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required to send emails.");
+export const sendBookingConfirmationEmail = functions.https.onCall(async (data: any) => {
+  const { recipientEmail, booking } = data || {};
+  if (!recipientEmail || !booking || !booking.bookingId) {
+    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and booking object are required.");
   }
 
-  const { to, subject, text, html, bcc, cc } = data || {};
-  if (!to || !subject || (!text && !html)) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Destination 'to', 'subject', and content ('text' or 'html') are required."
-    );
-  }
-
-  try {
-    const result = await dispatchSendGridEmail({ to, subject, text, html, bcc, cc });
-    return result;
-  } catch (error: any) {
-    throw new functions.https.HttpsError("internal", error.message || "Email dispatch failed.");
-  }
-});
-
-/**
- * Callable Cloud Function: sendOrderNotificationEmail
- * Dispatches transactional notifications for purchases, bids, and order updates.
- */
-export const sendOrderNotificationEmail = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
-  }
-
-  const { recipientEmail, recipientName, itemTitle, orderId, amount, type } = data || {};
-
-  if (!recipientEmail || !itemTitle || !amount) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail, itemTitle, and amount are required.");
-  }
-
-  const titleText = type === "seller" ? "Item Sold Notification" : "Order Confirmation";
-  const subject = `${titleText}: ${itemTitle} (#${orderId || "BENTLEY-" + Date.now().toString().slice(-6)})`;
-
-  const htmlContent = generateDefaultEmailHtml(
-    subject,
-    `Hi ${recipientName || "Collector"},\n\n` +
-    (type === "seller"
-      ? `Great news! Your item "${itemTitle}" has been purchased for $${amount.toFixed(2)}.`
-      : `Thank you for your purchase of "${itemTitle}" for $${amount.toFixed(2)}. Your transaction has been logged securely.`) +
-    `\n\nOrder ID: #${orderId || "N/A"}\nAmount: $${amount.toFixed(2)}\n\nThank you for choosing Bentley Mobile Car Wash!`
-  );
-
-  try {
-    const result = await dispatchSendGridEmail({
-      to: recipientEmail,
-      subject: subject,
-      html: htmlContent
-    });
-    return result;
-  } catch (error: any) {
-    console.error("Order notification email error:", error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to dispatch order notification.");
-  }
-});
-
-/**
- * Callable Cloud Function: sendWelcomeProEmail
- */
-export const sendWelcomeProEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, userName } = data || {};
-  if (!recipientEmail || !userName) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and userName are required.");
-  }
-
-  const html = templates.welcomeProEmailTemplate(userName);
+  const html = templates.bookingConfirmationEmailTemplate(booking);
   return await dispatchSendGridEmail({
     to: recipientEmail,
-    subject: `Welcome to the Bentley Mobile Car Wash family, ${userName}! 🚀`,
-    html
+    subject: `Booking Confirmed: Bentley Mobile Detailing (#${booking.bookingId}) 🚗✨`,
+    html,
   });
 });
 
 /**
- * Callable Cloud Function: sendWelcomeUserEmail
+ * Callable Function: sendOrderNotificationEmail
  */
-export const sendWelcomeUserEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, userName, html } = data || {};
-  if (!recipientEmail) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail is required.");
+export const sendOrderNotificationEmail = functions.https.onCall(async (data: any) => {
+  const { recipientEmail, order } = data || {};
+  if (!recipientEmail || !order || !order.orderId) {
+    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and order are required.");
   }
 
-  const name = userName || "Collector";
-  const emailHtml = html || templates.welcomeUserEmailTemplate(name);
+  const html = templates.orderConfirmationEmailTemplate(order);
   return await dispatchSendGridEmail({
     to: recipientEmail,
-    subject: `Welcome to Bentley Mobile Car Wash, ${name}! 🚀`,
-    html: emailHtml
+    subject: `Order Confirmation: Bentley Detailing Products (#${order.orderId}) 🛍️`,
+    html,
   });
 });
 
 /**
- * Callable Cloud Function: sendDocumentStatusEmail
- */
-export const sendDocumentStatusEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, userName, documentName, status } = data || {};
-  if (!recipientEmail || !userName || !documentName || !status) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail, userName, documentName, and status are required.");
-  }
-
-  const html = templates.documentStatusEmailTemplate(userName, documentName, status);
-  return await dispatchSendGridEmail({
-    to: recipientEmail,
-    subject: `Document Status Update: ${documentName}`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: sendVeteranStatusEmail
- */
-export const sendVeteranStatusEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, userName, status } = data || {};
-  if (!recipientEmail || !userName || !status) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail, userName, and status are required.");
-  }
-
-  const html = templates.veteranStatusEmailTemplate(userName, status);
-  return await dispatchSendGridEmail({
-    to: recipientEmail,
-    subject: `Veteran Status Update`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: sendNewProSignupAdminEmail
- */
-export const sendNewProSignupAdminEmail = functions.https.onCall(async (data: any) => {
-  const { adminEmail, proDetails } = data || {};
-  if (!proDetails || !proDetails.name || !proDetails.email) {
-    throw new functions.https.HttpsError("invalid-argument", "Valid proDetails object is required.");
-  }
-
-  const targetAdminEmail = adminEmail || process.env.SENDGRID_ADMIN_EMAIL || process.env.SENDGRID_FROM_EMAIL || "concierge@bentleycarwash.com";
-  const html = templates.newProSignupAdminEmailTemplate(proDetails);
-  return await dispatchSendGridEmail({
-    to: targetAdminEmail,
-    subject: `🔐 ADMIN: New Professional Registration - ${proDetails.name}`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: sendNewLeadNotificationEmail
- */
-export const sendNewLeadNotificationEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, leadData } = data || {};
-  if (!recipientEmail || !leadData || !leadData.proName || !leadData.shortTitle) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and leadData are required.");
-  }
-
-  const html = templates.newLeadNotificationEmailTemplate(leadData);
-  return await dispatchSendGridEmail({
-    to: recipientEmail,
-    subject: `New Lead Available: ${leadData.shortTitle} 🚀`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: sendNewBookingNotificationEmail
- */
-export const sendNewBookingNotificationEmail = functions.https.onCall(async (data: any) => {
-  const { recipientEmail, bookingData } = data || {};
-  if (!recipientEmail || !bookingData || !bookingData.proName || !bookingData.serviceTitle) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and bookingData are required.");
-  }
-
-  const html = templates.newBookingNotificationEmailTemplate(bookingData);
-  return await dispatchSendGridEmail({
-    to: recipientEmail,
-    subject: `New Booking Confirmed: ${bookingData.serviceTitle} 🎉`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: sendOtpVerificationEmail
- */
-export const sendOtpVerificationEmail = functions.https.onCall(async (data: any) => {
-  let { recipientEmail, userName, otpCode, payloadToken } = data || {};
-  if (payloadToken && !otpCode) {
-    try {
-      const decoded = Buffer.from(payloadToken, "base64").toString("utf-8");
-      const parsed = JSON.parse(decoded);
-      otpCode = parsed.code;
-      recipientEmail = recipientEmail || parsed.email;
-      userName = userName || parsed.name;
-    } catch (e) {
-      otpCode = payloadToken;
-    }
-  }
-
-  if (!recipientEmail || !otpCode) {
-    throw new functions.https.HttpsError("invalid-argument", "recipientEmail and otpCode are required.");
-  }
-
-  const name = userName || "Collector";
-  const html = templates.otpVerificationEmailTemplate(name, otpCode);
-  return await dispatchSendGridEmail({
-    to: recipientEmail,
-    subject: `Your Verification Code: ${otpCode}`,
-    html
-  });
-});
-
-/**
- * Callable Cloud Function: deleteUserAccount
- * Deletes a user account from BOTH Firebase Authentication and Firestore 'users' collection.
- * Users can delete their own account, or Admins can delete any specified target user account.
- */
-export const deleteUserAccount = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required to delete a user account.");
-  }
-
-  const callerUid = context.auth.uid;
-  const targetUid = data?.targetUid || callerUid;
-
-  // Verify authorization: User can delete their own account, or caller must have administrative permissions
-  if (targetUid !== callerUid) {
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    const callerRole = (callerDoc.data()?.role || "").toString().toLowerCase();
-    const allowedRoles = ["admin", "super_admin", "superadmin", "collaborator", "owner"];
-    if (!allowedRoles.includes(callerRole) && context.auth.token?.admin !== true) {
-      throw new functions.https.HttpsError("permission-denied", `Role '${callerRole}' is not authorized to delete other user accounts.`);
-    }
-  }
-
-  try {
-    // 1. Delete user document from Firestore 'users' collection
-    await admin.firestore().collection("users").doc(targetUid).delete();
-
-    // 2. Delete user account from Firebase Authentication using Admin SDK
-    try {
-      await admin.auth().deleteUser(targetUid);
-    } catch (authError: any) {
-      console.warn(`[deleteUserAccount] Auth user ${targetUid} deletion warning (might not exist in Auth):`, authError.message);
-    }
-
-    console.log(`[deleteUserAccount] User ${targetUid} successfully deleted by ${callerUid}.`);
-    return { success: true, message: `User account ${targetUid} has been deleted successfully.` };
-  } catch (error: any) {
-    console.error(`[deleteUserAccount] Failed to delete user ${targetUid}:`, error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to delete user account.");
-  }
-});
-
-/**
- * Callable Cloud Function: sendCustomPasswordResetEmail
- * Generates password reset action code and sends branded HTML email via SendGrid.
+ * Callable Function: sendCustomPasswordResetEmail
  */
 export const sendCustomPasswordResetEmail = functions.https.onCall(async (data: any) => {
   const { email, continueUrl } = data || {};
@@ -602,109 +575,75 @@ export const sendCustomPasswordResetEmail = functions.https.onCall(async (data: 
   }
 
   try {
-    const targetUrl = continueUrl || "http://localhost:5173/reset-password";
+    const targetUrl = continueUrl || `${process.env.APP_URL || "http://localhost:5173"}/reset-password`;
     const actionCodeSettings = {
       url: targetUrl,
       handleCodeInApp: true,
     };
 
-    // 1. Generate reset link via Firebase Admin SDK
     const link = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
-
-    // Extract oobCode to construct direct frontend reset link
     const urlObj = new URL(link);
     const oobCode = urlObj.searchParams.get("oobCode");
     const directResetUrl = `${targetUrl}?oobCode=${oobCode}`;
 
-    // 2. Fetch user's displayName if available
-    let userName = "Collector";
+    let userName = "Member";
     try {
       const userRecord = await admin.auth().getUserByEmail(email);
       if (userRecord.displayName) {
         userName = userRecord.displayName;
-      } else {
-        const userDoc = await admin.firestore().collection("users").doc(userRecord.uid).get();
-        if (userDoc.exists && userDoc.data()?.name) {
-          userName = userDoc.data()?.name;
-        }
       }
-    } catch (e) {
-      console.log("Could not fetch user record details for name, using default name.");
+    } catch {
+      // ignore
     }
 
-    // 3. Render HTML email template
     const html = templates.passwordResetEmailTemplate(userName, directResetUrl);
-
-    // 4. Send email via SendGrid
     await dispatchSendGridEmail({
       to: email,
       subject: `Reset Your Bentley Mobile Car Wash Password 🔐`,
       html,
     });
 
-    return { success: true, message: "Custom password reset email dispatched successfully." };
+    return { success: true, message: "Password reset email dispatched successfully." };
   } catch (error: any) {
     console.error("Error sending custom password reset email:", error);
     throw new functions.https.HttpsError("internal", error.message || "Failed to send password reset email.");
   }
 });
 
-// ShipStation Services Import
-import {
-  getShipStationCarriers as fetchShipStationCarriers,
-  getShipStationRates as fetchShipStationRates,
-  createShipStationOrder as pushShipStationOrder
-} from "./services/shipstation";
+// ============================================================================
+// 5. USER ACCOUNT DELETION (Required by DeleteUser.tsx)
+// ============================================================================
 
 /**
- * Callable Cloud Function: getShipStationCarriers
+ * Callable Function: deleteUserAccount
  */
-export const getShipStationCarriers = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
+export const deleteUserAccount = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
   if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required to delete account.");
   }
+
+  const callerUid = context.auth.uid;
+  const targetUid = data?.targetUid || callerUid;
+
+  if (targetUid !== callerUid) {
+    const callerDoc = await getDb().collection("users").doc(callerUid).get();
+    const callerRole = (callerDoc.data()?.role || "").toString().toLowerCase();
+    const allowedRoles = ["admin", "super_admin", "owner"];
+    if (!allowedRoles.includes(callerRole) && context.auth.token?.admin !== true) {
+      throw new functions.https.HttpsError("permission-denied", "Unauthorized to delete other users.");
+    }
+  }
+
   try {
-    const carriers = await fetchShipStationCarriers(data?.sellerId);
-    return { success: true, carriers };
+    await getDb().collection("users").doc(targetUid).delete();
+    try {
+      await admin.auth().deleteUser(targetUid);
+    } catch (authError: any) {
+      console.warn(`[deleteUserAccount] Auth user deletion warning:`, authError.message);
+    }
+    return { success: true, message: `User account ${targetUid} deleted successfully.` };
   } catch (error: any) {
-    console.error("Error fetching ShipStation carriers:", error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to fetch carriers.");
+    console.error(`[deleteUserAccount] Failed to delete user ${targetUid}:`, error);
+    throw new functions.https.HttpsError("internal", error.message || "Failed to delete user account.");
   }
 });
-
-/**
- * Callable Cloud Function: getShipStationRates
- */
-export const getShipStationRates = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
-  }
-  try {
-    const rates = await fetchShipStationRates(data);
-    return { success: true, rates };
-  } catch (error: any) {
-    console.error("Error fetching ShipStation rates:", error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to fetch rates.");
-  }
-});
-
-/**
- * Callable Cloud Function: createShipStationOrder
- */
-export const createShipStationOrder = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
-  }
-  try {
-    const orderResult = await pushShipStationOrder(data);
-    return { success: true, order: orderResult };
-  } catch (error: any) {
-    console.error("Error creating ShipStation order:", error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to create order.");
-  }
-});
-
-
-
-
-

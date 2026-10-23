@@ -16,8 +16,11 @@ import {
   X,
   Check,
 } from 'lucide-react'
-import { CartItem } from '@/types'
+import { CartItem, DeliveryAddress } from '@/types'
 import { useToast } from '@/context/ToastContext'
+import { StripeCardForm } from '@/components/StripeCardForm'
+import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
+import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 
 interface CartPageProps {
   isOpen: boolean
@@ -60,10 +63,46 @@ export const CartPage: React.FC<CartPageProps> = ({
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
 
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'apple' | 'card' | 'cod'>('apple')
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod'>('card')
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderComplete, setOrderComplete] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState('')
+  const [stripeCardDetails, setStripeCardDetails] = useState<StripeCardDetails>({
+    cardNumber: '',
+    cardholderName: userProfile?.name || '',
+    expiry: '',
+    cvc: '',
+    postalCode: userProfile?.postalCode || '',
+  })
+  const [isCardValid, setIsCardValid] = useState(false)
+  const [stripeReceiptInfo, setStripeReceiptInfo] = useState<{ id?: string; brand?: string; last4?: string } | null>(null)
+
+  // Delivery Address Selection & Editing State
+  const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress>(() => ({
+    id: 'addr-default',
+    label: 'Home',
+    recipientName: userProfile?.name || 'Customer',
+    streetAddress: userProfile?.address || '1420 Water Street, Apt 304',
+    city: userProfile?.city || 'Kelowna, BC',
+    postalCode: userProfile?.postalCode || 'V1Y 1J4',
+    phone: userProfile?.phone || '(250) 555-0192',
+    isDefault: true,
+  }))
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
+
+  // Sync address if userProfile is loaded from Firestore
+  React.useEffect(() => {
+    if (userProfile?.address) {
+      setSelectedAddress((prev) => ({
+        ...prev,
+        recipientName: userProfile.name || prev.recipientName,
+        streetAddress: userProfile.address || prev.streetAddress,
+        city: userProfile.city || prev.city,
+        postalCode: userProfile.postalCode || prev.postalCode,
+        phone: userProfile.phone || prev.phone,
+      }))
+    }
+  }, [userProfile])
 
   if (!isOpen) return null
 
@@ -117,7 +156,48 @@ export const CartPage: React.FC<CartPageProps> = ({
   }
 
   const handleConfirmOrder = async () => {
-    setIsProcessing(true)
+    let stripeTx: any = null
+
+    if (paymentMethod === 'card') {
+      if (!isCardValid) {
+        showToast('Please enter complete & valid card details for Stripe payment.', 'error')
+        return
+      }
+
+      setIsProcessing(true)
+      try {
+        const stripeRes = await processStripePayment(
+          parseFloat(grandTotal),
+          'cad',
+          stripeCardDetails,
+          {
+            orderType: 'cart_checkout',
+            customerName: userProfile?.name || 'Customer',
+            customerEmail: userProfile?.email || '',
+          }
+        )
+
+        if (!stripeRes.success) {
+          setIsProcessing(false)
+          showToast(stripeRes.error || 'Stripe card payment failed.', 'error')
+          return
+        }
+
+        stripeTx = stripeRes
+        setStripeReceiptInfo({
+          id: stripeRes.paymentIntentId,
+          brand: stripeRes.cardBrand,
+          last4: stripeRes.last4,
+        })
+      } catch (err: any) {
+        setIsProcessing(false)
+        showToast(err?.message || 'Payment processing error.', 'error')
+        return
+      }
+    } else {
+      setIsProcessing(true)
+    }
+
     const fallbackId = `#BCW-${Math.floor(10000 + Math.random() * 90000)}`
 
     try {
@@ -130,16 +210,24 @@ export const CartPage: React.FC<CartPageProps> = ({
           shippingFee,
           taxFee,
           grandTotal,
-          paymentMethod,
-          shippingAddress: userProfile?.address || 'Ontario, Canada',
-          customerName: userProfile?.name || 'Customer',
+          paymentMethod:
+            paymentMethod === 'card'
+              ? `Stripe Card (•••• ${stripeTx?.last4 || stripeCardDetails.cardNumber.slice(-4) || '4242'})`
+              : 'Cash / COD',
+          paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+          stripePaymentId: stripeTx?.paymentIntentId,
+          cardBrand: stripeTx?.cardBrand,
+          cardLast4: stripeTx?.last4,
+          shippingAddress: `${selectedAddress.streetAddress}, ${selectedAddress.city} ${selectedAddress.postalCode}`,
+          deliveryNotes: selectedAddress.deliveryNotes || '',
+          customerName: selectedAddress.recipientName || userProfile?.name || 'Customer',
           customerEmail: userProfile?.email || '',
-          customerPhone: userProfile?.phone || '',
+          customerPhone: selectedAddress.phone || userProfile?.phone || '',
           createdAt: new Date().toISOString(),
         }
         finalOrderId = await onCheckoutOrder(orderData)
       } else {
-        await new Promise((r) => setTimeout(r, 800))
+        await new Promise((r) => setTimeout(r, 600))
       }
 
       setPlacedOrderId(finalOrderId)
@@ -228,24 +316,25 @@ export const CartPage: React.FC<CartPageProps> = ({
           /* POPULATED CART */
           <div className="p-4 sm:p-5 flex flex-col gap-4">
             {/* Delivery Destination Pill */}
-            <div className="bg-surface-alt rounded-2xl p-3 border border-gray-200/80 flex items-center justify-between">
+            <div
+              onClick={() => setIsAddressModalOpen(true)}
+              className="bg-surface-alt rounded-2xl p-3 border border-gray-200/80 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-primary shrink-0">
                   <MapPin className="w-4 h-4 text-primary" />
                 </div>
                 <div className="truncate">
                   <span className="text-[11px] font-bold text-gray-800 block truncate">
-                    {userProfile?.address
-                      ? `Delivering to ${userProfile.address}`
-                      : 'Delivering to registered address'}
+                    Delivering to {selectedAddress.streetAddress}, {selectedAddress.city}
                   </span>
                   <span className="text-[10px] text-gray-500">
-                    Hand-delivered by your service technician
+                    Hand-delivered by your service technician • Tap to change
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
-                Active Address
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0 ml-2">
+                Change
               </span>
             </div>
 
@@ -524,23 +613,40 @@ export const CartPage: React.FC<CartPageProps> = ({
 
                 {/* Delivery Location */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-700 block mb-1">
-                    Delivery Address
-                  </label>
-                  <div className="bg-surface-alt p-3 rounded-2xl border border-gray-200 flex items-start gap-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-700">
+                      Delivery Address
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="text-[11px] font-bold text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>Change Address</span>
+                    </button>
+                  </div>
+                  <div
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="bg-surface-alt hover:bg-gray-100 p-3 rounded-2xl border border-gray-200 flex items-start gap-2.5 cursor-pointer transition-all"
+                  >
                     <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-900">
-                          Steve Miller (Ontario)
+                        <span className="text-xs font-bold text-gray-900 truncate">
+                          {selectedAddress.recipientName} ({selectedAddress.label})
                         </span>
-                        <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          Primary
+                        <span className="text-[10px] text-primary font-bold bg-primary-light px-2 py-0.5 rounded-full border border-primary/20 shrink-0 ml-2">
+                          Edit / Change
                         </span>
                       </div>
-                      <p className="text-[11px] text-gray-600 mt-0.5">
-                        21/22, 5th Avenue, Jamesford Road, Ontario, Canada
+                      <p className="text-[11px] text-gray-600 mt-0.5 truncate">
+                        {selectedAddress.streetAddress}, {selectedAddress.city} {selectedAddress.postalCode}
                       </p>
+                      {selectedAddress.deliveryNotes && (
+                        <p className="text-[10px] text-gray-400 mt-0.5 italic truncate">
+                          Note: {selectedAddress.deliveryNotes}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -550,19 +656,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                   <label className="text-[11px] font-bold uppercase tracking-wider text-gray-700 block mb-1.5">
                     Payment Method
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('apple')}
-                      className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'apple'
-                          ? 'border-primary bg-primary-light text-primary'
-                          : 'border-gray-200 bg-surface-alt text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className="text-xs font-bold">Apple Pay</span>
-                      <span className="text-[10px] text-gray-500">1-Touch</span>
-                    </button>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('card')}
@@ -573,7 +667,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span className="text-xs font-bold">•••• 4242</span>
+                      <span className="text-xs font-bold">Credit / Debit Card</span>
                     </button>
                     <button
                       type="button"
@@ -588,6 +682,21 @@ export const CartPage: React.FC<CartPageProps> = ({
                       <span className="text-[10px] text-gray-500">On Delivery</span>
                     </button>
                   </div>
+
+                  {/* Embedded Stripe Card Form */}
+                  {paymentMethod === 'card' && (
+                    <div className="mt-2.5 animate-in fade-in duration-200">
+                      <StripeCardForm
+                        onChange={(details, isValid) => {
+                          setStripeCardDetails(details)
+                          setIsCardValid(isValid)
+                        }}
+                        disabled={isProcessing}
+                        initialName={userProfile?.name || ''}
+                        initialPostal={userProfile?.postalCode || ''}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment Total Callout */}
@@ -651,6 +760,14 @@ export const CartPage: React.FC<CartPageProps> = ({
                       ${grandTotal}
                     </span>
                   </div>
+                  {stripeReceiptInfo?.id && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Stripe Payment:</span>
+                      <span className="font-mono font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Paid ({stripeReceiptInfo.brand || 'Card'} •••• {stripeReceiptInfo.last4 || '4242'})
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-500">Delivery Status:</span>
                     <span className="font-semibold text-emerald-600 flex items-center gap-1">
@@ -673,6 +790,18 @@ export const CartPage: React.FC<CartPageProps> = ({
           </div>
         </div>
       )}
+      {/* Address Selection Modal */}
+      <DeliveryAddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        currentAddress={selectedAddress}
+        onSelectAddress={(newAddr) => {
+          setSelectedAddress(newAddr)
+          showToast(`Delivery destination set to ${newAddr.label}!`, 'success')
+        }}
+        userName={userProfile?.name}
+        userPhone={userProfile?.phone}
+      />
     </div>
   )
 }

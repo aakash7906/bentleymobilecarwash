@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   VEHICLE_BRANDS,
   BRAND_MODELS_MAP,
@@ -6,6 +6,7 @@ import {
 } from '@/data/mockData'
 import { SavedVehicle, VehicleCategory } from '@/types'
 import { ChevronLeft, Car } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface AddVehicleModalProps {
   isOpen: boolean
@@ -87,10 +88,22 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   const [customModel, setCustomModel] = useState('')
   const [selectedVariant, setSelectedVariant] = useState('S-Line Quattro')
   const [selectedType, setSelectedType] = useState<VehicleCategory>('Sedan')
-  const [selectedYear, setSelectedYear] = useState('2023')
+  const currentYearNum = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(String(currentYearNum))
   const [selectedColor, setSelectedColor] = useState('Daytona Gray')
   const [licensePlate, setLicensePlate] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Generate dynamic year list starting from current year (e.g. 2026) down to past years
+  const yearOptions = useMemo(() => {
+    const years: { label: string; value: string }[] = []
+    const startYear = currentYearNum // Max year is current year (e.g. 2026)
+    for (let y = startYear; y >= currentYearNum - 15; y--) {
+      years.push({ label: String(y), value: String(y) })
+    }
+    years.push({ label: 'Classic / Older', value: 'Classic' })
+    return years
+  }, [currentYearNum])
 
   if (!isOpen) return null
 
@@ -223,30 +236,24 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               </div>
 
               {/* Year & Body Type */}
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-700">Year</label>
-                  <select
+                  <Select
                     value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-primary cursor-pointer"
-                  >
-                    {['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2015', '2010'].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
+                    onValueChange={(val) => setSelectedYear(val)}
+                    placeholder="Select Year"
+                    options={yearOptions}
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-700">Body Type (Size)</label>
-                  <select
+                  <Select
                     value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value as VehicleCategory)}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-primary cursor-pointer"
-                  >
-                    {VEHICLE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                    onValueChange={(val) => setSelectedType(val as VehicleCategory)}
+                    placeholder="Select Body Type"
+                    options={VEHICLE_CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
+                  />
                 </div>
               </div>
 

@@ -1,221 +1,95 @@
 /**
- * Cards & Curio Marketplace - HTML Email Templates (Functions Backend)
- * Fully responsive, cross-client email templates optimized for all viewports (Mobile 320px+, Tablet, Desktop, Outlook, Apple Mail, Gmail).
+ * Bentley Mobile Car Wash & Detailing - HTML Email Templates
+ * Fully responsive, cross-client email templates matching Bentley luxury automotive styling.
  */
 
-const LOGIN_URL = process.env.APP_URL || "http://localhost:5173/login";
+const LOGIN_URL = process.env.APP_URL || "http://localhost:5173";
 const SUPPORT_EMAIL = process.env.SENDGRID_FROM_EMAIL || "concierge@bentleycarwash.com";
-const PRIMARY_GREEN = "#D4AF37";
+const PRIMARY_GOLD = "#D4AF37";
 
 /**
- * Common HTML wrapper matching the clean modern Cards & Curio branding.
- * Features fluid table-based layout, CSS resets, client-specific conditional logic,
- * responsive typography, and mobile media queries.
+ * Common HTML wrapper matching the clean modern Bentley luxury branding.
  */
 function renderEmailWrapper(contentHtml: string) {
+  const currentYear = new Date().getFullYear();
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="x-apple-disable-message-reformatting" />
-  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
   <meta name="color-scheme" content="light" />
-  <meta name="supported-color-schemes" content="light" />
   <title>Bentley Mobile Car Wash</title>
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
   <style type="text/css">
-    /* Cross-client CSS resets */
     html, body {
       margin: 0 !important;
       padding: 0 !important;
       height: 100% !important;
       width: 100% !important;
       background-color: #f8fafc !important;
-      -webkit-text-size-adjust: 100% !important;
-      -ms-text-size-adjust: 100% !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
     table, td {
       border-collapse: collapse !important;
-      mso-table-lspace: 0pt !important;
-      mso-table-rspace: 0pt !important;
     }
-    img {
-      border: 0 !important;
-      height: auto !important;
-      line-height: 100% !important;
-      outline: none !important;
-      text-decoration: none !important;
-      -ms-interpolation-mode: bicubic !important;
-    }
-    body, table, td, p, a, li, blockquote {
-      -ms-text-size-adjust: 100%;
-      -webkit-text-size-adjust: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-    a {
-      text-decoration: none;
-    }
-    /* Mobile responsive overrides */
     @media only screen and (max-width: 620px) {
       .email-container {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 auto !important;
-      }
-      .outer-padding {
-        padding: 20px 12px !important;
       }
       .card-body {
-        padding: 26px 18px !important;
-        border-radius: 16px !important;
-      }
-      .logo-title {
-        font-size: 24px !important;
-      }
-      .heading-title {
-        font-size: 20px !important;
-        line-height: 1.3 !important;
-      }
-      .body-text {
-        font-size: 14px !important;
-        line-height: 1.55 !important;
-      }
-      .info-box {
-        padding: 16px 14px !important;
-        margin: 18px 0 !important;
-      }
-      .info-label {
-        display: block !important;
-        width: 100% !important;
-        margin-bottom: 2px !important;
-      }
-      .info-value {
-        display: block !important;
-        width: 100% !important;
-        margin-bottom: 8px !important;
-      }
-      .button-cta {
-        display: block !important;
-        width: 100% !important;
-        padding: 14px 16px !important;
-        box-sizing: border-box !important;
-        text-align: center !important;
-      }
-      .otp-code-text {
-        font-size: 32px !important;
-        letter-spacing: 6px !important;
-      }
-      .footer-text {
-        font-size: 12px !important;
-        line-height: 1.6 !important;
+        padding: 24px 18px !important;
       }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
-  <!-- Preheader spacing -->
-  <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
-    Cards &amp; Curio Marketplace Notification
-  </div>
-
-  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f8fafc" style="background-color: #f8fafc; width: 100%;">
-    <tr>
-      <td align="center" class="outer-padding" style="padding: 40px 16px;">
-        <!--[if (gte mso 9)|(IE)]>
-        <table role="presentation" width="600" align="center" border="0" cellpadding="0" cellspacing="0">
-        <tr>
-        <td>
-        <![endif]-->
-        <table role="presentation" class="email-container" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; margin: 0 auto;">
-          <!-- Header / Brand Logo -->
-          <tr>
-            <td align="center" style="padding-bottom: 24px;">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <a href="http://localhost:5173" target="_blank" style="text-decoration: none;">
-                      <span class="logo-title" style="font-size: 28px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                        Bentley <span style="color: ${PRIMARY_GREEN};">Car Wash</span>
-                      </span>
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Main White Card Container -->
-          <tr>
-            <td align="left">
-              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);">
-                <tr>
-                  <td class="card-body" style="padding: 36px 32px;">
-                    ${contentHtml}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer Section -->
-          <tr>
-            <td align="center" style="padding-top: 28px; padding-bottom: 12px;">
-              <p class="footer-text" style="margin: 0 0 6px 0; font-size: 13px; color: #94a3b8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center;">
-                &copy; 2026 Bentley Mobile Car Wash &amp; Detailing. All rights reserved.
-              </p>
-              <p class="footer-text" style="margin: 0; font-size: 13px; color: #94a3b8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center;">
-                Have questions? Contact us at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${PRIMARY_GREEN}; text-decoration: none; font-weight: 600;">${SUPPORT_EMAIL}</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-        <!--[if (gte mso 9)|(IE)]>
+<body style="margin: 0; padding: 20px 0; background-color: #f8fafc;">
+  <center style="width: 100%; background-color: #f8fafc;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
+      <tr>
+        <td align="center" style="padding: 20px 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);">
+            <!-- Header -->
+            <tr>
+              <td align="center" style="background-color: #0f172a; padding: 28px 24px; border-bottom: 2px solid ${PRIMARY_GOLD};">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">BENTLEY MOBILE CAR WASH</h1>
+                <p style="margin: 4px 0 0 0; font-size: 11px; color: ${PRIMARY_GOLD}; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Premium Eco-Friendly Detailing</p>
+              </td>
+            </tr>
+            <!-- Content -->
+            <tr>
+              <td class="card-body" style="padding: 36px 32px; background-color: #ffffff;">
+                ${contentHtml}
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #334155;">Bentley Mobile Car Wash &amp; Auto Detailing</p>
+                <p style="margin: 0 0 10px 0;">Kelowna &amp; Okanagan Valley, British Columbia, Canada</p>
+                <p style="margin: 0; font-size: 11px;">
+                  Need assistance? Contact our concierge at <a href="mailto:${SUPPORT_EMAIL}" style="color: #0f172a; font-weight: 700; text-decoration: underline;">${SUPPORT_EMAIL}</a>
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 11px; color: #94a3b8;">&copy; ${currentYear} Bentley Mobile Car Wash. All rights reserved.</p>
+              </td>
+            </tr>
+          </table>
         </td>
-        </tr>
-        </table>
-        <![endif]-->
-      </td>
-    </tr>
-  </table>
+      </tr>
+    </table>
+  </center>
 </body>
 </html>`;
 }
 
-/**
- * Generates a bulletproof, mobile-responsive Call-To-Action Button
- */
-function renderActionButton(label: string, url: string) {
+function renderActionButton(buttonText: string, actionUrl: string) {
   return `
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 28px; margin-bottom: 8px;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0 10px 0;">
       <tr>
         <td align="center">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td align="center" bgcolor="${PRIMARY_GREEN}" style="border-radius: 12px; background-color: ${PRIMARY_GREEN};">
-                <!--[if mso]>
-                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="25%" stroke="f" fillcolor="${PRIMARY_GREEN}">
-                <w:anchorlock/>
-                <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:bold;">${label}</center>
-                </v:roundrect>
-                <![endif]-->
-                <!--[if !mso]><!-->
-                <a href="${url}" target="_blank" class="button-cta" style="display: inline-block; background-color: ${PRIMARY_GREEN}; color: #ffffff !important; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 188, 0, 0.25); text-align: center; border: 1px solid ${PRIMARY_GREEN};">
-                  ${label}
-                </a>
-                <!--<![endif]-->
-              </td>
-            </tr>
-          </table>
+          <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 9999px; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            ${buttonText} &rarr;
+          </a>
         </td>
       </tr>
     </table>
@@ -223,465 +97,147 @@ function renderActionButton(label: string, url: string) {
 }
 
 /**
- * 1. Welcome Email for New Marketplace Users
+ * 1. Booking Confirmation Email Template
  */
-export const welcomeUserEmailTemplate = (userName: string) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      Welcome to the Family! 🚀
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${userName}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Great news! Your account has been created successfully on <strong style="color: ${PRIMARY_GREEN};">Cards &amp; Curio Marketplace</strong>.
-    </p>
-    <p class="body-text" style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      You can now explore rare trading cards, bid on classified listings, and connect with passionate collectors worldwide.
-    </p>
-
-    <!-- Info Box -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px;">
-          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">Account:</strong> ${userName}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">Status:</strong> <span style="color: ${PRIMARY_GREEN}; font-weight: 700;">Active &amp; Verified</span>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">Platform:</strong> Cards &amp; Curio Marketplace
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    ${renderActionButton("Go to Dashboard", LOGIN_URL)}
-  `);
-};
-
-export const welcomeProEmailTemplate = (userName: string) => {
-  return welcomeUserEmailTemplate(userName);
-};
-
-/**
- * 2. Order Confirmation Email for Buyers
- */
-export const orderConfirmationEmailTemplate = (data: {
-  buyerName: string;
-  itemTitle: string;
-  orderId: string;
-  amount: number;
+export const bookingConfirmationEmailTemplate = (booking: {
+  bookingId: string;
+  customerName: string;
+  serviceTitle: string;
+  vehicle: string;
+  date: string;
+  timeSlot: string;
+  address: string;
+  price: string;
+  paymentMethod?: string;
+  stripePaymentId?: string;
+  technicianName?: string;
 }) => {
   return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      Order Confirmed! 🎉
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${data.buyerName}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Thank you for your purchase! Your order has been placed successfully on <strong style="color: ${PRIMARY_GREEN};">Cards &amp; Curio</strong>.
-    </p>
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
+        Appointment Confirmed &amp; Paid
+      </span>
+      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Detail is Scheduled!</h2>
+      <p style="margin: 0; font-size: 14px; color: #64748b;">
+        Hello <strong>${booking.customerName}</strong>, our mobile detailing technician will arrive on time with a fully equipped mobile unit.
+      </p>
+    </div>
 
-    <!-- Info Box -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
+    <!-- Booking Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
       <tr>
-        <td style="padding: 16px 20px;">
-          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 110px; display: inline-block;">Item Title:</strong> ${data.itemTitle}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 110px; display: inline-block;">Order ID:</strong> #${data.orderId}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 110px; display: inline-block;">Total Paid:</strong> <span style="color: ${PRIMARY_GREEN}; font-weight: 700;">$${data.amount.toFixed(2)} USD</span>
-              </td>
-            </tr>
-          </table>
-        </td>
+        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Booking Reference</td>
+        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${booking.bookingId}</td>
       </tr>
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Service Package</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.serviceTitle}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Target Vehicle</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.vehicle}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Scheduled Time</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.date} at ${booking.timeSlot}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Location / Dispatch Address</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.address}</td>
+      </tr>
+      ${booking.technicianName ? `
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Assigned Technician</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.technicianName}</td>
+      </tr>` : ''}
+      <tr>
+        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
+        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
+      </tr>
+      ${booking.stripePaymentId ? `
+      <tr>
+        <td style="padding: 8px 18px 14px; font-size: 11px; color: #94a3b8;" colspan="2">
+          Stripe Payment Authorization: <span style="font-family: monospace; color: #64748b;">${booking.stripePaymentId}</span>
+        </td>
+      </tr>` : ''}
     </table>
 
-    <p class="body-text" style="margin: 16px 0 0 0; font-size: 14px; line-height: 1.6; color: #64748b;">
-      You can track the shipment status and view receipt details anytime from your account dashboard.
-    </p>
+    <div style="background-color: #f1f5f9; padding: 16px; border-radius: 12px; margin-top: 20px; font-size: 12px; color: #475569; line-height: 1.5;">
+      <strong>What to expect next:</strong> Our technician brings 100% pure deionized spot-free water, whisper-quiet generators, and biodegradable pH-neutral chemicals. Please ensure vehicle keys are accessible.
+    </div>
 
-    ${renderActionButton("View Order Details", LOGIN_URL)}
+    ${renderActionButton("View Booking in App", LOGIN_URL)}
   `);
 };
 
 /**
- * 3. Item Sold Notification for Sellers
+ * 2. Product Store Order Confirmation Email Template
  */
-export const itemSoldEmailTemplate = (data: {
-  sellerName: string;
-  itemTitle: string;
+export const orderConfirmationEmailTemplate = (order: {
   orderId: string;
-  amount: number;
+  customerName: string;
+  items: Array<{ title: string; quantity: number; price: string }>;
+  grandTotal: string;
+  shippingAddress: string;
+  stripePaymentId?: string;
 }) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      Great News! Item Sold! 💰
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${data.sellerName}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      A collector has just purchased your listing on <strong style="color: ${PRIMARY_GREEN};">Cards &amp; Curio Marketplace</strong>.
-    </p>
-
-    <!-- Info Box -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px;">
-          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 120px; display: inline-block;">Item Name:</strong> ${data.itemTitle}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 120px; display: inline-block;">Order Ref:</strong> #${data.orderId}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 120px; display: inline-block;">Payout Amount:</strong> <span style="color: ${PRIMARY_GREEN}; font-weight: 700;">$${data.amount.toFixed(2)} USD</span>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <p class="body-text" style="margin: 16px 0 0 0; font-size: 14px; line-height: 1.6; color: #64748b;">
-      Please log in to your seller portal to prepare the parcel for shipping and update tracking information.
-    </p>
-
-    ${renderActionButton("Go to Seller Portal", LOGIN_URL)}
-  `);
-};
-
-/**
- * 4. Contact Form Submission Receipt (for User)
- */
-export const contactReceiptEmailTemplate = (name: string, subject?: string) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      We Received Your Message! 📩
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${name}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Thank you for reaching out to <strong style="color: ${PRIMARY_GREEN};">Cards &amp; Curio Support</strong> regarding <strong>"${subject || "your inquiry"}"</strong>.
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Our customer support team is reviewing your message and will respond directly to this email address shortly.
-    </p>
-
-    <!-- Info Box -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px;">
-          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">From:</strong> ${name}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">Subject:</strong> ${subject || "General Inquiry"}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #475569; font-family: sans-serif;">
-                <strong style="color: #0f172a; width: 100px; display: inline-block;">Status:</strong> <span style="color: ${PRIMARY_GREEN}; font-weight: 700;">Under Support Review</span>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  `);
-};
-
-/**
- * 5. OTP Two-Factor Verification Code Email
- */
-export const otpVerificationEmailTemplate = (userName: string, otpCode: string) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-align: center;">
-      Two-Factor Authentication
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${userName}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      A sign-in attempt was initiated for your account requiring Two-Factor Authentication. Please use the following one-time verification code:
-    </p>
-
-    <!-- OTP Display Box -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-      <tr>
-        <td align="center" bgcolor="#f0fdf4" style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 16px; padding: 22px 16px;">
-          <span class="otp-code-text" style="font-family: 'Courier New', Courier, monospace; font-size: 38px; font-weight: 800; letter-spacing: 10px; color: ${PRIMARY_GREEN}; display: inline-block; word-break: break-all;">
-            ${otpCode}
-          </span>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 16px 0 6px 0; font-size: 13px; color: #ef4444; text-align: center; font-weight: 700; font-family: sans-serif;">
-      ⏱️ This OTP code expires in 15 minutes and can only be used once.
-    </p>
-    <p style="margin: 0; font-size: 12px; color: #94a3b8; text-align: center; font-family: sans-serif;">
-      If you did not initiate this login request, please change your password immediately.
-    </p>
-  `);
-};
-
-/**
- * 6. News Blast / Platform Announcement Email
- */
-export const newsBlastEmailTemplate = (data: { title: string; message: string; userName?: string }) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      📢 ${data.title}
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${data.userName || "Valued Collector"}</strong>,
-    </p>
-    
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 18px 0;">
-      <tr>
-        <td style="padding: 18px 20px; font-size: 15px; line-height: 1.65; color: #1e293b; font-family: sans-serif; white-space: pre-wrap; word-break: break-word;">
-          ${data.message}
-        </td>
-      </tr>
-    </table>
-
-    ${renderActionButton("Visit Cards & Curio", LOGIN_URL)}
-  `);
-};
-
-/**
- * 7. Newsletter Broadcast Email Template
- */
-export const newsletterBroadcastEmailTemplate = (bodyContentHtml: string, recipientEmail: string) => {
-  const unsubscribeUrl = `https://cardsandcurio.com/unsubscribe?email=${encodeURIComponent(recipientEmail)}`;
-
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="x-apple-disable-message-reformatting" />
-  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
-  <meta name="color-scheme" content="light" />
-  <meta name="supported-color-schemes" content="light" />
-  <title>Cards &amp; Curio Newsletter</title>
-  <style type="text/css">
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      height: 100% !important;
-      width: 100% !important;
-      background-color: #f8fafc !important;
-      -webkit-text-size-adjust: 100% !important;
-      -ms-text-size-adjust: 100% !important;
-    }
-    table, td {
-      border-collapse: collapse !important;
-      mso-table-lspace: 0pt !important;
-      mso-table-rspace: 0pt !important;
-    }
-    img {
-      border: 0 !important;
-      height: auto !important;
-      line-height: 100% !important;
-      outline: none !important;
-      text-decoration: none !important;
-      max-width: 100% !important;
-    }
-    body, table, td, p, a, li, blockquote {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-    @media only screen and (max-width: 620px) {
-      .email-container {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-      .outer-padding {
-        padding: 20px 12px !important;
-      }
-      .card-body {
-        padding: 24px 16px !important;
-        border-radius: 14px !important;
-      }
-      .logo-title {
-        font-size: 22px !important;
-      }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc;">
-  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f8fafc">
+  const itemsHtml = order.items.map((item) => `
     <tr>
-      <td align="center" class="outer-padding" style="padding: 36px 16px;">
-        <!--[if (gte mso 9)|(IE)]>
-        <table role="presentation" width="600" align="center" border="0" cellpadding="0" cellspacing="0">
-        <tr>
-        <td>
-        <![endif]-->
-        <table role="presentation" class="email-container" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; margin: 0 auto;">
-          <tr>
-            <td align="center" style="padding-bottom: 20px;">
-              <h2 class="logo-title" style="margin: 0; font-size: 26px; font-weight: 800; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                Cards <span style="color: ${PRIMARY_GREEN};">&amp; Curio</span>
-              </h2>
-            </td>
-          </tr>
-          <tr>
-            <td align="left">
-              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color: #ffffff; border-radius: 16px; border: 1px solid ${PRIMARY_GREEN}; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);">
-                <tr>
-                  <td class="card-body" style="padding: 32px 28px; font-size: 15px; line-height: 1.65; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; word-break: break-word;">
-                    ${bodyContentHtml}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding-top: 24px;">
-              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-family: sans-serif; text-align: center;">
-                &copy; 2026 Cards &amp; Curio. All rights reserved.
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #94a3b8; font-family: sans-serif; text-align: center; line-height: 1.6;">
-                You received this email because you are subscribed to Cards &amp; Curio updates.<br />
-                To opt out of future emails, you can <a href="${unsubscribeUrl}" style="color: #0f172a; text-decoration: underline; font-weight: 700;">unsubscribe here</a>.
-              </p>
-            </td>
-          </tr>
-        </table>
-        <!--[if (gte mso 9)|(IE)]>
-        </td>
-        </tr>
-        </table>
-        <![endif]-->
+      <td style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 600;">
+        ${item.title} <span style="color: #64748b; font-size: 11px;">(Qty: ${item.quantity})</span>
+      </td>
+      <td align="right" style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: 700; color: #0f172a;">
+        ${item.price}
       </td>
     </tr>
-  </table>
-</body>
-</html>`;
+  `).join('');
+
+  return renderEmailWrapper(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; background-color: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #bfdbfe;">
+        Order Placed Successfully
+      </span>
+      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Bentley Detailing Products</h2>
+      <p style="margin: 0; font-size: 14px; color: #64748b;">
+        Thank you for ordering, <strong>${order.customerName}</strong>! Your official detailing supplies are being prepped.
+      </p>
+    </div>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+      <tr>
+        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Order Number</td>
+        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${order.orderId}</td>
+      </tr>
+      ${itemsHtml}
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Delivery Address</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${order.shippingAddress}</td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
+        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
+      </tr>
+    </table>
+
+    ${renderActionButton("Track Your Order", LOGIN_URL)}
+  `);
 };
 
 /**
- * 8. Password Reset Email Template
+ * 3. Password Reset Email Template
  */
-export const passwordResetEmailTemplate = (userName: string, resetUrl?: string) => {
+export const passwordResetEmailTemplate = (userName: string, resetUrl: string) => {
   return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-      Reset Your Password 🔐
-    </h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Hello <strong style="color: #0f172a;">${userName}</strong>,
-    </p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      We received a request to reset the password for your <strong style="color: ${PRIMARY_GREEN};">Cards &amp; Curio</strong> account.
-    </p>
-    <p class="body-text" style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-      Click the button below to set up a new secure password. If you did not request this password reset, you can safely disregard this email.
+    <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 800; color: #0f172a;">Reset Your Password</h2>
+    <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+      Hello <strong>${userName}</strong>,<br/><br/>
+      We received a request to reset the password for your Bentley Mobile Car Wash account. Click the button below to choose a new secure password.
     </p>
 
-    ${renderActionButton("Reset Password", resetUrl || LOGIN_URL)}
-  `);
-};
+    ${renderActionButton("Reset Password", resetUrl)}
 
-export const documentStatusEmailTemplate = (userName: string, documentName: string, status: 'approved' | 'rejected') => {
-  const isApproved = status === 'approved';
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">Document Status Update</h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; color: #334155;">Hello <strong style="color: #0f172a;">${userName}</strong>,</p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">Your document <strong>${documentName}</strong> has been reviewed.</p>
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px; font-size: 14px; color: #475569;">
-          <strong>Status:</strong> <span style="color: ${isApproved ? '#16a34a' : '#dc2626'}; font-weight: 700;">${isApproved ? 'Approved' : 'Rejected'}</span>
-        </td>
-      </tr>
-    </table>
-    ${renderActionButton("Go to Dashboard", LOGIN_URL)}
-  `);
-};
-
-export const veteranStatusEmailTemplate = (userName: string, status: 'verified' | 'rejected') => {
-  const isVerified = status === 'verified';
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">Military / Veteran Status Update</h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; color: #334155;">Hello <strong style="color: #0f172a;">${userName}</strong>,</p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">Your military verification request has been evaluated.</p>
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px; font-size: 14px; color: #475569;">
-          <strong>Status:</strong> <span style="color: ${isVerified ? '#16a34a' : '#dc2626'}; font-weight: 700;">${isVerified ? 'Verified' : 'Rejected'}</span>
-        </td>
-      </tr>
-    </table>
-    ${renderActionButton("Go to Dashboard", LOGIN_URL)}
-  `);
-};
-
-export const newProSignupAdminEmailTemplate = (proDetails: { name: string; email: string; phone?: string; role?: string; }) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">New Registration Alert 🔐</h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; color: #334155;">A new user has registered on Cards &amp; Curio:</p>
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="info-box" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin: 20px 0;">
-      <tr>
-        <td style="padding: 16px 20px; font-size: 14px; color: #475569;">
-          <div><strong>Name:</strong> ${proDetails.name}</div>
-          <div style="margin-top: 6px;"><strong>Email:</strong> ${proDetails.email}</div>
-        </td>
-      </tr>
-    </table>
-    ${renderActionButton("Open Admin Console", LOGIN_URL)}
-  `);
-};
-
-export const newLeadNotificationEmailTemplate = (leadData: { shortTitle: string; proName: string }) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">New Lead Alert 🚀</h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; color: #334155;">Hello <strong style="color: #0f172a;">${leadData.proName}</strong>,</p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">A new lead matching your profile is available: <strong>${leadData.shortTitle}</strong>.</p>
-    ${renderActionButton("View Lead Details", LOGIN_URL)}
-  `);
-};
-
-export const newBookingNotificationEmailTemplate = (bookingData: { serviceTitle: string; proName: string }) => {
-  return renderEmailWrapper(`
-    <h1 class="heading-title" style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">New Booking Confirmed 🎉</h1>
-    <p class="body-text" style="margin: 0 0 14px 0; font-size: 15px; color: #334155;">Hello <strong style="color: #0f172a;">${bookingData.proName}</strong>,</p>
-    <p class="body-text" style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">A new booking has been confirmed for: <strong>${bookingData.serviceTitle}</strong>.</p>
-    ${renderActionButton("View Booking", LOGIN_URL)}
+    <p style="margin: 20px 0 0 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+      If you did not request a password reset, you can safely ignore this email. Your account remains completely secure.
+    </p>
   `);
 };

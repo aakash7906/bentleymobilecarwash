@@ -33,6 +33,7 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
+  deleteField,
   serverTimestamp,
 } from 'firebase/firestore'
 
@@ -82,6 +83,7 @@ export const App: React.FC = () => {
 
   // STEP 2 INTEGRATION: Live user profile data fetched from Firestore 'users' collection
   const [userProfileData, setUserProfileData] = useState<{
+    name?: string
     fullName?: string
     email?: string
     phone?: string
@@ -99,6 +101,7 @@ export const App: React.FC = () => {
     isAvailable?: boolean
     preferredVehicle?: string
     membershipTier?: string
+    vehicles?: Record<string, SavedVehicle>
   } | null>(null)
 
   // Driver Profile State (Synced with localStorage & Firestore)
@@ -168,12 +171,23 @@ export const App: React.FC = () => {
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
   const [_isMembershipOpen, setIsMembershipOpen] = useState(false)
 
-  // Sync cartItems with localStorage
+  // Tracks if the user's cart has been initialized/merged from Firestore for this session
+  const syncedUserCartRef = React.useRef<string | null>(null)
+
+  // Sync cartItems with localStorage and Cloud Firestore (when user is logged in)
   useEffect(() => {
     try {
       localStorage.setItem('bentley_cart_items', JSON.stringify(cartItems))
     } catch { }
-  }, [cartItems])
+
+    // If user is logged in and their initial cart sync has completed, update Firestore
+    if (currentUser && syncedUserCartRef.current === currentUser.uid) {
+      const userDocRef = doc(db, 'users', currentUser.uid)
+      setDoc(userDocRef, { cart: cartItems, updatedAt: serverTimestamp() }, { merge: true }).catch((err) => {
+        console.warn('Failed to sync cart update to Firestore:', err)
+      })
+    }
+  }, [cartItems, currentUser])
 
   // Sync savedVehicles with localStorage
   useEffect(() => {
@@ -213,6 +227,7 @@ export const App: React.FC = () => {
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
+        syncedUserCartRef.current = null
       }
     })
     return () => unsubscribe()
@@ -222,6 +237,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!currentUser) {
       setUserProfileData(null)
+      syncedUserCartRef.current = null
       return
     }
 
@@ -237,7 +253,7 @@ export const App: React.FC = () => {
             setCurrentRole('driver')
             setDriverProfile((prev) => ({
               ...prev,
-              name: data.fullName || prev.name,
+              name: data.name || data.fullName || prev.name,
               email: data.email || prev.email,
               phone: data.driverPhone || data.phone || prev.phone,
               vanModel: data.driverVan || data.driverDetails?.vehicle || data.driverDetails?.vanNumber || prev.vanModel,
@@ -251,14 +267,75 @@ export const App: React.FC = () => {
           } else if (data.role === 'customer') {
             setCurrentRole('customer')
           }
+
+          // DYNAMIC VEHICLES MAP SYNC:
+          // Read vehicles directly from key-value pair (object/map) in user document
+          if (data.vehicles && typeof data.vehicles === 'object') {
+            const mapVehicles = Object.values(data.vehicles) as SavedVehicle[]
+            if (mapVehicles.length > 0) {
+              setSavedVehicles(mapVehicles)
+              const hasActive = mapVehicles.some((v) => v.name === currentVehicle)
+              if (!hasActive) {
+                const primaryVeh = mapVehicles.find((v) => v.isPrimary) || mapVehicles[0]
+                setCurrentVehicle(data.preferredVehicle || primaryVeh.name)
+              }
+            }
+          }
+
+          // CART SYNC ON LOGIN:
+          // Merge local guest cart and remote Firestore cloud cart seamlessly
+          if (syncedUserCartRef.current !== currentUser.uid) {
+            syncedUserCartRef.current = currentUser.uid
+            const cloudCart: CartItem[] = Array.isArray(data.cart) ? data.cart : []
+
+            setCartItems((localCart) => {
+              if (localCart && localCart.length > 0) {
+                const mergedMap = new Map<string, CartItem>()
+                // Populate from remote cloud cart
+                cloudCart.forEach((item) => {
+                  if (item?.product?.id) {
+                    mergedMap.set(item.product.id, item)
+                  }
+                })
+                // Merge active local items (combine or take maximum quantity)
+                localCart.forEach((localItem) => {
+                  if (localItem?.product?.id) {
+                    const existing = mergedMap.get(localItem.product.id)
+                    if (existing) {
+                      mergedMap.set(localItem.product.id, {
+                        ...existing,
+                        quantity: Math.max(existing.quantity, localItem.quantity),
+                      })
+                    } else {
+                      mergedMap.set(localItem.product.id, localItem)
+                    }
+                  }
+                })
+
+                const merged = Array.from(mergedMap.values())
+                // Push merged state back to user's Firestore document
+                setDoc(
+                  userDocRef,
+                  { cart: merged, updatedAt: serverTimestamp() },
+                  { merge: true }
+                ).catch((err) => {
+                  console.warn('Failed to sync merged cart to Firestore:', err)
+                })
+                return merged
+              } else if (cloudCart.length > 0) {
+                // If local cart is empty, restore saved cloud cart for the user
+                return cloudCart
+              }
+              return localCart
+            })
+          }
         } else {
           // Self-heal: If user exists in Firebase Auth but document is missing in Firestore, create it now
           try {
             await setDoc(userDocRef, {
               uid: currentUser.uid,
-              fullName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
+              name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
               email: currentUser.email || '',
-              phone: currentUser.phoneNumber || '+1 (800) 555-9274',
               role: currentRole || 'customer',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
@@ -276,7 +353,7 @@ export const App: React.FC = () => {
     return () => unsubDoc()
   }, [currentUser])
 
-  // STEP 3 INTEGRATION: Real-time listener for user vehicles subcollection ('users/{uid}/vehicles')
+  // STEP 3 INTEGRATION: Real-time listener for user vehicles subcollection ('users/{uid}/vehicles') (fallback/sync)
   useEffect(() => {
     if (!currentUser) return
 
@@ -289,8 +366,15 @@ export const App: React.FC = () => {
             ...(docSnap.data() as SavedVehicle),
             id: docSnap.id,
           }))
-          setSavedVehicles(loadedVehicles)
-          // Set active vehicle if not currently in list
+          setSavedVehicles((prev) => {
+            const merged = [...prev]
+            loadedVehicles.forEach((v) => {
+              if (!merged.some((m) => m.id === v.id)) {
+                merged.push(v)
+              }
+            })
+            return merged
+          })
           if (loadedVehicles.length > 0) {
             const hasActive = loadedVehicles.some((v) => v.name === currentVehicle)
             if (!hasActive) {
@@ -331,12 +415,40 @@ export const App: React.FC = () => {
         setBookings(loadedBookings)
       },
       (error) => {
-        console.error('Error listening to user bookings in Firestore:', error)
+        console.error('Error listening to bookings in Firestore:', error)
       }
     )
 
     return () => unsubBookings()
   }, [currentUser, currentRole])
+
+  // STEP 3.5 INTEGRATION: Guest-to-User Transition - Automatically sync locally added vehicles to Firestore on login
+  useEffect(() => {
+    if (!currentUser) return
+
+    if (savedVehicles.length > 0) {
+      const userDocRef = doc(db, 'users', currentUser.uid)
+      const vehiclesMap: Record<string, any> = {}
+      savedVehicles.forEach((v) => {
+        const cleanV = Object.fromEntries(
+          Object.entries(v).filter(([_, val]) => val !== undefined)
+        )
+        vehiclesMap[v.id] = cleanV
+      })
+
+      setDoc(
+        userDocRef,
+        {
+          vehicles: vehiclesMap,
+          preferredVehicle: currentVehicle || savedVehicles[0].name,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      ).catch((err) => {
+        console.warn('Could not sync guest vehicles to Firestore upon login:', err)
+      })
+    }
+  }, [currentUser?.uid])
 
   const isAppReady = !showSplash && !showOnboarding && !showAuth
 
@@ -355,41 +467,109 @@ export const App: React.FC = () => {
     setIsBookingOpen(true)
   }
 
-  // STEP 3 INTEGRATION: Save vehicle to Firestore subcollection & update local state
+  // STEP 3 INTEGRATION: Save vehicle to Firestore as key-value pair (object/map) in user document
   const handleVehicleAdded = async (newVehicle: SavedVehicle) => {
-    setSavedVehicles((prev) => [newVehicle, ...prev.filter((v) => v.id !== newVehicle.id)])
-    setCurrentVehicle(newVehicle.name)
-    // Toast notification for adding vehicle
-    showToast(`${newVehicle.name} added to your garage!`, 'success')
+    const updatedVehicle: SavedVehicle = {
+      ...newVehicle,
+      isPrimary: true,
+    }
 
+    // 1. Update local state immediately for instant responsive UI
+    setSavedVehicles((prev) => [
+      updatedVehicle,
+      ...prev.filter((v) => v.id !== newVehicle.id).map((v) => ({ ...v, isPrimary: false })),
+    ])
+    setCurrentVehicle(updatedVehicle.name)
+    showToast(`${updatedVehicle.name} added to your garage!`, 'success')
+
+    // 2. Persist to Firestore inside users collection document under 'vehicles' key-value pair map
     if (currentUser) {
       try {
-        const vehicleDocRef = doc(db, 'users', currentUser.uid, 'vehicles', newVehicle.id)
-        await setDoc(vehicleDocRef, {
-          ...newVehicle,
-          userId: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
+        const userDocRef = doc(db, 'users', currentUser.uid)
+
+        // Clean object without any undefined fields
+        const cleanVehicle: Record<string, any> = {
+          id: updatedVehicle.id,
+          name: updatedVehicle.name,
+          brand: updatedVehicle.brand || '',
+          model: updatedVehicle.model || '',
+          year: updatedVehicle.year || '',
+          color: updatedVehicle.color || '',
+          type: updatedVehicle.type || '',
+          isPrimary: true,
+          createdAt: new Date().toISOString(),
+        }
+        if (updatedVehicle.variant) cleanVehicle.variant = updatedVehicle.variant
+        if (updatedVehicle.licensePlate) cleanVehicle.licensePlate = updatedVehicle.licensePlate
+        if (updatedVehicle.specs) cleanVehicle.specs = updatedVehicle.specs
+
+        // Store as key-value pair in user document
+        await setDoc(
+          userDocRef,
+          {
+            vehicles: {
+              [cleanVehicle.id]: cleanVehicle,
+            },
+            preferredVehicle: cleanVehicle.name,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+
+        // Also sync to subcollection for backward compatibility
+        const vehicleDocRef = doc(db, 'users', currentUser.uid, 'vehicles', cleanVehicle.id)
+        await setDoc(
+          vehicleDocRef,
+          {
+            ...cleanVehicle,
+            userId: currentUser.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
       } catch (err) {
         console.error('Failed to sync new vehicle to Firestore:', err)
       }
     }
   }
 
-  const handleSelectVehicle = (vehicleName: string) => {
+  const handleSelectVehicle = async (vehicleName: string) => {
     setCurrentVehicle(vehicleName)
-    setSavedVehicles((prev) =>
-      prev.map((v) => ({
-        ...v,
-        isPrimary: v.name === vehicleName,
-      }))
-    )
+    const updated = savedVehicles.map((v) => ({
+      ...v,
+      isPrimary: v.name === vehicleName,
+    }))
+    setSavedVehicles(updated)
     // Toast notification for switching active vehicle
     showToast(`Active vehicle switched to ${vehicleName}.`, 'info')
+
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid)
+        const vehiclesMap: Record<string, any> = {}
+        updated.forEach((v) => {
+          const cleanV = Object.fromEntries(
+            Object.entries(v).filter(([_, val]) => val !== undefined)
+          )
+          vehiclesMap[v.id] = cleanV
+        })
+        await setDoc(
+          userDocRef,
+          {
+            vehicles: vehiclesMap,
+            preferredVehicle: vehicleName,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      } catch (err) {
+        console.error('Failed to sync active vehicle to Firestore:', err)
+      }
+    }
   }
 
-  // STEP 3 INTEGRATION: Delete vehicle from Firestore & local state
+  // STEP 3 INTEGRATION: Delete vehicle from Firestore key-value map & local state
   const handleDeleteVehicle = async (vehicleId: string) => {
     setSavedVehicles((prev) => {
       const remaining = prev.filter((v) => v.id !== vehicleId)
@@ -404,6 +584,14 @@ export const App: React.FC = () => {
 
     if (currentUser) {
       try {
+        const userDocRef = doc(db, 'users', currentUser.uid)
+        // Remove key from vehicles key-value map in user document
+        await updateDoc(userDocRef, {
+          [`vehicles.${vehicleId}`]: deleteField(),
+          updatedAt: serverTimestamp(),
+        })
+
+        // Also delete from subcollection for backward compatibility
         const vehicleDocRef = doc(db, 'users', currentUser.uid, 'vehicles', vehicleId)
         await deleteDoc(vehicleDocRef)
       } catch (err) {
@@ -529,7 +717,7 @@ export const App: React.FC = () => {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
         await setDoc(userDocRef, {
-          fullName: updated.name,
+          name: updated.name,
           phone: updated.phone || '',
           address: updated.address || '',
           city: updated.city || '',
@@ -556,10 +744,23 @@ export const App: React.FC = () => {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
         await setDoc(userDocRef, {
-          fullName: updated.name,
+          name: updated.name,
           driverPhone: updated.phone,
           driverVan: updated.vanModel,
           driverPlate: updated.licensePlate,
+          vehicles: {
+            [`van-${currentUser.uid.slice(0, 6)}`]: {
+              id: `van-${currentUser.uid.slice(0, 6)}`,
+              name: updated.vanModel,
+              brand: updated.vanModel.split(' ')[0] || 'Van',
+              model: updated.vanModel,
+              licensePlate: updated.licensePlate,
+              type: 'Van',
+              isPrimary: true,
+              color: 'White',
+              updatedAt: new Date().toISOString(),
+            }
+          },
           serviceArea: updated.serviceArea,
           driverLicenseNumber: updated.driverLicenseNumber || '',
           bio: updated.bio || '',
@@ -930,6 +1131,7 @@ export const App: React.FC = () => {
                   currentUser
                     ? {
                       name:
+                        userProfileData?.name ||
                         userProfileData?.fullName ||
                         currentUser.displayName ||
                         currentUser.email?.split('@')[0] ||
@@ -953,6 +1155,11 @@ export const App: React.FC = () => {
                 }
                 onUpdateProfile={handleUpdateProfile}
                 onLogout={handleLogout}
+                isGuest={!currentUser}
+                onOpenAuth={() => {
+                  setShowAuth(true)
+                  setAuthMode('login')
+                }}
               />
             )}
           </div>
@@ -973,8 +1180,14 @@ export const App: React.FC = () => {
               initialService={bookingService}
               currentVehicle={currentVehicle}
               savedVehicles={savedVehicles}
+              isGuest={!currentUser}
+              onRequestAuth={() => {
+                setShowAuth(true)
+                setAuthMode('login')
+              }}
               userProfile={{
                 name:
+                  userProfileData?.name ||
                   userProfileData?.fullName ||
                   currentUser?.displayName ||
                   currentUser?.email?.split('@')[0] ||

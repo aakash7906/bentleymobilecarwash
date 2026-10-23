@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, Check, Loader2, Truck } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Truck } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and registration functions
@@ -38,7 +38,6 @@ export const Signup: React.FC<SignupProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [agreeTerms, setAgreeTerms] = useState(true)
 
   // Driver-specific fields
   const [driverPhone, setDriverPhone] = useState('')
@@ -151,11 +150,6 @@ export const Signup: React.FC<SignupProps> = ({
       return
     }
 
-    // Terms of Service Acceptance
-    if (!agreeTerms) {
-      showToast('Please accept the Terms of Service to proceed.', 'error')
-      return
-    }
 
     setLoading(true)
 
@@ -180,30 +174,33 @@ export const Signup: React.FC<SignupProps> = ({
       // -------------------------------------------------------------
       // Step 2.3: Create User Profile Document in Firestore ('users' collection)
       // -------------------------------------------------------------
-      const userDocData: Record<string, any> = {
+      const rawUserPayload: Record<string, any> = {
         uid: user.uid,
+        name: fullName.trim(),
         fullName: fullName.trim(),
         email: user.email || signupEmail.trim(),
-        phone: (selectedRole === 'driver' ? driverPhone.trim() : '') || '+1 (800) 555-9274',
+        phone: driverPhone.trim() || '+1 (800) 555-9274',
         role: selectedRole,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }
-
-      if (selectedRole === 'driver') {
-        userDocData.driverPhone = driverPhone.trim()
-        userDocData.driverVan = driverVan.trim() || 'Van #04'
-        userDocData.driverPlate = driverPlate.trim() || 'BC-9042-DRV'
-        userDocData.driverDetails = {
+        driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
+        driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
+        driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
+        driverDetails: selectedRole === 'driver' ? {
           vanNumber: driverVan.trim() || 'Van #04',
           licensePlate: driverPlate.trim() || 'BC-9042-DRV',
           vehicle: 'Ford Transit Mobile Detailing Unit',
           rating: 5.0,
           active: true,
-        }
+        } : undefined,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       }
 
-      await setDoc(doc(db, 'users', user.uid), userDocData)
+      // Filter out undefined fields because Firestore rejects undefined values
+      const sanitizedUserPayload = Object.fromEntries(
+        Object.entries(rawUserPayload).filter(([_, v]) => v !== undefined)
+      )
+
+      await setDoc(doc(db, 'users', user.uid), sanitizedUserPayload)
 
       // Show Success Toast Notification before triggering session redirect
       showToast('Account created successfully! Welcome to Bentley Car Wash.', 'success')
@@ -253,28 +250,30 @@ export const Signup: React.FC<SignupProps> = ({
       const userDocRef = doc(db, 'users', user.uid)
       const userDoc = await getDoc(userDocRef)
       if (!userDoc.exists()) {
-        const googleUserData: Record<string, any> = {
+        const rawGoogleData: Record<string, any> = {
           uid: user.uid,
-          fullName: user.displayName || 'Member',
+          name: user.displayName || 'Google User',
+          fullName: user.displayName || 'Google User',
           email: user.email || '',
-          phone: user.phoneNumber || '+1 (800) 555-9274',
+          phone: '',
           role: selectedRole,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
-        if (selectedRole === 'driver') {
-          googleUserData.driverPhone = driverPhone.trim() || ''
-          googleUserData.driverVan = driverVan.trim() || 'Van #04'
-          googleUserData.driverPlate = driverPlate.trim() || 'BC-9042-DRV'
-          googleUserData.driverDetails = {
+          driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
+          driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
+          driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
+          driverDetails: selectedRole === 'driver' ? {
             vanNumber: driverVan.trim() || 'Van #04',
             licensePlate: driverPlate.trim() || 'BC-9042-DRV',
             vehicle: 'Ford Transit Mobile Detailing Unit',
             rating: 5.0,
             active: true,
-          }
+          } : undefined,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         }
-        await setDoc(userDocRef, googleUserData, { merge: true })
+        const sanitizedGoogleData = Object.fromEntries(
+          Object.entries(rawGoogleData).filter(([_, v]) => v !== undefined)
+        )
+        await setDoc(userDocRef, sanitizedGoogleData, { merge: true })
       }
 
       showToast('Google registration successful! Welcome.', 'success')
@@ -658,29 +657,6 @@ export const Signup: React.FC<SignupProps> = ({
                 )}
               </div>
 
-              {/* Terms of Service Checkbox */}
-              <div className="flex items-center gap-2.5 pt-1">
-                <label
-                  onClick={() => setAgreeTerms(!agreeTerms)}
-                  className="flex items-center gap-2.5 cursor-pointer select-none"
-                >
-                  <div
-                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${
-                      agreeTerms
-                        ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                        : 'border border-[var(--border-light)] bg-[var(--surface-alt)]'
-                    }`}
-                  >
-                    {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-[var(--text-muted)]">
-                    I have read and agree to the{' '}
-                    <span className="text-[var(--primary)] font-semibold underline cursor-pointer">
-                      Terms of Service
-                    </span>
-                  </span>
-                </label>
-              </div>
 
               {/* Red Get Started Button with Loading State */}
               <button

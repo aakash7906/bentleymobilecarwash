@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Navigation } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 
 const mapStyles = {
@@ -124,6 +124,8 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
     }, 1200)
   }
 
+  const [isExploreMode, setIsExploreMode] = useState(false)
+
   return (
     <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
       {/* 1. TOP HEADER */}
@@ -158,12 +160,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       </div>
 
       {/* 2. REAL INTERACTIVE MAPCN MAP SECTION */}
-      <div className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50">
+      <div
+        className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50"
+        style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      >
         <Map
           ref={mapRef}
           center={activeCustomerCoords}
           zoom={14.1}
           pitch={25}
+          followUser={!isExploreMode}
+          onUserInteract={(interacting) => setIsExploreMode(interacting)}
           styles={
             selectedStyle
               ? { light: selectedStyle, dark: selectedStyle }
@@ -182,11 +189,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
           {/* Technician Mobile Wash Van Live Marker */}
           <MapMarker longitude={activeTechnicianCoords[0]} latitude={activeTechnicianCoords[1]}>
-            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
+            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group pointer-events-none">
               {/* Outer Pulsing Green Beacon */}
               <div className="absolute w-12 h-12 rounded-full bg-status-active/30 animate-ping pointer-events-none" />
               {/* Van Bubble */}
-              <div className="w-10 h-10 rounded-full bg-status-active text-white border-2 border-white shadow-xl flex items-center justify-center transform hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-full bg-status-active text-white border-2 border-white shadow-xl flex items-center justify-center pointer-events-auto cursor-pointer transform hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">local_shipping</span>
               </div>
               {/* Van Tooltip Pill */}
@@ -198,11 +205,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
           {/* Customer Destination House Pin Marker */}
           <MapMarker longitude={activeCustomerCoords[0]} latitude={activeCustomerCoords[1]}>
-            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer">
+            <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group pointer-events-none">
               {/* Destination Beacon Ping */}
               <div className="absolute w-11 h-11 rounded-full bg-primary/30 animate-ping pointer-events-none" />
               {/* Red Pin Bubble */}
-              <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground border-2 border-white shadow-xl flex items-center justify-center transform hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground border-2 border-white shadow-xl flex items-center justify-center pointer-events-auto cursor-pointer transform hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-[17px]">home</span>
               </div>
               {/* Destination Tooltip Pill */}
@@ -215,6 +222,25 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           {/* Minimalist Controls */}
           <MapControls position="bottom-right" />
         </Map>
+
+        {/* Floating Re-Center Button (Appears during Explore Mode) */}
+        {isExploreMode && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsExploreMode(false)
+              mapRef.current?.flyTo({
+                center: activeTechnicianCoords,
+                zoom: 14.5,
+                duration: 800,
+              })
+            }}
+            className="absolute bottom-4 left-4 z-20 px-3.5 py-2 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/90 shadow-lg text-xs font-bold text-gray-900 flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2"
+          >
+            <Navigation className="w-3.5 h-3.5 text-primary fill-primary" />
+            <span>Re-Center Van</span>
+          </button>
+        )}
 
         {/* Map Style Switcher (Default Carto, OpenStreetMap, OpenStreetMap 3D) */}
         <div className="absolute top-3 right-3 z-10">

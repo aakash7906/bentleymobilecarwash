@@ -15,6 +15,8 @@ interface ProfileTabProps {
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
   savedVehiclesList?: string[]
+  isGuest?: boolean
+  onOpenAuth?: () => void
 }
 
 interface MenuItem {
@@ -36,6 +38,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onUpdateProfile,
   savedVehiclesCount,
   savedVehiclesList,
+  isGuest = false,
+  onOpenAuth,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -143,9 +147,39 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   return (
     <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
+      {/* Guest Mode Banner */}
+      {isGuest && (
+        <div className="mt-4 p-4 rounded-3xl bg-gradient-to-r from-red-500/10 via-amber-500/10 to-transparent border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-[20px]">person_outline</span>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-gray-900">Exploring as Guest</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Unsaved Session</span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenAuth}
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            Sign In / Register
+          </button>
+        </div>
+      )}
+
       {/* User Information Card (Clickable to Edit) */}
       <div
-        onClick={() => setIsEditProfileOpen(true)}
+        onClick={() => {
+          if (isGuest && onOpenAuth) {
+            onOpenAuth()
+          } else {
+            setIsEditProfileOpen(true)
+          }
+        }}
         className="mt-4 p-4 rounded-3xl border border-gray-200/90 bg-white shadow-sm flex flex-col gap-3.5 hover:shadow-md transition-all cursor-pointer group"
       >
         <div className="flex items-center justify-between">
@@ -154,7 +188,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               <div className="w-14 h-14 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm group-hover:border-primary transition-colors">
                 <img
                   src={profile.avatar}
-                  alt={profile.name}
+                  alt={isGuest ? 'Guest User' : profile.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -165,14 +199,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
             <div className="flex flex-col min-w-0 justify-center">
               <h2 className="text-base font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
-                {profile.name}
+                {isGuest ? 'Guest Explorer' : profile.name}
               </h2>
-              {/* STEP 2 INTEGRATION: Display real logged-in user email */}
-              {profile.email && (
-                <span className="text-xs text-gray-500 truncate font-normal">
-                  {profile.email}
-                </span>
-              )}
+              {/* Email display */}
+              <span className="text-xs text-gray-500 truncate font-normal">
+                {isGuest ? 'Tap to sign in or create account' : (profile.email || '')}
+              </span>
             </div>
           </div>
 
@@ -180,12 +212,18 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              setIsEditProfileOpen(true)
+              if (isGuest && onOpenAuth) {
+                onOpenAuth()
+              } else {
+                setIsEditProfileOpen(true)
+              }
             }}
             className="w-8 h-8 rounded-full bg-surface-alt hover:bg-gray-200 text-gray-700 flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
-            title="Edit Profile"
+            title={isGuest ? 'Sign In' : 'Edit Profile'}
           >
-            <span className="material-symbols-outlined text-[18px]">edit</span>
+            <span className="material-symbols-outlined text-[18px]">
+              {isGuest ? 'login' : 'edit'}
+            </span>
           </button>
         </div>
 
@@ -285,15 +323,25 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         ))}
       </div>
 
-      {/* Red Logout Button */}
+      {/* Bottom Auth Action Button */}
       <div className="mt-6 flex justify-center">
-        <button
-          onClick={onLogout || (() => alert('Logged out successfully.'))}
-          className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px]">logout</span>
-          <span>Logout</span>
-        </button>
+        {isGuest ? (
+          <button
+            onClick={onOpenAuth}
+            className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">login</span>
+            <span>Sign In or Register</span>
+          </button>
+        ) : (
+          <button
+            onClick={onLogout || (() => alert('Logged out successfully.'))}
+            className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">logout</span>
+            <span>Logout</span>
+          </button>
+        )}
       </div>
 
       {/* Dedicated Edit Profile Full Page Modal */}

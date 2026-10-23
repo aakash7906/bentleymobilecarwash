@@ -80,6 +80,8 @@ export interface MapProps {
   className?: string
   children?: ReactNode
   onLoad?: (map: MapLibreMap) => void
+  onUserInteract?: (isInteracting: boolean) => void
+  followUser?: boolean
 }
 
 export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
@@ -94,12 +96,16 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     className = 'w-full h-full min-h-[350px]',
     children,
     onLoad,
+    onUserInteract,
+    followUser = true,
   },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const isUserInteractingRef = useRef(false)
+  const userInteractionTimeoutRef = useRef<any>(null)
 
   // Resolve current active style URL from styles or mapStyle
   const activeStyleUrl = useMemo(() => {
@@ -147,6 +153,36 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         }
       })
 
+      // INDUSTRY PATTERN: User Interaction Detection
+      const handleInteractionStart = () => {
+        isUserInteractingRef.current = true
+        if (userInteractionTimeoutRef.current) {
+          clearTimeout(userInteractionTimeoutRef.current)
+        }
+        if (onUserInteract) onUserInteract(true)
+      }
+
+      const handleInteractionEnd = () => {
+        if (userInteractionTimeoutRef.current) {
+          clearTimeout(userInteractionTimeoutRef.current)
+        }
+        // Retain user exploration mode for 8 seconds before auto-resuming, or until re-center is pressed
+        userInteractionTimeoutRef.current = setTimeout(() => {
+          isUserInteractingRef.current = false
+          if (onUserInteract) onUserInteract(false)
+        }, 8000)
+      }
+
+      mapInstance.on('dragstart', handleInteractionStart)
+      mapInstance.on('zoomstart', handleInteractionStart)
+      mapInstance.on('rotatestart', handleInteractionStart)
+      mapInstance.on('pitchstart', handleInteractionStart)
+      mapInstance.on('touchstart', handleInteractionStart)
+
+      mapInstance.on('dragend', handleInteractionEnd)
+      mapInstance.on('zoomend', handleInteractionEnd)
+      mapInstance.on('touchend', handleInteractionEnd)
+
       mapInstance.on('error', (e) => {
         console.warn('MapLibre event notice:', e)
       })
@@ -155,15 +191,21 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
       const timer1 = setTimeout(() => mapInstance?.resize(), 100)
       const timer2 = setTimeout(() => mapInstance?.resize(), 400)
 
-      // Keep map canvas responsive on layout shifts
+      // Debounced ResizeObserver to prevent canvas drag frame interruptions
+      let resizeTimer: any = null
       const resizeObserver = new ResizeObserver(() => {
-        mapInstance?.resize()
+        if (resizeTimer) clearTimeout(resizeTimer)
+        resizeTimer = setTimeout(() => {
+          mapInstance?.resize()
+        }, 150)
       })
       resizeObserver.observe(containerRef.current)
 
       return () => {
         clearTimeout(timer1)
         clearTimeout(timer2)
+        if (resizeTimer) clearTimeout(resizeTimer)
+        if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current)
         resizeObserver.disconnect()
         if (mapInstance) {
           mapInstance.remove()
@@ -176,10 +218,13 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     }
   }, [])
 
-  // Smooth camera update when center changes without re-instantiating WebGL
+  // Smooth camera update when center changes - paused when user is dragging or in explore mode
   const prevCenterRef = useRef<[number, number] | undefined>(undefined)
   useEffect(() => {
     if (!mapRef.current || !isLoaded || !center) return
+    // Respect user drag: do not hijack camera if user is exploring or followUser is false
+    if (isUserInteractingRef.current || !followUser) return
+
     const [lng, lat] = center
     if (
       !prevCenterRef.current ||
@@ -193,7 +238,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         mapRef.current.easeTo({ center: [lng, lat], duration: 800 })
       }
     }
-  }, [center, isLoaded])
+  }, [center, isLoaded, followUser])
 
   // React to dynamic style switching
   const prevStyleUrlRef = useRef(activeStyleUrl)
@@ -211,8 +256,20 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
 
   return (
     <MapContext.Provider value={{ map: mapRef.current, isLoaded }}>
-      <div className={`relative overflow-hidden ${className}`}>
-        <div ref={containerRef} className="w-full h-full min-h-[350px]" />
+      <div
+        className={`relative overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
+        style={{
+          touchAction: 'none',
+          overscrollBehavior: 'contain',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+        }}
+      >
+        <div
+          ref={containerRef}
+          className="w-full h-full min-h-[350px]"
+          style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+        />
         {isLoaded && children}
       </div>
     </MapContext.Provider>
@@ -220,7 +277,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
 })
 
 /* =========================================================================
-   2. MAP MARKER COMPONENT
+   2. MAP MARKER COMPONENT (Imperative 60fps Updates with Zero Dead-Zones)
    ========================================================================= */
 interface MapMarkerProps {
   longitude: number
@@ -243,15 +300,17 @@ export const MapMarker: React.FC<MapMarkerProps> = ({
   const elRef = useRef<HTMLDivElement | null>(null)
   const markerRef = useRef<MapLibreMarker | null>(null)
 
+  // Initialize marker DOM element with pointer-events-none on outer container to prevent dead-zones
   if (!elRef.current && typeof document !== 'undefined') {
     const el = document.createElement('div')
-    el.className = `cursor-pointer ${className}`
+    el.className = `pointer-events-none select-none ${className}`
     if (onClick) {
       el.addEventListener('click', onClick)
     }
     elRef.current = el
   }
 
+  // Mount MapLibreMarker once on load/anchor change (bypasses unmount/remount on coord changes)
   useEffect(() => {
     if (!map || !isLoaded || !elRef.current) return
 
@@ -268,8 +327,9 @@ export const MapMarker: React.FC<MapMarkerProps> = ({
       marker.remove()
       markerRef.current = null
     }
-  }, [map, isLoaded, longitude, latitude, anchor])
+  }, [map, isLoaded, anchor])
 
+  // Imperative position update on lng/lat change (60fps smooth tracking without DOM recreation)
   useEffect(() => {
     if (markerRef.current) {
       markerRef.current.setLngLat([longitude, latitude])

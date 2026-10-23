@@ -104,9 +104,8 @@ export const Login: React.FC<LoginProps> = ({
           // Self-heal: Ensure user document exists in Firestore
           await setDoc(userDocRef, {
             uid: user.uid,
-            fullName: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
+            name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
             email: user.email || loginEmail.trim(),
-            phone: user.phoneNumber || '+1 (800) 555-9274',
             role: selectedRole,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -176,9 +175,8 @@ export const Login: React.FC<LoginProps> = ({
           // Self-heal: Ensure user document exists in Firestore
           await setDoc(userDocRef, {
             uid: user.uid,
-            fullName: user.displayName || 'Member',
+            name: user.displayName || 'Member',
             email: user.email || '',
-            phone: user.phoneNumber || '+1 (800) 555-9274',
             role: selectedRole,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),

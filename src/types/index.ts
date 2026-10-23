@@ -83,6 +83,18 @@ export interface CartItem {
   quantity: number
 }
 
+export interface DeliveryAddress {
+  id: string
+  label: string
+  recipientName: string
+  streetAddress: string
+  city: string
+  postalCode: string
+  phone?: string
+  deliveryNotes?: string
+  isDefault?: boolean
+}
+
 export interface UserProfile {
   name: string
   email: string
@@ -93,6 +105,7 @@ export interface UserProfile {
   avatar: string
   preferredVehicle?: string
   membershipTier?: string
+  savedAddresses?: DeliveryAddress[]
 }
 
 export interface DriverProfile {
@@ -152,6 +165,10 @@ export interface BookingRecord {
   estimatedMins?: number
   addons?: string[]
   paymentMethod?: string
+  stripePaymentId?: string
+  paymentStatus?: 'pending' | 'paid' | 'failed'
+  cardBrand?: string
+  cardLast4?: string
   frequency?: 'one_time' | 'biweekly' | 'monthly'
   serviceItem?: ServiceItem
   createdAt: string

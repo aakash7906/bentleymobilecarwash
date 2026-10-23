@@ -62,6 +62,11 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   const [distanceKm, setDistanceKm] = useState(booking.distanceKm || 2.8)
   const [showSmsModal, setShowSmsModal] = useState(false)
   const [washTimerSeconds, setWashTimerSeconds] = useState(0)
+  const [isExploreMode, setIsExploreMode] = useState(false)
+  const isExploreModeRef = useRef(false)
+  useEffect(() => {
+    isExploreModeRef.current = isExploreMode
+  }, [isExploreMode])
 
   // Current status
   const currentStatus = booking.status
@@ -114,11 +119,14 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           setDistanceKm(parseFloat((2.8 * remainingPct).toFixed(1)))
           setEtaMins(Math.max(1, Math.round(7 * remainingPct)))
 
-          mapRef.current?.flyTo({
-            center: nextPos,
-            zoom: 15,
-            duration: 1000,
-          })
+          // Only auto-follow camera if driver is not actively exploring the map
+          if (!isExploreModeRef.current) {
+            mapRef.current?.flyTo({
+              center: nextPos,
+              zoom: 15,
+              duration: 1000,
+            })
+          }
 
           return nextIndex
         })
@@ -392,7 +400,10 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
         {/* ======================================================== */}
         {/* INTERACTIVE MAP VIEWPORT (Center & Flex-1)               */}
         {/* ======================================================== */}
-        <div className="flex-1 w-full h-full relative z-0 min-h-[260px] overflow-hidden">
+        <div
+          className="flex-1 w-full h-full relative z-0 min-h-[260px] overflow-hidden"
+          style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+        >
           {/* Desktop Turn-by-Turn HUD Floating Card (>= lg) */}
           <div className="hidden lg:flex absolute top-4 left-4 z-20 max-w-sm bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 p-3.5 items-center justify-between gap-3 animate-in slide-in-from-top-2">
             <div className="flex items-center gap-3 overflow-hidden">
@@ -419,10 +430,17 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             zoom={14}
             pitch={35}
             className="w-full h-full"
+            followUser={!isExploreMode}
+            onUserInteract={(interacting) => {
+              if (interacting) {
+                setIsExploreMode(true)
+              }
+            }}
           >
             <MapControls
               position="top-right"
               onRecenter={() => {
+                setIsExploreMode(false)
                 if (mapRef.current) {
                   mapRef.current.flyTo({ center: driverPos, zoom: 15, duration: 600 })
                 }
@@ -439,11 +457,11 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
             {/* Customer Location Destination Pin */}
             <MapMarker longitude={defaultCustomerCoords[0]} latitude={defaultCustomerCoords[1]}>
-              <div className="flex flex-col items-center group cursor-pointer">
-                <div className="px-2 py-0.5 rounded-full bg-secondary text-white text-[9px] font-bold shadow-md mb-1 whitespace-nowrap">
+              <div className="flex flex-col items-center group pointer-events-none select-none">
+                <div className="px-2 py-0.5 rounded-full bg-secondary text-white text-[9px] font-bold shadow-md mb-1 whitespace-nowrap pointer-events-none">
                   👤 {booking.customerName}
                 </div>
-                <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-primary/25 animate-bounce">
+                <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-primary/25 animate-bounce pointer-events-auto cursor-pointer">
                   <Car className="w-5 h-5 text-white" />
                 </div>
               </div>
@@ -451,17 +469,36 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
             {/* Driver Live Van Pin */}
             <MapMarker longitude={driverPos[0]} latitude={driverPos[1]}>
-              <div className="flex flex-col items-center cursor-pointer">
-                <div className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-bold shadow-md mb-1 whitespace-nowrap flex items-center gap-1">
+              <div className="flex flex-col items-center pointer-events-none select-none">
+                <div className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-bold shadow-md mb-1 whitespace-nowrap flex items-center gap-1 pointer-events-none">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                   <span>Van (You)</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center shadow-xl ring-4 ring-emerald-400/40">
+                <div className="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center shadow-xl ring-4 ring-emerald-400/40 pointer-events-auto cursor-pointer">
                   <Navigation className="w-5 h-5 text-emerald-400 fill-emerald-400 rotate-45" />
                 </div>
               </div>
             </MapMarker>
           </Map>
+
+          {/* Floating Re-Center / Resume Navigation Button (Appears during Explore Mode) */}
+          {isExploreMode && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsExploreMode(false)
+                mapRef.current?.flyTo({
+                  center: driverPos,
+                  zoom: 15,
+                  duration: 800,
+                })
+              }}
+              className="absolute bottom-4 left-4 z-20 px-3.5 py-2 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/90 shadow-lg text-xs font-bold text-gray-900 flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2"
+            >
+              <Navigation className="w-3.5 h-3.5 text-primary fill-primary" />
+              <span>Resume Navigation</span>
+            </button>
+          )}
         </div>
 
         {/* ======================================================== */}
