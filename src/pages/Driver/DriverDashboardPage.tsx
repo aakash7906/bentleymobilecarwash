@@ -21,7 +21,6 @@ interface DriverDashboardProps {
   bookings: BookingRecord[]
   onAcceptOrder: (bookingId: string) => void
   onUpdateStatus: (bookingId: string, newStatus: BookingStatus, coords?: [number, number]) => void
-  onSwitchToCustomer: () => void
   onLogout: () => void
   driverName?: string
   driverEmail?: string
@@ -49,7 +48,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   bookings,
   onAcceptOrder,
   onUpdateStatus,
-  onSwitchToCustomer,
   onLogout,
   driverName = 'Alex Rivera',
   driverEmail = 'driver@bentleycarwash.com',
@@ -83,26 +81,45 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     }
   }, [externalProfile])
 
-  // Categorize orders
+  // Categorize orders scoped to current driver
   const availableOrders = useMemo(
     () =>
       bookings.filter(
-        (b) => b.status === 'pending' || (b.status === 'scheduled' && !b.driverId)
+        (b) =>
+          b.status === 'pending' ||
+          (b.status === 'scheduled' && (!b.driverId || b.driverName === profile.name))
       ),
-    [bookings]
+    [bookings, profile.name]
   )
 
   const myActiveOrders = useMemo(
     () =>
-      bookings.filter(
-        (b) => b.status === 'accepted' || b.status === 'en_route' || b.status === 'in_progress'
-      ),
-    [bookings]
+      bookings.filter((b) => {
+        const isOngoing =
+          b.status === 'accepted' || b.status === 'en_route' || b.status === 'in_progress'
+        if (!isOngoing) return false
+        // Match current driver by name, phone, or newly claimed order
+        return (
+          !b.driverName ||
+          b.driverName === profile.name ||
+          b.driverPhone === profile.phone ||
+          b.technicianName === profile.name
+        )
+      }),
+    [bookings, profile.name, profile.phone]
   )
 
   const completedOrders = useMemo(
-    () => bookings.filter((b) => b.status === 'completed'),
-    [bookings]
+    () =>
+      bookings.filter(
+        (b) =>
+          b.status === 'completed' &&
+          (!b.driverName ||
+            b.driverName === profile.name ||
+            b.driverPhone === profile.phone ||
+            b.technicianName === profile.name)
+      ),
+    [bookings, profile.name, profile.phone]
   )
 
   // Handle saving driver profile updates

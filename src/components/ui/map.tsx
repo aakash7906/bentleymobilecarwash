@@ -174,7 +174,26 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     } catch (err) {
       console.error('Failed to initialize MapLibre map:', err)
     }
-  }, [center, zoom, pitch, bearing, activeStyleUrl, interactive, onLoad])
+  }, [])
+
+  // Smooth camera update when center changes without re-instantiating WebGL
+  const prevCenterRef = useRef<[number, number] | undefined>(undefined)
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded || !center) return
+    const [lng, lat] = center
+    if (
+      !prevCenterRef.current ||
+      prevCenterRef.current[0] !== lng ||
+      prevCenterRef.current[1] !== lat
+    ) {
+      prevCenterRef.current = [lng, lat]
+      const current = mapRef.current.getCenter()
+      const dist = Math.hypot(current.lng - lng, current.lat - lat)
+      if (dist > 0.0001) {
+        mapRef.current.easeTo({ center: [lng, lat], duration: 800 })
+      }
+    }
+  }, [center, isLoaded])
 
   // React to dynamic style switching
   const prevStyleUrlRef = useRef(activeStyleUrl)

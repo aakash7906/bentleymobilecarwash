@@ -19,6 +19,8 @@
   --status-active: #00c04b;             /* Status / Active Technician Green */
   --status-active-hover: #00b044;       /* Active Hover Green */
   --status-active-glow: rgba(0, 192, 75, 0.25);
+  --status-warning: #f59e0b;            /* Warning amber */
+  --status-info: #0284c7;               /* Info blue */
 
   /* Aliases for backwards compatibility */
   --color-primary: var(--primary);
@@ -82,6 +84,8 @@
 
   --color-status-active: var(--status-active);
   --color-status-active-hover: var(--status-active-hover);
+  --color-status-warning: var(--status-warning);
+  --color-status-info: var(--status-info);
 }
 
 /* Base resets & typography */

@@ -294,14 +294,12 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
 
                       {/* Top Badges */}
                       <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
-                        {service.badge ? (
+                        {service.badge && (
                           <span className="px-2.5 py-1 rounded-lg bg-primary/95 text-white text-[10px] font-bold tracking-wider uppercase backdrop-blur-xs shadow-sm">
                             {service.badge}
                           </span>
-                        ) : (
-                          <span />
                         )}
-                        <span className="px-2.5 py-1 rounded-lg bg-black/75 text-white text-[10px] font-semibold tracking-wide backdrop-blur-xs">
+                        <span className="px-2.5 py-1 rounded-lg bg-black/75 text-white text-[10px] font-semibold tracking-wide backdrop-blur-xs ml-auto">
                           ⏱ {service.estTime}
                         </span>
                       </div>
@@ -418,58 +416,60 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                 (srv) =>
                   srv.category !== 'Cleaning Packages' && srv.category !== 'Specialty'
               )
-              .map((service) => (
-                <div
-                  key={service.id}
-                  onClick={() => onSelectService(service)}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md hover:border-gray-300 active:scale-[0.99] transition-all group"
-                >
-                  {/* Image & Overlay Tag */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                    <img
-                      src={service.image}
-                      alt={service.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                    />
-                    <div className="absolute top-3 right-3 pointer-events-none">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/70 text-white text-[10px] font-semibold tracking-wide backdrop-blur-xs">
-                        ⏱ {service.estTime}
-                      </span>
-                    </div>
-                  </div>
+              .map((service) => {
+                const handleSelectIndividual = () => {
+                  onSelectService({
+                    ...service,
+                    price: 'Included in Packages',
+                    priceNumeric: 0,
+                    vehicleModel: currentVehicle,
+                  })
+                }
 
-                  {/* Information (WITHOUT PRICE) */}
-                  <div className="p-4 flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-[10px] font-semibold tracking-wide border border-gray-200">
-                        {service.category}
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        Included in Packages
-                      </span>
+                return (
+                  <div
+                    key={service.id}
+                    onClick={handleSelectIndividual}
+                    className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md hover:border-gray-300 active:scale-[0.99] transition-all group"
+                  >
+                    {/* Image */}
+                    <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                      <img
+                        src={service.image}
+                        alt={service.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                      />
                     </div>
 
-                    <h3 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
-                      {service.title}
-                    </h3>
+                    {/* Information (WITHOUT PRICE) */}
+                    <div className="p-4 flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
+                          {service.title}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-medium shrink-0 flex items-center gap-1">
+                          ⏱ {service.estTime}
+                        </span>
+                      </div>
 
-                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                      {service.description}
-                    </p>
+                      <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                        {service.description}
+                      </p>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSelectService(service)
-                      }}
-                      className="w-full mt-1 py-2 rounded-xl bg-surface-alt hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold transition-all active:scale-98 cursor-pointer text-center"
-                    >
-                      View detail &gt;
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSelectIndividual()
+                        }}
+                        className="w-full mt-1 py-2 rounded-xl bg-surface-alt hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold transition-all active:scale-98 cursor-pointer text-center"
+                      >
+                        View detail &gt;
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
           </div>
         </section>
       )}

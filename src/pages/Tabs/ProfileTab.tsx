@@ -15,7 +15,6 @@ interface ProfileTabProps {
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
   savedVehiclesList?: string[]
-  onSwitchToDriver?: () => void
 }
 
 interface MenuItem {
@@ -37,7 +36,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onUpdateProfile,
   savedVehiclesCount,
   savedVehiclesList,
-  onSwitchToDriver,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -85,7 +83,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     } catch {
       // ignore
     }
-    showToast('Profile updated successfully!', 'success')
     if (onUpdateProfile) {
       onUpdateProfile(updated)
     }
@@ -111,13 +108,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       subtitle: 'Manage registered vehicles',
       action: onOpenSavedVehicles,
       badge: savedVehiclesCount !== undefined ? `${savedVehiclesCount} Cars` : undefined,
-    },
-    {
-      icon: 'local_shipping',
-      title: 'Driver Partner Portal',
-      subtitle: 'Accept live dispatches & navigate jobs',
-      action: onSwitchToDriver || (() => showToast('Driver mode activated', 'info')),
-      badge: 'Partner',
     },
     {
       icon: 'notifications',
@@ -221,7 +211,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         </div>
       </div>
 
-      {/* VIP / Membership Banner */}
+      {/* Membership section commented out as requested for now */}
+      {/*
       <div
         onClick={onOpenMembership}
         onMouseEnter={preloadMembershipImages}
@@ -260,6 +251,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         </div>
       </div>
+      */}
 
       {/* Profile Menu List Card */}
       <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-1 md:gap-2">

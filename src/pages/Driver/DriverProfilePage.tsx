@@ -433,8 +433,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                     onChange={(e) => setCustomAvatarUrl(e.target.value)}
                     placeholder="https://example.com/photo.jpg"
                     className="flex-1 px-3 py-2 rounded-xl bg-surface-subtle border border-gray-200 text-xs text-gray-900 focus:bg-white focus:border-primary outline-hidden"
-                  >
-                  </input>
+                  />
                   <button
                     type="submit"
                     className="px-4 py-2 rounded-xl bg-secondary text-white text-xs font-bold hover:bg-neutral-900 transition-colors cursor-pointer"

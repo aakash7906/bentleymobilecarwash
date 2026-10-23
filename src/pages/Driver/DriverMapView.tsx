@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   ChevronLeft,
   Navigation,
@@ -15,7 +15,6 @@ import {
   LocateFixed,
   Send,
   X,
-  ShieldCheck,
   Check,
 } from 'lucide-react'
 import { BookingRecord, BookingStatus } from '@/types'
@@ -35,18 +34,26 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   const mapRef = useRef<MapRef>(null)
 
   // Default coordinate anchors (Ontario demo region or booking coords)
-  const defaultCustomerCoords: [number, number] = booking.customerCoords || [-79.3832, 43.6532]
-  const defaultDriverCoords: [number, number] = booking.driverCoords || [-79.4035, 43.6635]
+  const defaultCustomerCoords = useMemo<[number, number]>(() => {
+    return booking.customerCoords || [-79.3832, 43.6532]
+  }, [booking.customerCoords])
+
+  const defaultDriverCoords = useMemo<[number, number]>(() => {
+    return booking.driverCoords || [-79.4035, 43.6635]
+  }, [booking.driverCoords])
 
   // Waypoints along route
-  const routeWaypoints: [number, number][] = [
-    defaultDriverCoords,
-    [-79.3995, 43.6625],
-    [-79.3955, 43.659],
-    [-79.391, 43.6565],
-    [-79.387, 43.6545],
-    defaultCustomerCoords,
-  ]
+  const routeWaypoints = useMemo<[number, number][]>(
+    () => [
+      defaultDriverCoords,
+      [-79.3995, 43.6625],
+      [-79.3955, 43.659],
+      [-79.391, 43.6565],
+      [-79.387, 43.6545],
+      defaultCustomerCoords,
+    ],
+    [defaultDriverCoords, defaultCustomerCoords]
+  )
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [driverPos, setDriverPos] = useState<[number, number]>(defaultDriverCoords)

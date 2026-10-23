@@ -35,13 +35,21 @@ const RESCHEDULE_TIME_SLOTS = [
   '05:00 PM',
 ]
 
-const RESCHEDULE_DATES = [
-  'Tomorrow, Oct 20',
-  'Wednesday, Oct 21',
-  'Thursday, Oct 22',
-  'Friday, Oct 23',
-  'Saturday, Oct 24',
-]
+const getDynamicRescheduleDates = (): string[] => {
+  const dates: string[] = []
+  const today = new Date()
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    const dayName = i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'long' })
+    const month = d.toLocaleDateString('en-US', { month: 'short' })
+    const dayNum = d.getDate()
+    dates.push(`${dayName}, ${month} ${dayNum}`)
+  }
+  return dates
+}
+
+const RESCHEDULE_DATES = getDynamicRescheduleDates()
 
 export const BookingsTab: React.FC<BookingsTabProps> = ({
   onBack,

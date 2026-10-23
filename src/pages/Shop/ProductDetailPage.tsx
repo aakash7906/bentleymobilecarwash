@@ -23,6 +23,15 @@ interface ProductDetailPageProps {
   onBuyNowSuccess?: (product: ProductItem, quantity: number) => void
   cartCount?: number
   onOpenCart?: () => void
+  userProfile?: {
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
+  onCheckoutOrder?: (orderData: any) => Promise<string>
 }
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
@@ -32,6 +41,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   onBuyNowSuccess,
   cartCount = 0,
   onOpenCart,
+  userProfile,
+  onCheckoutOrder,
 }) => {
   const [quantity, setQuantity] = useState(1)
   const [activeTab, setActiveTab] = useState<'overview' | 'features' | 'specs'>('overview')
@@ -39,6 +50,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'cod'>('apple')
   const [orderComplete, setOrderComplete] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [confirmedOrderId, setConfirmedOrderId] = useState('')
 
   if (!product) return null
 
@@ -64,15 +76,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     setShowBuyModal(true)
   }
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     setIsProcessing(true)
-    setTimeout(() => {
+    let finalOrderId = `BCW-${Math.floor(10000 + Math.random() * 90000)}`
+
+    try {
+      if (onCheckoutOrder) {
+        const orderData = {
+          items: [{ product, quantity }],
+          totalItemsCount: quantity,
+          itemsSubtotal: parseFloat(subtotal),
+          discountAmount: 0,
+          shippingFee,
+          taxFee: parseFloat(taxFee),
+          grandTotal,
+          paymentMethod,
+          shippingAddress: userProfile?.address || 'Ontario, Canada',
+          customerName: userProfile?.name || 'Customer',
+          customerEmail: userProfile?.email || '',
+          customerPhone: userProfile?.phone || '',
+          createdAt: new Date().toISOString(),
+          orderType: 'direct_buy_now',
+        }
+        finalOrderId = await onCheckoutOrder(orderData)
+      } else {
+        await new Promise((r) => setTimeout(r, 600))
+      }
+
+      setConfirmedOrderId(finalOrderId)
       setIsProcessing(false)
       setOrderComplete(true)
+
       if (onBuyNowSuccess) {
         onBuyNowSuccess(product, quantity)
       }
-    }, 900)
+    } catch {
+      setIsProcessing(false)
+      setConfirmedOrderId(finalOrderId)
+      setOrderComplete(true)
+    }
   }
 
   const handleCloseAll = () => {
@@ -561,7 +603,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="w-full bg-surface-alt rounded-2xl p-3 border border-gray-200 text-left flex flex-col gap-1.5 text-xs mt-1">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Order ID:</span>
-                    <span className="font-mono font-bold text-gray-900">#BCW-99214</span>
+                    <span className="font-mono font-bold text-gray-900">#{confirmedOrderId || 'BCW-99214'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Product:</span>

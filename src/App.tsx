@@ -17,7 +17,7 @@ import { Login } from '@/pages/Auth/LoginPage'
 import { Signup } from '@/pages/Auth/SignupPage'
 import { SplashScreen } from '@/pages/Auth/SplashScreen'
 import { OnboardingScreen } from '@/pages/Auth/OnboardingPage'
-import { MembershipPage } from '@/pages/Membership/MembershipPage'
+// import { MembershipPage } from '@/pages/Membership/MembershipPage'
 import { DriverDashboard } from '@/pages/Driver/DriverDashboardPage'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
@@ -42,10 +42,31 @@ export const App: React.FC = () => {
 
   const [currentTab, setCurrentTab] = useState<TabType>('home')
   const [previousTab, setPreviousTab] = useState<TabType>('home')
-  const [showSplash, setShowSplash] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return sessionStorage.getItem('bentley_splash_shown') !== 'true'
+    } catch {
+      return false
+    }
+  })
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return localStorage.getItem('bentley_onboarded') !== 'true'
+    } catch {
+      return false
+    }
+  })
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+
+  // Live GPS address detected from Home tab, forwarded seamlessly to BookingPage
+  const [detectedAddress, setDetectedAddress] = useState<string>(() => {
+    try {
+      return localStorage.getItem('bentley_detected_address') || ''
+    } catch {
+      return ''
+    }
+  })
 
   // Driver vs Customer active portal state
   const [currentRole, setCurrentRole] = useState<'customer' | 'driver'>(() => {
@@ -145,7 +166,7 @@ export const App: React.FC = () => {
   const [isSavedVehiclesOpen, setIsSavedVehiclesOpen] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
-  const [isMembershipOpen, setIsMembershipOpen] = useState(false)
+  const [_isMembershipOpen, setIsMembershipOpen] = useState(false)
 
   // Sync cartItems with localStorage
   useEffect(() => {
@@ -219,14 +240,16 @@ export const App: React.FC = () => {
               name: data.fullName || prev.name,
               email: data.email || prev.email,
               phone: data.driverPhone || data.phone || prev.phone,
-              vanModel: data.driverVan || prev.vanModel,
-              licensePlate: data.driverPlate || prev.licensePlate,
+              vanModel: data.driverVan || data.driverDetails?.vehicle || data.driverDetails?.vanNumber || prev.vanModel,
+              licensePlate: data.driverPlate || data.driverDetails?.licensePlate || prev.licensePlate,
               serviceArea: data.serviceArea || prev.serviceArea,
               driverLicenseNumber: data.driverLicenseNumber || prev.driverLicenseNumber,
               bio: data.bio || prev.bio,
               avatar: data.avatar || prev.avatar,
               isAvailable: data.isAvailable !== undefined ? data.isAvailable : prev.isAvailable,
             }))
+          } else if (data.role === 'customer') {
+            setCurrentRole('customer')
           }
         }
       },
@@ -282,17 +305,15 @@ export const App: React.FC = () => {
     const unsubBookings = onSnapshot(
       bookingsQuery,
       (snapshot) => {
-        if (!snapshot.empty) {
-          const loadedBookings: BookingRecord[] = snapshot.docs.map((docSnap) => ({
-            ...(docSnap.data() as BookingRecord),
-            id: docSnap.id,
-          }))
-          // Sort latest bookings first
-          loadedBookings.sort(
-            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-          )
-          setBookings(loadedBookings)
-        }
+        const loadedBookings: BookingRecord[] = snapshot.docs.map((docSnap) => ({
+          ...(docSnap.data() as BookingRecord),
+          id: docSnap.id,
+        }))
+        // Sort latest bookings first
+        loadedBookings.sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        )
+        setBookings(loadedBookings)
       },
       (error) => {
         console.error('Error listening to user bookings in Firestore:', error)
@@ -689,8 +710,11 @@ export const App: React.FC = () => {
         <SplashScreen
           onFinish={() => {
             setShowSplash(false)
+            try {
+              sessionStorage.setItem('bentley_splash_shown', 'true')
+            } catch { }
           }}
-          duration={2800}
+          duration={2400}
           dismissible={true}
         />
       )}
@@ -700,6 +724,9 @@ export const App: React.FC = () => {
         <OnboardingScreen
           onNext={() => {
             setShowOnboarding(false)
+            try {
+              localStorage.setItem('bentley_onboarded', 'true')
+            } catch { }
             setAuthMode('login')
             setShowAuth(true)
           }}
@@ -764,10 +791,6 @@ export const App: React.FC = () => {
             bookings={bookings}
             onAcceptOrder={handleAcceptOrder}
             onUpdateStatus={handleUpdateBookingStatus}
-            onSwitchToCustomer={() => {
-              setCurrentRole('customer')
-              setCurrentTab('home')
-            }}
             onLogout={handleLogout}
             driverName={driverProfile.name}
             driverEmail={driverProfile.email}
@@ -835,6 +858,12 @@ export const App: React.FC = () => {
                 onClearCart={handleClearCart}
                 onCheckoutOrder={handleCheckoutOrder}
                 onOpenTracking={() => navigateToTab('bookings')}
+                onUpdateLocation={(addr) => {
+                  setDetectedAddress(addr)
+                  try {
+                    localStorage.setItem('bentley_detected_address', addr)
+                  } catch { }
+                }}
               />
             )}
 
@@ -867,7 +896,10 @@ export const App: React.FC = () => {
             )}
 
             {currentTab === 'notifications' && (
-              <NotificationsTab onBack={() => setCurrentTab(previousTab || 'home')} />
+              <NotificationsTab
+                onBack={() => setCurrentTab(previousTab || 'home')}
+                bookings={bookings}
+              />
             )}
 
             {currentTab === 'profile' && (
@@ -889,7 +921,7 @@ export const App: React.FC = () => {
                         'Member',
                       email: userProfileData?.email || currentUser.email || '',
                       phone: userProfileData?.phone || currentUser.phoneNumber || '',
-                      address: userProfileData?.address || '',
+                      address: userProfileData?.address || detectedAddress || '',
                       city: userProfileData?.city || '',
                       postalCode: userProfileData?.postalCode || '',
                       avatar:
@@ -906,10 +938,6 @@ export const App: React.FC = () => {
                 }
                 onUpdateProfile={handleUpdateProfile}
                 onLogout={handleLogout}
-                onSwitchToDriver={() => {
-                  setCurrentRole('driver')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
               />
             )}
           </div>
@@ -930,22 +958,18 @@ export const App: React.FC = () => {
               initialService={bookingService}
               currentVehicle={currentVehicle}
               savedVehicles={savedVehicles}
-              userProfile={
-                currentUser
-                  ? {
-                    name:
-                      userProfileData?.fullName ||
-                      currentUser.displayName ||
-                      currentUser.email?.split('@')[0] ||
-                      '',
-                    email: userProfileData?.email || currentUser.email || '',
-                    phone: userProfileData?.phone || currentUser.phoneNumber || '',
-                    address: userProfileData?.address || '',
-                    city: userProfileData?.city || '',
-                    postalCode: userProfileData?.postalCode || '',
-                  }
-                  : undefined
-              }
+              userProfile={{
+                name:
+                  userProfileData?.fullName ||
+                  currentUser?.displayName ||
+                  currentUser?.email?.split('@')[0] ||
+                  '',
+                email: userProfileData?.email || currentUser?.email || '',
+                phone: userProfileData?.phone || currentUser?.phoneNumber || '',
+                address: userProfileData?.address || detectedAddress || '',
+                city: userProfileData?.city || '',
+                postalCode: userProfileData?.postalCode || '',
+              }}
               onSelectVehicle={handleSelectVehicle}
               onBack={() => setIsBookingOpen(false)}
               onBookingComplete={(newBooking) => {
@@ -979,7 +1003,8 @@ export const App: React.FC = () => {
             onVehicleAdded={handleVehicleAdded}
           />
 
-          {/* Dedicated Membership Plans Page */}
+          {/* Dedicated Membership Plans Page - Temporarily commented out from UI */}
+          {/*
           {isMembershipOpen && (
             <MembershipPage
               onBack={() => setIsMembershipOpen(false)}
@@ -999,6 +1024,7 @@ export const App: React.FC = () => {
               }}
             />
           )}
+          */}
         </main>
       )}
     </div>

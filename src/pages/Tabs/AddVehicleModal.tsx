@@ -1,18 +1,75 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import {
   VEHICLE_BRANDS,
   BRAND_MODELS_MAP,
   VEHICLE_CATEGORIES,
-  WRX_YEARS,
-  WRX_COLORS,
 } from '@/data/mockData'
 import { SavedVehicle, VehicleCategory } from '@/types'
-import { ChevronLeft, Car, Check, ShieldCheck, Sparkle as _unusedSparkle, Layers } from 'lucide-react'
+import { ChevronLeft, Car } from 'lucide-react'
 
 interface AddVehicleModalProps {
   isOpen: boolean
   onClose: () => void
   onVehicleAdded: (vehicle: SavedVehicle) => void
+}
+
+const getCategorySpecs = (type: VehicleCategory) => {
+  switch (type) {
+    case 'SUV':
+      return {
+        length: '189.5 in',
+        width: '76.2 in',
+        height: '67.3 in',
+        wheelbase: '113.8 in',
+        groundClearance: '8.2 in',
+        curbWeight: '~4,650 lbs',
+      }
+    case 'Truck':
+      return {
+        length: '231.7 in',
+        width: '79.9 in',
+        height: '75.6 in',
+        wheelbase: '145.0 in',
+        groundClearance: '9.4 in',
+        curbWeight: '~5,400 lbs',
+      }
+    case 'Van':
+      return {
+        length: '202.4 in',
+        width: '78.5 in',
+        height: '69.9 in',
+        wheelbase: '121.2 in',
+        groundClearance: '6.4 in',
+        curbWeight: '~4,800 lbs',
+      }
+    case 'Coupe':
+      return {
+        length: '178.4 in',
+        width: '72.0 in',
+        height: '51.2 in',
+        wheelbase: '100.4 in',
+        groundClearance: '4.8 in',
+        curbWeight: '~3,100 lbs',
+      }
+    case 'Hatchback':
+      return {
+        length: '168.0 in',
+        width: '70.8 in',
+        height: '57.2 in',
+        wheelbase: '103.5 in',
+        groundClearance: '5.5 in',
+        curbWeight: '~2,950 lbs',
+      }
+    default:
+      return {
+        length: '185.2 in',
+        width: '72.8 in',
+        height: '56.7 in',
+        wheelbase: '111.0 in',
+        groundClearance: '5.4 in',
+        curbWeight: '~3,600 lbs',
+      }
+  }
 }
 
 export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
@@ -65,14 +122,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
       type: selectedType,
       licensePlate: licensePlate.trim().toUpperCase() || undefined,
       isPrimary: true,
-      specs: {
-        length: '183.8 in',
-        width: '71.9 in',
-        height: '57.8 in',
-        wheelbase: '105.2 in',
-        groundClearance: '5.4 in',
-        curbWeight: '~3,350 lbs',
-      },
+      specs: getCategorySpecs(selectedType),
     }
 
     onVehicleAdded(newVehicle)

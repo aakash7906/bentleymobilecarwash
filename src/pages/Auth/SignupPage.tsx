@@ -45,8 +45,20 @@ export const Signup: React.FC<SignupProps> = ({
   const [driverVan, setDriverVan] = useState('')
   const [driverPlate, setDriverPlate] = useState('')
 
-  // STEP 1 INTEGRATION: Loading state
+  // Loading state
   const [loading, setLoading] = useState(false)
+
+  // Field errors state for inline warning below inputs
+  const [errors, setErrors] = useState<{
+    fullName?: string
+    email?: string
+    password?: string
+    confirmPassword?: string
+    driverPhone?: string
+    driverVan?: string
+    driverPlate?: string
+  }>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   // -------------------------------------------------------------
   // VALIDATION HELPER: RFC 5322 Standard Email Regex Pattern
@@ -63,13 +75,13 @@ export const Signup: React.FC<SignupProps> = ({
   // -------------------------------------------------------------
   const validatePasswordStrength = (password: string): { isValid: boolean; message?: string } => {
     if (password.length < 6) {
-      return { isValid: false, message: 'Password must be at least 6 characters long.' }
+      return { isValid: false, message: 'Password must be at least 6 characters' }
     }
     if (!/[A-Za-z]/.test(password)) {
-      return { isValid: false, message: 'Password must contain at least one letter.' }
+      return { isValid: false, message: 'Password must contain at least one letter' }
     }
     if (!/[0-9]/.test(password)) {
-      return { isValid: false, message: 'Password must contain at least one number.' }
+      return { isValid: false, message: 'Password must contain at least one number' }
     }
     return { isValid: true }
   }
@@ -78,32 +90,68 @@ export const Signup: React.FC<SignupProps> = ({
   const handleSignupSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
-    // 1. Mandatory Fields Check
-    if (!fullName.trim() || !signupEmail.trim() || !signupPassword) {
-      showToast('Please fill in all required fields.', 'error')
-      return
+    const newTouched: Record<string, boolean> = {
+      fullName: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+    }
+    if (selectedRole === 'driver') {
+      newTouched.driverPhone = true
+      newTouched.driverVan = true
+      newTouched.driverPlate = true
+    }
+    setTouched(newTouched)
+
+    const newErrors: typeof errors = {}
+
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Please enter your full name'
     }
 
-    // 2. Strict Email Regex Validation
-    if (!isValidEmail(signupEmail)) {
-      showToast('Please enter a valid email address (e.g., name@example.com).', 'error')
-      return
+    if (!signupEmail.trim()) {
+      newErrors.email = 'Please enter your email address'
+    } else if (!isValidEmail(signupEmail)) {
+      newErrors.email = 'Please enter a valid email address'
     }
 
-    // 3. Password Complexity & Length Validation
     const passwordValidation = validatePasswordStrength(signupPassword)
-    if (!passwordValidation.isValid) {
-      showToast(passwordValidation.message || 'Password does not meet requirements.', 'error')
+    if (!signupPassword) {
+      newErrors.password = 'Please enter a password'
+    } else if (!passwordValidation.isValid) {
+      newErrors.password = passwordValidation.message
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password'
+    } else if (signupPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match'
+    }
+
+    if (selectedRole === 'driver') {
+      if (!driverPhone.trim()) newErrors.driverPhone = 'Please enter phone number'
+      if (!driverVan.trim()) newErrors.driverVan = 'Please enter van/unit ID'
+      if (!driverPlate.trim()) newErrors.driverPlate = 'Please enter license plate'
+    }
+
+    setErrors(newErrors)
+
+    // Trigger toast for the first error encountered
+    const firstErrorMessage =
+      newErrors.fullName ||
+      newErrors.email ||
+      newErrors.password ||
+      newErrors.confirmPassword ||
+      newErrors.driverPhone ||
+      newErrors.driverVan ||
+      newErrors.driverPlate
+
+    if (firstErrorMessage) {
+      showToast(firstErrorMessage, 'error')
       return
     }
 
-    // 4. Password Confirmation Equality Check
-    if (signupPassword !== confirmPassword) {
-      showToast('Passwords do not match. Please verify and re-type.', 'error')
-      return
-    }
-
-    // 5. Terms of Service Acceptance
+    // Terms of Service Acceptance
     if (!agreeTerms) {
       showToast('Please accept the Terms of Service to proceed.', 'error')
       return
@@ -131,8 +179,6 @@ export const Signup: React.FC<SignupProps> = ({
 
       // -------------------------------------------------------------
       // Step 2.3: Create User Profile Document in Firestore ('users' collection)
-      // Database: 'carwash'
-      // Document ID: user.uid
       // -------------------------------------------------------------
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
@@ -140,6 +186,9 @@ export const Signup: React.FC<SignupProps> = ({
         email: user.email || signupEmail.trim(),
         phone: driverPhone.trim() || '+1 (800) 555-9274',
         role: selectedRole,
+        driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
+        driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
+        driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
         driverDetails: selectedRole === 'driver' ? {
           vanNumber: driverVan.trim() || 'Van #04',
           licensePlate: driverPlate.trim() || 'BC-9042-DRV',
@@ -168,11 +217,17 @@ export const Signup: React.FC<SignupProps> = ({
     } catch (err: any) {
       console.error('Firebase Signup Error:', err)
       if (err.code === 'auth/email-already-in-use') {
-        showToast('This email is already registered. Please log in instead.', 'error')
+        const errorMsg = 'This email is already registered. Please log in instead.'
+        setErrors((prev) => ({ ...prev, email: errorMsg }))
+        showToast(errorMsg, 'error')
       } else if (err.code === 'auth/invalid-email') {
-        showToast('Invalid email format. Please check your email address.', 'error')
+        const errorMsg = 'Please enter a valid email address.'
+        setErrors((prev) => ({ ...prev, email: errorMsg }))
+        showToast(errorMsg, 'error')
       } else if (err.code === 'auth/weak-password') {
-        showToast('Password is too weak. Please include letters and numbers.', 'error')
+        const errorMsg = 'Password is too weak. Please include letters and numbers.'
+        setErrors((prev) => ({ ...prev, password: errorMsg }))
+        showToast(errorMsg, 'error')
       } else {
         showToast(err.message || 'Failed to create account. Please try again.', 'error')
       }
@@ -181,8 +236,8 @@ export const Signup: React.FC<SignupProps> = ({
     }
   }
 
-  // STEP 1 INTEGRATION: Google Sign-in for Signup screen as well
-  const handleGoogleSignUp = async () => {
+  // STEP 1 INTEGRATION: Google Sign-in for Signup screen
+  const _handleGoogleSignUp = async () => {
     setLoading(true)
     try {
       const provider = new GoogleAuthProvider()
@@ -195,6 +250,7 @@ export const Signup: React.FC<SignupProps> = ({
           name: user.displayName || 'Google User',
           email: user.email || '',
           uid: user.uid,
+          role: selectedRole,
         })
       }, 600)
     } catch (err: any) {
@@ -208,8 +264,8 @@ export const Signup: React.FC<SignupProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto selection:bg-primary selection:text-primary-foreground flex justify-center items-center py-6 sm:py-10 px-4 sm:px-6">
-      <div className="w-full max-w-[440px] sm:max-w-md md:max-w-lg lg:max-w-xl flex flex-col justify-between py-2 sm:py-6 bg-white my-auto">
+    <div className="fixed inset-0 z-50 bg-[var(--bg-app)] overflow-y-auto selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)] flex justify-center items-center py-6 sm:py-10 px-4 sm:px-6">
+      <div className="w-full max-w-[440px] sm:max-w-md md:max-w-lg lg:max-w-xl flex flex-col justify-between py-2 sm:py-6 bg-[var(--bg-app)] my-auto">
 
         {/* Top Section with Mascot Logo */}
         <div className="flex flex-col items-center w-full">
@@ -225,30 +281,52 @@ export const Signup: React.FC<SignupProps> = ({
           {/* Sign Up Mode */}
           <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
             {/* Header Titles */}
-            <h1 className="text-xl min-[380px]:text-2xl sm:text-[26px] md:text-3xl font-extrabold text-gray-950 text-center tracking-tight">
+            <h1 className="text-xl min-[380px]:text-2xl sm:text-[26px] md:text-3xl font-extrabold text-[var(--text-main)] text-center tracking-tight">
               {selectedRole === 'driver' ? 'Driver Partner Registration' : 'Create an Account'}
             </h1>
-            <p className="text-xs sm:text-sm md:text-base text-gray-500 font-normal text-center mt-1.5 mb-4 sm:mb-5">
+            <p className="text-xs sm:text-sm md:text-base text-[var(--text-muted)] font-normal text-center mt-1.5 mb-4 sm:mb-5">
               {selectedRole === 'driver'
                 ? 'Register your mobile wash vehicle and start accepting customer jobs.'
                 : 'Sign up now to get started with an account.'}
             </p>
 
             {/* Sign Up Form */}
-            <form onSubmit={handleSignupSubmit} className="w-full flex flex-col gap-3 sm:gap-3.5 md:gap-4">
+            <form onSubmit={handleSignupSubmit} noValidate className="w-full flex flex-col gap-3 sm:gap-3.5 md:gap-4">
               {/* Full Name* */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs sm:text-sm md:text-sm font-semibold text-gray-800">
-                  {selectedRole === 'driver' ? 'Driver Full Name' : 'Full Name'}<span className="text-primary">*</span>
+                <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
+                  {selectedRole === 'driver' ? 'Driver Full Name' : 'Full Name'}<span className="text-[var(--primary)]">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    setFullName(e.target.value)
+                    if (errors.fullName) {
+                      setErrors((prev) => ({ ...prev, fullName: undefined }))
+                    }
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, fullName: true }))
+                    if (!fullName.trim()) {
+                      setErrors((prev) => ({ ...prev, fullName: 'Please enter your full name' }))
+                    } else {
+                      setErrors((prev) => ({ ...prev, fullName: undefined }))
+                    }
+                  }}
                   placeholder={selectedRole === 'driver' ? 'e.g. Alex Rivera' : 'Enter full name'}
-                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-lg border border-gray-200 text-sm md:text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                    touched.fullName && errors.fullName
+                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                  }`}
                 />
+                {touched.fullName && errors.fullName && (
+                  <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                    {errors.fullName}
+                  </p>
+                )}
               </div>
 
               {/* Extra Driver Fields when selectedRole === 'driver' */}
@@ -256,82 +334,220 @@ export const Signup: React.FC<SignupProps> = ({
                 <>
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-gray-800">
-                        Phone Number<span className="text-primary">*</span>
+                      <label className="text-xs font-semibold text-[var(--text-main)]">
+                        Phone Number<span className="text-[var(--primary)]">*</span>
                       </label>
                       <input
                         type="tel"
                         required
                         value={driverPhone}
-                        onChange={(e) => setDriverPhone(e.target.value)}
+                        onChange={(e) => {
+                          setDriverPhone(e.target.value)
+                          if (errors.driverPhone) {
+                            setErrors((prev) => ({ ...prev, driverPhone: undefined }))
+                          }
+                        }}
+                        onBlur={() => {
+                          setTouched((prev) => ({ ...prev, driverPhone: true }))
+                          if (!driverPhone.trim()) {
+                            setErrors((prev) => ({ ...prev, driverPhone: 'Please enter phone number' }))
+                          } else {
+                            setErrors((prev) => ({ ...prev, driverPhone: undefined }))
+                          }
+                        }}
                         placeholder="+1 (800) 555-9274"
-                        className="w-full px-3.5 py-2.5 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                          touched.driverPhone && errors.driverPhone
+                            ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                            : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                        }`}
                       />
+                      {touched.driverPhone && errors.driverPhone && (
+                        <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                          {errors.driverPhone}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-gray-800">
-                        Van / Unit ID<span className="text-primary">*</span>
+                      <label className="text-xs font-semibold text-[var(--text-main)]">
+                        Van / Unit ID<span className="text-[var(--primary)]">*</span>
                       </label>
                       <input
                         type="text"
                         required
                         value={driverVan}
-                        onChange={(e) => setDriverVan(e.target.value)}
+                        onChange={(e) => {
+                          setDriverVan(e.target.value)
+                          if (errors.driverVan) {
+                            setErrors((prev) => ({ ...prev, driverVan: undefined }))
+                          }
+                        }}
+                        onBlur={() => {
+                          setTouched((prev) => ({ ...prev, driverVan: true }))
+                          if (!driverVan.trim()) {
+                            setErrors((prev) => ({ ...prev, driverVan: 'Please enter van/unit ID' }))
+                          } else {
+                            setErrors((prev) => ({ ...prev, driverVan: undefined }))
+                          }
+                        }}
                         placeholder="e.g. Van #04"
-                        className="w-full px-3.5 py-2.5 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                          touched.driverVan && errors.driverVan
+                            ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                            : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                        }`}
                       />
+                      {touched.driverVan && errors.driverVan && (
+                        <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                          {errors.driverVan}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-800">
-                      Vehicle License Plate<span className="text-primary">*</span>
+                    <label className="text-xs font-semibold text-[var(--text-main)]">
+                      Vehicle License Plate<span className="text-[var(--primary)]">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={driverPlate}
-                      onChange={(e) => setDriverPlate(e.target.value)}
+                      onChange={(e) => {
+                        setDriverPlate(e.target.value)
+                        if (errors.driverPlate) {
+                          setErrors((prev) => ({ ...prev, driverPlate: undefined }))
+                        }
+                      }}
+                      onBlur={() => {
+                        setTouched((prev) => ({ ...prev, driverPlate: true }))
+                        if (!driverPlate.trim()) {
+                          setErrors((prev) => ({ ...prev, driverPlate: 'Please enter license plate' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, driverPlate: undefined }))
+                        }
+                      }}
                       placeholder="e.g. BC-9042-DRV"
-                      className="w-full px-4 py-2.5 rounded-md border border-gray-200 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors uppercase font-mono"
+                      className={`w-full px-4 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors uppercase font-mono ${
+                        touched.driverPlate && errors.driverPlate
+                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                      }`}
                     />
+                    {touched.driverPlate && errors.driverPlate && (
+                      <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                        {errors.driverPlate}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
 
               {/* Email Address* */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs sm:text-sm md:text-sm font-semibold text-gray-800">
-                  Email Address<span className="text-primary">*</span>
+                <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
+                  Email Address<span className="text-[var(--primary)]">*</span>
                 </label>
                 <input
                   type="email"
                   required
                   value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setSignupEmail(val)
+                    if (val.trim()) {
+                      if (!isValidEmail(val)) {
+                        setErrors((prev) => ({ ...prev, email: 'Please enter a valid email address' }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, email: undefined }))
+                      }
+                    } else if (touched.email) {
+                      setErrors((prev) => ({ ...prev, email: 'Please enter your email address' }))
+                    } else {
+                      setErrors((prev) => ({ ...prev, email: undefined }))
+                    }
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, email: true }))
+                    if (!signupEmail.trim()) {
+                      setErrors((prev) => ({ ...prev, email: 'Please enter your email address' }))
+                    } else if (!isValidEmail(signupEmail)) {
+                      setErrors((prev) => ({ ...prev, email: 'Please enter a valid email address' }))
+                    } else {
+                      setErrors((prev) => ({ ...prev, email: undefined }))
+                    }
+                  }}
                   placeholder="name@example.com"
-                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-lg border border-gray-200 text-sm md:text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                    errors.email
+                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                  }`}
                 />
+                {errors.email && (
+                  <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               {/* Password* */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs sm:text-sm md:text-sm font-semibold text-gray-800">
-                  Password<span className="text-primary">*</span>
+                <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
+                  Password<span className="text-[var(--primary)]">*</span>
                 </label>
                 <div className="relative w-full">
                   <input
                     type={showSignupPassword ? 'text' : 'password'}
                     required
                     value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSignupPassword(val)
+                      if (val) {
+                        const strength = validatePasswordStrength(val)
+                        if (!strength.isValid) {
+                          setErrors((prev) => ({ ...prev, password: strength.message }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, password: undefined }))
+                        }
+                      } else if (touched.password) {
+                        setErrors((prev) => ({ ...prev, password: 'Please enter a password' }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, password: undefined }))
+                      }
+                      // Revalidate confirmPassword if already typed
+                      if (confirmPassword) {
+                        if (val !== confirmPassword) {
+                          setErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, password: true }))
+                      const strength = validatePasswordStrength(signupPassword)
+                      if (!signupPassword) {
+                        setErrors((prev) => ({ ...prev, password: 'Please enter a password' }))
+                      } else if (!strength.isValid) {
+                        setErrors((prev) => ({ ...prev, password: strength.message }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, password: undefined }))
+                      }
+                    }}
                     placeholder="Create password (min. 6 characters)"
-                    className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-lg border border-gray-200 text-sm md:text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                      errors.password
+                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                    }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer p-1"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-light)] hover:text-[var(--text-muted)] cursor-pointer p-1"
+                    aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
                   >
                     {showSignupPassword ? (
                       <EyeOff className="w-4 h-4 stroke-[1.8]" />
@@ -340,26 +556,60 @@ export const Signup: React.FC<SignupProps> = ({
                     )}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
+                    {errors.password}
+                  </p>
+                )}
               </div>
 
               {/* Confirm Password* */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs sm:text-sm md:text-sm font-semibold text-gray-800">
-                  Confirm Password<span className="text-primary">*</span>
+                <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
+                  Confirm Password<span className="text-[var(--primary)]">*</span>
                 </label>
                 <div className="relative w-full">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setConfirmPassword(val)
+                      if (val) {
+                        if (signupPassword !== val) {
+                          setErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+                        }
+                      } else if (touched.confirmPassword) {
+                        setErrors((prev) => ({ ...prev, confirmPassword: 'Please confirm your password' }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+                      }
+                    }}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, confirmPassword: true }))
+                      if (!confirmPassword) {
+                        setErrors((prev) => ({ ...prev, confirmPassword: 'Please confirm your password' }))
+                      } else if (signupPassword !== confirmPassword) {
+                        setErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match' }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+                      }
+                    }}
                     placeholder="Repeat password"
-                    className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-lg border border-gray-200 text-sm md:text-base text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                      errors.confirmPassword
+                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                    }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer p-1"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-light)] hover:text-[var(--text-muted)] cursor-pointer p-1"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-4 h-4 stroke-[1.8]" />
@@ -368,6 +618,11 @@ export const Signup: React.FC<SignupProps> = ({
                     )}
                   </button>
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </div>
 
               {/* Terms of Service Checkbox */}
@@ -377,14 +632,17 @@ export const Signup: React.FC<SignupProps> = ({
                   className="flex items-center gap-2.5 cursor-pointer select-none"
                 >
                   <div
-                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${agreeTerms ? 'bg-primary text-primary-foreground' : 'border border-gray-300 bg-gray-100'
-                      }`}
+                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${
+                      agreeTerms
+                        ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                        : 'border border-[var(--border-light)] bg-[var(--surface-alt)]'
+                    }`}
                   >
                     {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-600">
+                  <span className="text-xs sm:text-sm font-medium text-[var(--text-muted)]">
                     I have read and agree to the{' '}
-                    <span className="text-primary font-semibold underline cursor-pointer">
+                    <span className="text-[var(--primary)] font-semibold underline cursor-pointer">
                       Terms of Service
                     </span>
                   </span>
@@ -395,7 +653,7 @@ export const Signup: React.FC<SignupProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 sm:mt-3 py-3 sm:py-3.5 md:py-4 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm sm:text-base font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full mt-2 sm:mt-3 py-3 sm:py-3.5 md:py-4 rounded-[var(--radius-btn)] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-foreground)] text-sm sm:text-base font-bold shadow-sm active:scale-[0.99] transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{loading ? 'Creating Account...' : 'Get Started'}</span>
@@ -404,12 +662,12 @@ export const Signup: React.FC<SignupProps> = ({
 
             {/* Bottom Switch Link */}
             {onSwitchToLogin && (
-              <div className="mt-5 text-xs sm:text-sm text-gray-800 text-center font-medium">
+              <div className="mt-5 text-xs sm:text-sm text-[var(--text-main)] text-center font-medium">
                 <span>Already have an account? </span>
                 <button
                   type="button"
                   onClick={() => onSwitchToLogin(selectedRole)}
-                  className="text-primary font-bold hover:underline cursor-pointer ml-0.5"
+                  className="text-[var(--primary)] font-bold hover:underline cursor-pointer ml-0.5"
                 >
                   Log in
                 </button>
@@ -421,16 +679,16 @@ export const Signup: React.FC<SignupProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedRole('driver')}
-                className="mt-3.5 text-xs font-bold text-gray-700 hover:text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
+                className="mt-3.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
               >
-                <Truck className="w-3.5 h-3.5 text-primary" />
+                <Truck className="w-3.5 h-3.5 text-[var(--primary)]" />
                 <span>Want to drive with us? Register as Driver Partner →</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setSelectedRole('customer')}
-                className="mt-3.5 text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors cursor-pointer py-1"
+                className="mt-3.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
               >
                 ← Back to Customer Registration
               </button>
@@ -443,7 +701,7 @@ export const Signup: React.FC<SignupProps> = ({
           <div className="w-full text-center mt-6">
             <button
               onClick={onSkip}
-              className="text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors cursor-pointer py-1"
+              className="text-xs font-semibold text-[var(--text-light)] hover:text-[var(--text-muted)] transition-colors cursor-pointer py-1"
             >
               Skip and explore as guest →
             </button>

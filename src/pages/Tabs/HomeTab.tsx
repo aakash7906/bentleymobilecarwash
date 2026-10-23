@@ -39,6 +39,7 @@ interface HomeTabProps {
   onRemoveCartItem: (productId: string) => void
   onClearCart: () => void
   onCheckoutOrder?: (orderData: any) => Promise<string>
+  onUpdateLocation?: (address: string) => void
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -57,6 +58,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onRemoveCartItem,
   onClearCart,
   onCheckoutOrder,
+  onUpdateLocation,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -105,24 +107,28 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             const city = addr.city || addr.town || addr.village || addr.county || ''
             const state = addr.state || addr.country || ''
             const formatted = [street, city, state].filter(Boolean).join(', ')
+            let resolvedAddress = ''
             if (formatted) {
-              setCurrentAddress(formatted)
-              showToast(`Location detected: ${formatted}`, 'success')
+              resolvedAddress = formatted
             } else if (data.display_name) {
-              const displayShort = data.display_name.split(',').slice(0, 3).join(', ')
-              setCurrentAddress(displayShort)
-              showToast(`Location detected: ${displayShort}`, 'success')
+              resolvedAddress = data.display_name.split(',').slice(0, 3).join(', ')
             } else {
-              setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-              showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
+              resolvedAddress = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
             }
+            setCurrentAddress(resolvedAddress)
+            showToast(`Location detected: ${resolvedAddress}`, 'success')
+            onUpdateLocation?.(resolvedAddress)
           } else {
-            setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-            showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
+            const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
+            setCurrentAddress(fallback)
+            showToast(`Location detected: ${fallback}`, 'success')
+            onUpdateLocation?.(fallback)
           }
         } catch {
-          setCurrentAddress(`${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`)
-          showToast(`Location detected: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, 'success')
+          const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
+          setCurrentAddress(fallback)
+          showToast(`Location detected: ${fallback}`, 'success')
+          onUpdateLocation?.(fallback)
         } finally {
           setIsLocating(false)
         }
@@ -764,14 +770,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           onAddToCart={(prod, qty) => {
             handleAddToCart(prod, qty)
           }}
-          onBuyNowSuccess={(prod, qty) => {
-            handleAddToCart(prod, qty)
+          onBuyNowSuccess={() => {
+            // Real order was placed through checkout
           }}
           cartCount={cartCount}
           onOpenCart={() => {
             setSelectedProduct(null)
             setIsCartOpen(true)
           }}
+          userProfile={userProfile}
+          onCheckoutOrder={onCheckoutOrder}
         />
       )}
 

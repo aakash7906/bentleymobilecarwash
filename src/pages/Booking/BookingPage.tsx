@@ -110,7 +110,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   userProfile,
 }) => {
   // Service selection
-  const [selectedService, setSelectedService] = useState<ServiceItem>(
+  const [selectedService] = useState<ServiceItem>(
     initialService || SERVICES_CATALOG[0]
   )
   const [selectedVehicle, setSelectedVehicle] = useState<string>(
@@ -143,14 +143,16 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [customerPhone, setCustomerPhone] = useState(userProfile?.phone || '')
 
   // Sync state if userProfile finishes loading from Firestore
+  const prevProfileRef = React.useRef(userProfile)
   React.useEffect(() => {
-    if (userProfile) {
-      if (userProfile.name && !customerName) setCustomerName(userProfile.name)
-      if (userProfile.email && !customerEmail) setCustomerEmail(userProfile.email)
-      if (userProfile.phone && !customerPhone) setCustomerPhone(userProfile.phone)
-      if (userProfile.address && !address) setAddress(userProfile.address)
-      if (userProfile.city && !city) setCity(userProfile.city)
-      if (userProfile.postalCode && !postalCode) setPostalCode(userProfile.postalCode)
+    if (userProfile && userProfile !== prevProfileRef.current) {
+      prevProfileRef.current = userProfile
+      setCustomerName((prev) => prev || userProfile.name || '')
+      setCustomerEmail((prev) => prev || userProfile.email || '')
+      setCustomerPhone((prev) => prev || userProfile.phone || '')
+      setAddress((prev) => prev || userProfile.address || '')
+      setCity((prev) => prev || userProfile.city || '')
+      setPostalCode((prev) => prev || userProfile.postalCode || '')
     }
   }, [userProfile])
 
@@ -185,15 +187,20 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     )
   }
 
+  const isPackage =
+    selectedService.category === 'Cleaning Packages' ||
+    selectedService.category === 'Specialty'
+
   // Pricing calculations
-  const basePrice =
-    isTieredService && selectedService.tieredPricing
+  const basePrice = isPackage
+    ? isTieredService && selectedService.tieredPricing
       ? vehicleType === 'SUV'
         ? selectedService.tieredPricing.suv
         : vehicleType === 'Truck' || vehicleType === 'Van'
           ? selectedService.tieredPricing.truck
           : selectedService.tieredPricing.car
-      : selectedService.priceNumeric || 49
+      : selectedService.priceNumeric || 0
+    : 0
   const addonsTotal = selectedAddonIds.reduce((sum, id) => {
     const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
     return sum + (addon ? addon.price : 0)
@@ -392,9 +399,15 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <span className="text-xs text-gray-500 mt-0.5">
                 Est. {selectedService.estTime}
               </span>
-              <span className="text-sm font-extrabold text-primary font-mono mt-1">
-                {selectedService.price}
-              </span>
+              {isPackage ? (
+                <span className="text-sm font-extrabold text-primary font-mono mt-1">
+                  {selectedService.price}
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1 self-start">
+                  Included in Packages
+                </span>
+              )}
             </div>
           </div>
 
@@ -785,7 +798,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   </span>
                 )}
               </span>
-              <span className="font-mono">${basePrice}.00</span>
+              <span className="font-mono">
+                {isPackage ? `$${basePrice}.00` : 'Included'}
+              </span>
             </div>
 
             {vehicleSizeSurcharge > 0 && (

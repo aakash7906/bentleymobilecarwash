@@ -16,7 +16,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onNext }) =>
   const [isExiting, setIsExiting] = useState(false)
 
   const handleNext = () => {
-    onNext()
+    setIsExiting(true)
+    setTimeout(() => {
+      onNext()
+    }, 250)
   }
 
   return (

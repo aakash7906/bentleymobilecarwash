@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import { CheckCircle2, XCircle, AlertCircle, Info, X } from 'lucide-react'
 
 /**
  * Toast notification severity types
@@ -49,62 +50,46 @@ export const Toaster: React.FC = () => {
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2.5 max-w-sm sm:max-w-md w-[92%] pointer-events-none"
+      className="fixed top-5 right-5 z-[9999] flex flex-col items-end gap-2 max-w-sm w-[92%] sm:w-auto pointer-events-none"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === 'success'
         const isError = toast.type === 'error'
         const isWarning = toast.type === 'warning'
-        const isInfo = toast.type === 'info'
+        const _isInfo = toast.type === 'info'
 
         return (
           <div
             key={toast.id}
             role="alert"
-            className={`w-full px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border backdrop-blur-md pointer-events-auto transition-all animate-in fade-in slide-in-from-top-4 duration-300 ${
-              isSuccess
-                ? 'bg-emerald-950/95 text-white border-emerald-500/30'
-                : isError
-                ? 'bg-red-950/95 text-white border-red-500/30'
-                : isWarning
-                ? 'bg-amber-950/95 text-white border-amber-500/30'
-                : 'bg-secondary/95 text-white border-white/20'
-            }`}
+            className="w-auto min-w-[260px] max-w-full px-4 py-3 rounded-[var(--radius-box-sm)] shadow-[var(--shadow-card)] border border-[var(--border-light)] flex items-center gap-2.5 pointer-events-auto transition-all animate-in fade-in slide-in-from-right-4 duration-200 bg-[var(--bg-app)]"
           >
-            {/* Dynamic Status Icon */}
-            <span
-              className={`material-symbols-outlined text-[20px] shrink-0 ${
-                isSuccess
-                  ? 'text-emerald-400'
-                  : isError
-                  ? 'text-red-400'
-                  : isWarning
-                  ? 'text-amber-400'
-                  : 'text-blue-400'
-              }`}
-            >
-              {isSuccess
-                ? 'check_circle'
-                : isError
-                ? 'error'
-                : isWarning
-                ? 'warning'
-                : 'info'}
+            {/* Outline Status Icon referencing index.css brand & status tokens */}
+            <span className="shrink-0 flex items-center justify-center">
+              {isSuccess ? (
+                <CheckCircle2 className="w-4 h-4 text-[var(--status-active)] stroke-[1.75]" />
+              ) : isError ? (
+                <XCircle className="w-4 h-4 text-[var(--primary)] stroke-[1.75]" />
+              ) : isWarning ? (
+                <AlertCircle className="w-4 h-4 text-[var(--status-warning)] stroke-[1.75]" />
+              ) : (
+                <Info className="w-4 h-4 text-[var(--status-info)] stroke-[1.75]" />
+              )}
             </span>
 
             {/* Message Body */}
-            <span className="text-xs sm:text-sm font-semibold flex-1 leading-snug">
+            <span className="text-xs sm:text-sm font-normal text-[var(--text-main)] leading-snug tracking-tight">
               {toast.message}
             </span>
 
-            {/* Dismiss Button */}
+            {/* Subtle Close button */}
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              className="text-white/60 hover:text-white transition-colors cursor-pointer shrink-0 p-0.5 rounded-lg active:scale-95"
+              className="ml-auto pl-1 text-[var(--text-light)] hover:text-[var(--text-muted)] transition-colors cursor-pointer shrink-0"
               aria-label="Close notification"
             >
-              <span className="material-symbols-outlined text-[16px]">close</span>
+              <X className="w-3.5 h-3.5 stroke-[1.5]" />
             </button>
           </div>
         )

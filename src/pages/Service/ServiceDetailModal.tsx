@@ -27,6 +27,10 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 
   if (!service) return null
 
+  const isPackage =
+    service.category === 'Cleaning Packages' ||
+    service.category === 'Specialty'
+
   const activePrice =
     service.tieredPricing && service.tieredPricing[selectedTier]
       ? `$${service.tieredPricing[selectedTier]}.00`
@@ -39,15 +43,15 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
   const handleAction = () => {
     const preparedService: ServiceItem = {
       ...service,
-      price: activePrice,
-      priceNumeric: activeNumeric,
+      price: isPackage ? activePrice : 'Included in Packages',
+      priceNumeric: isPackage ? activeNumeric : 0,
       vehicleModel: service.tieredPricing
         ? selectedTier === 'car'
           ? 'Car (Sedan/Coupe/Hatchback)'
           : selectedTier === 'suv'
           ? 'SUV'
           : 'Truck / Van'
-        : service.vehicleModel,
+        : service.vehicleModel || 'Registered Vehicle',
     }
     onBookNow(preparedService)
     setIsOrderSummary(false)
@@ -102,23 +106,20 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             <span className="px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-bold">
               {service.category}
             </span>
-            <div className="text-right">
-              <span className="text-[11px] text-gray-500 block">
-                {service.tieredPricing ? 'Vehicle Pricing' : 'Total Package Price'}
-              </span>
-              <span className="text-lg font-bold text-primary font-mono">
-                {activePrice}
-              </span>
-            </div>
+            {isPackage && (
+              <div className="text-right">
+                <span className="text-[11px] text-gray-500 block">
+                  {service.tieredPricing ? 'Vehicle Pricing' : 'Total Package Price'}
+                </span>
+                <span className="text-lg font-bold text-primary font-mono">
+                  {activePrice}
+                </span>
+              </div>
+            )}
           </div>
 
           <div>
             <h2 className="text-lg font-bold text-gray-900">{service.title}</h2>
-            <div className="flex items-center gap-2 mt-0.5 text-xs">
-              <span className="text-primary font-semibold">{service.vehicleModel}</span>
-              <span className="text-gray-400">•</span>
-              <span className="text-gray-600 font-medium">Est. Time <strong className="text-primary">({service.estTime})</strong></span>
-            </div>
           </div>
 
           {/* Tiered Vehicle Selector if applicable */}
@@ -186,8 +187,10 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                   <span>Book Now</span>
                   <ArrowRight className="w-4 h-4 text-white" />
                 </>
-              ) : (
+              ) : isPackage ? (
                 <span>Book This Package</span>
+              ) : (
+                <span>Book This Service</span>
               )}
             </button>
           </div>
