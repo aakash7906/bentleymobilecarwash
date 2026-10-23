@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   sendPasswordResetEmail,
 } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 export interface LoginProps {
   onLoginSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
@@ -93,12 +93,24 @@ export const Login: React.FC<LoginProps> = ({
       // Retrieve actual registered role from Firestore
       let resolvedRole: 'customer' | 'driver' = selectedRole
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid))
+        const userDocRef = doc(db, 'users', user.uid)
+        const userDoc = await getDoc(userDocRef)
         if (userDoc.exists()) {
           const data = userDoc.data()
           if (data?.role === 'driver' || data?.role === 'customer') {
             resolvedRole = data.role
           }
+        } else {
+          // Self-heal: Ensure user document exists in Firestore
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            fullName: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
+            email: user.email || loginEmail.trim(),
+            phone: user.phoneNumber || '+1 (800) 555-9274',
+            role: selectedRole,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true })
         }
       } catch (err) {
         console.warn('Could not read user role from Firestore, defaulting to selected tab:', err)
@@ -153,12 +165,24 @@ export const Login: React.FC<LoginProps> = ({
       // Retrieve actual registered role from Firestore
       let resolvedRole: 'customer' | 'driver' = selectedRole
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid))
+        const userDocRef = doc(db, 'users', user.uid)
+        const userDoc = await getDoc(userDocRef)
         if (userDoc.exists()) {
           const data = userDoc.data()
           if (data?.role === 'driver' || data?.role === 'customer') {
             resolvedRole = data.role
           }
+        } else {
+          // Self-heal: Ensure user document exists in Firestore
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            fullName: user.displayName || 'Member',
+            email: user.email || '',
+            phone: user.phoneNumber || '+1 (800) 555-9274',
+            role: selectedRole,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true })
         }
       } catch (err) {
         console.warn('Could not read user role from Firestore:', err)

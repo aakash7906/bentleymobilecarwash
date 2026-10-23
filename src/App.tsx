@@ -229,7 +229,7 @@ export const App: React.FC = () => {
     const userDocRef = doc(db, 'users', currentUser.uid)
     const unsubDoc = onSnapshot(
       userDocRef,
-      (docSnap) => {
+      async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as any
           setUserProfileData(data)
@@ -250,6 +250,21 @@ export const App: React.FC = () => {
             }))
           } else if (data.role === 'customer') {
             setCurrentRole('customer')
+          }
+        } else {
+          // Self-heal: If user exists in Firebase Auth but document is missing in Firestore, create it now
+          try {
+            await setDoc(userDocRef, {
+              uid: currentUser.uid,
+              fullName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
+              email: currentUser.email || '',
+              phone: currentUser.phoneNumber || '+1 (800) 555-9274',
+              role: currentRole || 'customer',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }, { merge: true })
+          } catch (e) {
+            console.warn('Could not auto-create missing user profile document:', e)
           }
         }
       },
@@ -513,7 +528,7 @@ export const App: React.FC = () => {
     if (currentUser) {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
-        await updateDoc(userDocRef, {
+        await setDoc(userDocRef, {
           fullName: updated.name,
           phone: updated.phone || '',
           address: updated.address || '',
@@ -523,7 +538,7 @@ export const App: React.FC = () => {
           preferredVehicle: updated.preferredVehicle || '',
           membershipTier: updated.membershipTier || 'General Member',
           updatedAt: serverTimestamp(),
-        })
+        }, { merge: true })
       } catch (err) {
         console.error('Failed to update user profile in Firestore:', err)
       }
@@ -540,7 +555,7 @@ export const App: React.FC = () => {
     if (currentUser) {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid)
-        await updateDoc(userDocRef, {
+        await setDoc(userDocRef, {
           fullName: updated.name,
           driverPhone: updated.phone,
           driverVan: updated.vanModel,
@@ -551,7 +566,7 @@ export const App: React.FC = () => {
           avatar: updated.avatar,
           isAvailable: updated.isAvailable,
           updatedAt: serverTimestamp(),
-        })
+        }, { merge: true })
       } catch (err) {
         console.error('Failed to update driver profile in Firestore:', err)
       }

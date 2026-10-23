@@ -11,7 +11,7 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth'
 // STEP 2 INTEGRATION: Import Firestore methods to create user documents
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 
 export interface SignupProps {
   onSignupSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
@@ -180,25 +180,30 @@ export const Signup: React.FC<SignupProps> = ({
       // -------------------------------------------------------------
       // Step 2.3: Create User Profile Document in Firestore ('users' collection)
       // -------------------------------------------------------------
-      await setDoc(doc(db, 'users', user.uid), {
+      const userDocData: Record<string, any> = {
         uid: user.uid,
         fullName: fullName.trim(),
         email: user.email || signupEmail.trim(),
-        phone: driverPhone.trim() || '+1 (800) 555-9274',
+        phone: (selectedRole === 'driver' ? driverPhone.trim() : '') || '+1 (800) 555-9274',
         role: selectedRole,
-        driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
-        driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
-        driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
-        driverDetails: selectedRole === 'driver' ? {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      if (selectedRole === 'driver') {
+        userDocData.driverPhone = driverPhone.trim()
+        userDocData.driverVan = driverVan.trim() || 'Van #04'
+        userDocData.driverPlate = driverPlate.trim() || 'BC-9042-DRV'
+        userDocData.driverDetails = {
           vanNumber: driverVan.trim() || 'Van #04',
           licensePlate: driverPlate.trim() || 'BC-9042-DRV',
           vehicle: 'Ford Transit Mobile Detailing Unit',
           rating: 5.0,
           active: true,
-        } : undefined,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+        }
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userDocData)
 
       // Show Success Toast Notification before triggering session redirect
       showToast('Account created successfully! Welcome to Bentley Car Wash.', 'success')
@@ -243,6 +248,34 @@ export const Signup: React.FC<SignupProps> = ({
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const user = result.user
+
+      // Ensure user document exists in Firestore
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      if (!userDoc.exists()) {
+        const googleUserData: Record<string, any> = {
+          uid: user.uid,
+          fullName: user.displayName || 'Member',
+          email: user.email || '',
+          phone: user.phoneNumber || '+1 (800) 555-9274',
+          role: selectedRole,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        if (selectedRole === 'driver') {
+          googleUserData.driverPhone = driverPhone.trim() || ''
+          googleUserData.driverVan = driverVan.trim() || 'Van #04'
+          googleUserData.driverPlate = driverPlate.trim() || 'BC-9042-DRV'
+          googleUserData.driverDetails = {
+            vanNumber: driverVan.trim() || 'Van #04',
+            licensePlate: driverPlate.trim() || 'BC-9042-DRV',
+            vehicle: 'Ford Transit Mobile Detailing Unit',
+            rating: 5.0,
+            active: true,
+          }
+        }
+        await setDoc(userDocRef, googleUserData, { merge: true })
+      }
 
       showToast('Google registration successful! Welcome.', 'success')
       setTimeout(() => {
