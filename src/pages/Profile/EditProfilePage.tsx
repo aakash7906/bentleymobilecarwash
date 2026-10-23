@@ -15,8 +15,10 @@ import {
   Award,
   Upload,
   Trash2,
+  Lock,
 } from 'lucide-react'
 import { UserProfile } from '@/types'
+import { Select } from '@/components/ui/select'
 
 interface EditProfilePageProps {
   isOpen: boolean
@@ -95,7 +97,7 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
       const updated: UserProfile = {
         ...userProfile,
         name: name.trim() || userProfile.name,
-        email: email.trim() || userProfile.email,
+        email: userProfile.email,
         phone: phone.trim() || userProfile.phone,
         address: address.trim() || userProfile.address,
         city: city.trim() || userProfile.city,
@@ -256,24 +258,37 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
               </div>
             </div>
 
-            {/* Email Address */}
+            {/* Email Address (Non-editable / Read-only) */}
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                Email Address
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-gray-700">
+                  Email Address
+                </label>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                  <Lock className="w-3 h-3 text-gray-600" />
+                  Not Editable
+                </span>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
                   type="email"
-                  required
+                  readOnly
+                  disabled
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="w-full bg-surface-alt border border-gray-200 rounded-xl py-2.5 pl-10 pr-3.5 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                  className="w-full bg-gray-100/90 border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs sm:text-sm font-semibold text-gray-500 cursor-not-allowed select-all focus:outline-none"
+                  title="Email cannot be changed once registered"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
               </div>
+              <p className="text-[11px] text-gray-400 mt-1 pl-0.5">
+                Your email is associated with your account credentials and cannot be edited.
+              </p>
             </div>
 
             {/* Phone Number */}
@@ -295,33 +310,25 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
               </div>
             </div>
 
-            {/* Primary Vehicle */}
+            {/* Primary Registered Vehicle (Modern Responsive shadcn/ui Select) */}
             <div>
               <label className="text-xs font-bold text-gray-700 block mb-1.5">
                 Primary Registered Vehicle
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                  <Car className="w-4 h-4" />
-                </div>
-                <select
-                  value={preferredVehicle}
-                  onChange={(e) => setPreferredVehicle(e.target.value)}
-                  className="w-full bg-surface-alt border border-gray-200 rounded-xl py-2.5 pl-10 pr-8 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-primary focus:bg-white transition-colors appearance-none cursor-pointer"
-                >
-                  {allVehicles.length === 0 && (
-                    <option value="">No registered vehicles (Add one in Saved Vehicles)</option>
-                  )}
-                  {allVehicles.map((veh, idx) => (
-                    <option key={idx} value={veh}>
-                      {veh}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
-                  <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                </div>
-              </div>
+              <Select
+                value={preferredVehicle}
+                onValueChange={(val) => setPreferredVehicle(val)}
+                placeholder={
+                  allVehicles.length === 0
+                    ? 'No registered vehicles (Add one in Saved Vehicles)'
+                    : 'Select primary vehicle'
+                }
+                icon={<Car className="w-4 h-4 text-gray-400" />}
+                options={allVehicles.map((veh) => ({
+                  label: veh,
+                  value: veh,
+                }))}
+              />
             </div>
           </div>
 
@@ -441,4 +448,5 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
     </div>
   )
 }
+
 export default EditProfilePage

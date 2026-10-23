@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   ChevronLeft,
   Camera,
@@ -9,10 +9,11 @@ import {
   MapPin,
   ShieldCheck,
   Save,
-  Check,
   CheckCircle2,
   LogOut,
-  X,
+  Upload,
+  Trash2,
+  Lock,
 } from 'lucide-react'
 import { DriverProfile } from '@/types'
 import { useToast } from '@/context/ToastContext'
@@ -24,15 +25,6 @@ interface DriverProfilePageProps {
   onSave: (updated: DriverProfile) => void
   onLogout?: () => void
 }
-
-const DRIVER_AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80',
-]
 
 export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   isOpen,
@@ -52,11 +44,10 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [serviceArea, setServiceArea] = useState(profile.serviceArea)
   const [driverLicenseNumber, setDriverLicenseNumber] = useState(profile.driverLicenseNumber || '')
   const [emergencyContact, setEmergencyContact] = useState(profile.emergencyContact || '')
-  const [avatar, setAvatar] = useState(profile.avatar)
+  const [avatar, setAvatar] = useState(profile.avatar || '')
 
-  // Avatar Picker State
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
-  const [customAvatarUrl, setCustomAvatarUrl] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
@@ -71,20 +62,55 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       setServiceArea(profile.serviceArea)
       setDriverLicenseNumber(profile.driverLicenseNumber || '')
       setEmergencyContact(profile.emergencyContact || '')
-      setAvatar(profile.avatar)
+      setAvatar(profile.avatar || '')
+      setUploadError(null)
     }
   }, [isOpen, profile])
 
   if (!isOpen) return null
 
-  const handleApplyCustomAvatar = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (customAvatarUrl.trim()) {
-      setAvatar(customAvatarUrl.trim())
-      setShowAvatarPicker(false)
-      setCustomAvatarUrl('')
-      showToast('Custom photo URL applied', 'info')
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadError(null)
+
+    if (!file.type.startsWith('image/')) {
+      const err = 'Please select a valid image file (PNG, JPG, JPEG, WEBP)'
+      setUploadError(err)
+      showToast(err, 'error')
+      return
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      const err = 'Image size should be less than 5MB'
+      setUploadError(err)
+      showToast(err, 'error')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setAvatar(reader.result)
+        showToast('Photo uploaded! Remember to save profile.', 'success')
+      }
+    }
+    reader.onerror = () => {
+      const err = 'Failed to read image file. Please try another image.'
+      setUploadError(err)
+      showToast(err, 'error')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveAvatar = () => {
+    setAvatar('')
+    setUploadError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    showToast('Photo removed', 'info')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -94,7 +120,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
     const updated: DriverProfile = {
       ...profile,
       name: name.trim() || profile.name,
-      email: email.trim() || profile.email,
+      email: profile.email,
       phone: phone.trim() || profile.phone,
       vanModel: vanModel.trim() || profile.vanModel,
       licensePlate: licensePlate.trim().toUpperCase() || profile.licensePlate,
@@ -161,21 +187,72 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
             <div className="w-full bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
 
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageFileChange}
+              />
+
               {/* Avatar + Change Photo */}
-              <div className="relative group shrink-0">
-                <img
-                  src={avatar}
-                  alt={name}
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-primary/20 shadow-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAvatarPicker(true)}
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary hover:bg-neutral-900 text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer ring-2 ring-white"
-                  title="Change Driver Photo"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="relative group">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100 ring-4 ring-primary/20 flex items-center justify-center cursor-pointer group hover:ring-primary transition-all"
+                    title="Click to upload profile photo"
+                  >
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <User className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400 group-hover:text-primary transition-colors" />
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary hover:bg-neutral-900 text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer ring-2 ring-white"
+                    title="Upload / Change Photo"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Photo Actions: Upload & Remove */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>{avatar ? 'Change' : 'Upload'}</span>
+                  </button>
+                  {avatar && (
+                    <>
+                      <span className="text-gray-300">•</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Remove</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+                {uploadError && (
+                  <span className="text-[10px] text-rose-500 font-medium">
+                    {uploadError}
+                  </span>
+                )}
               </div>
 
               {/* Driver Details */}
@@ -230,18 +307,24 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                   </div>
                 </div>
 
-                {/* Email Address */}
+                {/* Email Address (Non-editable) */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Account Email</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700">Account Email</label>
+                    <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1 select-none">
+                      <Lock className="w-2.5 h-2.5" /> Non-editable
+                    </span>
+                  </div>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      required
+                      readOnly
+                      disabled
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="driver@bentleycarwash.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-100/80 border border-gray-200 text-xs sm:text-sm font-semibold text-gray-500 cursor-not-allowed select-none outline-hidden"
+                      title="Driver account email cannot be changed"
                     />
                   </div>
                 </div>
@@ -395,73 +478,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
             </div>
           </form>
         </main>
-
-        {/* 4. AVATAR PICKER MODAL */}
-        {showAvatarPicker && (
-          <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="text-base font-bold text-gray-900">Choose Profile Photo</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAvatarPicker(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div>
-                <span className="text-xs font-bold text-gray-700 mb-2.5 block">Preset Avatars</span>
-                <div className="grid grid-cols-3 gap-3">
-                  {DRIVER_AVATAR_PRESETS.map((preset, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setAvatar(preset)
-                        setShowAvatarPicker(false)
-                        showToast('Avatar updated', 'info')
-                      }}
-                      className={`relative rounded-2xl overflow-hidden aspect-square border-2 transition-all cursor-pointer ${
-                        avatar === preset
-                          ? 'border-primary ring-2 ring-primary/30 scale-102'
-                          : 'border-transparent hover:border-gray-300'
-                      }`}
-                    >
-                      <img src={preset} alt="" className="w-full h-full object-cover" />
-                      {avatar === preset && (
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                          <Check className="w-5 h-5 text-white drop-shadow-md" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100">
-                <span className="text-xs font-bold text-gray-700 mb-2 block">Or Enter Photo URL</span>
-                <form onSubmit={handleApplyCustomAvatar} className="flex gap-2">
-                  <input
-                    type="url"
-                    value={customAvatarUrl}
-                    onChange={(e) => setCustomAvatarUrl(e.target.value)}
-                    placeholder="https://example.com/photo.jpg"
-                    className="flex-1 px-3 py-2 rounded-xl bg-surface-subtle border border-gray-200 text-xs text-gray-900 focus:bg-white focus:border-primary outline-hidden"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-secondary text-white text-xs font-bold hover:bg-neutral-900 transition-colors cursor-pointer"
-                  >
-                    Apply
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
 }
+

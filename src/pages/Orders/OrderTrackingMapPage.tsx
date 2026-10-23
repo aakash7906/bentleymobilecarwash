@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, Navigation } from 'lucide-react'
+import { ChevronLeft, Navigation, User } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 
 const mapStyles = {
@@ -58,6 +58,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   const activeTitle = booking?.title || serviceTitle || 'Car Wash'
   const activeTechName = booking?.driverName || technicianName || booking?.technicianName || 'Alex Rivera'
   const activeTechPhone = booking?.driverPhone || driverPhone || '+1 (800) 555-9274'
+  const activeTechAvatar = booking?.driverAvatar || ''
   const activeVan = booking?.driverVanNumber || driverVanNumber || 'Van #04'
   const activeCustomer = booking?.customerName || customerName || 'Customer'
   const activePhone = booking?.customerPhone || customerPhone || ''
@@ -282,11 +283,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Technician Avatar */}
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-              alt={activeTechName}
-              className="w-12 h-12 rounded-full object-cover border border-gray-100 shadow-xs"
-            />
+            <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 shadow-xs bg-gray-100 flex items-center justify-center shrink-0">
+              {activeTechAvatar ? (
+                <img
+                  src={activeTechAvatar}
+                  alt={activeTechName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-6 h-6 text-gray-400" />
+              )}
+            </div>
             <div className="flex flex-col">
               <h3 className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
                 {activeTechName}
@@ -367,11 +374,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             {/* Chat Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-                  alt={technicianName}
-                  className="w-9 h-9 rounded-full object-cover"
-                />
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+                  {activeTechAvatar ? (
+                    <img
+                      src={activeTechAvatar}
+                      alt={technicianName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-gray-900">{technicianName}</span>
                   <span className="text-[10px] text-emerald-600 font-medium">● Online</span>
@@ -450,11 +463,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       {isCallOpen && (
         <div className="fixed inset-0 z-60 bg-gray-950/90 backdrop-blur-md flex flex-col items-center justify-between p-8 text-white animate-in zoom-in-95 duration-200">
           <div className="pt-12 flex flex-col items-center text-center">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-              alt={technicianName}
-              className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-2xl mb-4"
-            />
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-4 bg-white/10 flex items-center justify-center">
+              {activeTechAvatar ? (
+                <img
+                  src={activeTechAvatar}
+                  alt={technicianName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-12 h-12 text-white/70" />
+              )}
+            </div>
             <h2 className="text-xl font-bold">{technicianName}</h2>
             <span className="text-xs text-gray-400 mt-1">Bentley Mobile Service Lead</span>
             <span className="text-xs font-mono text-emerald-400 mt-2 font-semibold">

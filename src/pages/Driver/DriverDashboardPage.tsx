@@ -40,8 +40,7 @@ const DEFAULT_DRIVER_PROFILE: DriverProfile = {
   serviceArea: 'Ontario, Canada',
   driverLicenseNumber: '',
   emergencyContact: '',
-  avatar:
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  avatar: '',
   isAvailable: true,
   rating: 5.0,
   totalJobs: 0,

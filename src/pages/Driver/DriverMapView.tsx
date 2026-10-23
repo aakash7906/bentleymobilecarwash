@@ -249,16 +249,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Driver Navigation Mode</span>
             </span>
-            <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[190px] sm:max-w-xs md:max-w-md">
-              {booking.customerName} • {booking.vehicle}
-            </h2>
           </div>
-        </div>
-
-        {/* Center: Vehicle & Destination (Hidden on small mobile, visible on tablet/desktop) */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-gray-300 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl max-w-sm truncate">
-          <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-          <span className="truncate">{booking.address}</span>
         </div>
 
         {/* Right: Controls & ETA Badge */}
@@ -271,26 +262,6 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             title="Locate via device GPS"
           >
             <LocateFixed className="w-4 h-4 text-emerald-400" />
-          </button>
-
-          {/* Simulation Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsSimulating(!isSimulating)}
-            className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Simulate route travel"
-          >
-            {isSimulating ? (
-              <>
-                <Pause className="w-3.5 h-3.5 fill-white" />
-                <span className="hidden sm:inline">Pause</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span className="hidden sm:inline">Simulate</span>
-              </>
-            )}
           </button>
 
           {/* ETA Badge */}

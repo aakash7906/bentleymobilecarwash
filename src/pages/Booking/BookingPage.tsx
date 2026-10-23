@@ -353,10 +353,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
           {/* Reference Card */}
           <div className="mt-6 w-full p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col gap-3 text-left">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-              <span className="text-xs text-gray-500 font-medium">Booking ID</span>
-              <span className="text-xs font-mono font-bold text-primary">{bookingRef}</span>
-            </div>
+
 
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-500">Service:</span>

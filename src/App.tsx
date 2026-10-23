@@ -112,7 +112,13 @@ export const App: React.FC = () => {
   const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
     try {
       const stored = localStorage.getItem('bentley_driver_profile')
-      if (stored) return JSON.parse(stored)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.avatar && parsed.avatar.includes('unsplash.com/photo-1534528741775-53994a69daeb')) {
+          parsed.avatar = ''
+        }
+        return parsed
+      }
     } catch { }
     return {
       name: 'Alex Rivera',
@@ -124,8 +130,7 @@ export const App: React.FC = () => {
       driverLicenseNumber: 'DL-ON-992014-B',
       bio: 'Certified IDA Mobile Detailing Specialist with 6+ years experience.',
       emergencyContact: '+1 (998) 555-0199',
-      avatar:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      avatar: '',
       isAvailable: true,
       rating: 4.95,
       totalJobs: 142,
@@ -267,7 +272,7 @@ export const App: React.FC = () => {
               serviceArea: data.serviceArea || prev.serviceArea,
               driverLicenseNumber: data.driverLicenseNumber || prev.driverLicenseNumber,
               bio: data.bio || prev.bio,
-              avatar: data.avatar || prev.avatar,
+              avatar: data.avatar !== undefined ? data.avatar : (data.photoURL || prev.avatar || ''),
               isAvailable: data.isAvailable !== undefined ? data.isAvailable : prev.isAvailable,
             }))
           } else if (data.role === 'customer') {
@@ -802,6 +807,7 @@ export const App: React.FC = () => {
             driverPhone: driverProfile.phone,
             driverVehicle: driverProfile.vanModel,
             driverVanNumber: driverProfile.licensePlate,
+            driverAvatar: driverProfile.avatar || '',
             driverCoords: b.driverCoords || [-79.4035, 43.6635],
           }
           : b
@@ -818,6 +824,7 @@ export const App: React.FC = () => {
           driverPhone: driverProfile.phone,
           driverVehicle: driverProfile.vanModel,
           driverVanNumber: driverProfile.licensePlate,
+          driverAvatar: driverProfile.avatar || '',
           driverCoords: [-79.4035, 43.6635],
           acceptedAt: serverTimestamp(),
         })

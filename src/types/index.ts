@@ -159,6 +159,7 @@ export interface BookingRecord {
   driverPhone?: string
   driverVehicle?: string
   driverVanNumber?: string
+  driverAvatar?: string
   driverCoords?: [number, number]
   customerCoords?: [number, number]
   distanceKm?: number
