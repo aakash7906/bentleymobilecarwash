@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { User } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'
 import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
@@ -60,8 +61,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       address: '',
       city: '',
       postalCode: '',
-      avatar:
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      avatar: '',
       preferredVehicle: '',
       membershipTier: 'General Member',
     }
@@ -185,12 +185,16 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-14 h-14 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm group-hover:border-primary transition-colors">
-                <img
-                  src={profile.avatar}
-                  alt={isGuest ? 'Guest User' : profile.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+              <div className="w-14 h-14 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm group-hover:border-primary transition-colors flex items-center justify-center bg-gray-100">
+                {isGuest || !profile.avatar ? (
+                  <User className="w-7 h-7 text-gray-400" />
+                ) : (
+                  <img
+                    src={profile.avatar}
+                    alt={isGuest ? 'Guest User' : profile.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center border border-white shadow-xs">
                 <span className="material-symbols-outlined text-[12px]">edit</span>

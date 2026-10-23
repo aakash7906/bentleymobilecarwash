@@ -8,11 +8,23 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
+import { getFirestore } from "firebase-admin/firestore";
+
+let dbInstance: admin.firestore.Firestore | null = null;
+
 /**
  * Returns initialized Firestore database reference (supporting custom database ID if set)
  */
 function getDb(): admin.firestore.Firestore {
-  return admin.firestore();
+  if (!dbInstance) {
+    const databaseId = process.env.DATABASE_ID || process.env.FIREBASE_DATABASE_ID || "carwash";
+    try {
+      dbInstance = ((getFirestore as any)(admin.app(), databaseId)) as admin.firestore.Firestore;
+    } catch {
+      dbInstance = admin.firestore();
+    }
+  }
+  return dbInstance;
 }
 
 /**
@@ -611,39 +623,40 @@ export const sendCustomPasswordResetEmail = functions.https.onCall(async (data: 
 });
 
 // ============================================================================
-// 5. USER ACCOUNT DELETION (Required by DeleteUser.tsx)
+// 5. USER ACCOUNT DELETION (EXCLUDED FROM DEPLOYMENT PER USER REQUEST)
 // ============================================================================
 
 /**
- * Callable Function: deleteUserAccount
+ * Callable Function: deleteUserAccount (Commented out - not deployed)
  */
-export const deleteUserAccount = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Authentication required to delete account.");
-  }
+// export const deleteUserAccount = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
+//   if (!context.auth) {
+//     throw new functions.https.HttpsError("unauthenticated", "Authentication required to delete account.");
+//   }
+//
+//   const callerUid = context.auth.uid;
+//   const targetUid = data?.targetUid || callerUid;
+//
+//   if (targetUid !== callerUid) {
+//     const callerDoc = await getDb().collection("users").doc(callerUid).get();
+//     const callerRole = (callerDoc.data()?.role || "").toString().toLowerCase();
+//     const allowedRoles = ["admin", "super_admin", "owner"];
+//     if (!allowedRoles.includes(callerRole) && context.auth.token?.admin !== true) {
+//       throw new functions.https.HttpsError("permission-denied", "Unauthorized to delete other users.");
+//     }
+//   }
+//
+//   try {
+//     await getDb().collection("users").doc(targetUid).delete();
+//     try {
+//       await admin.auth().deleteUser(targetUid);
+//     } catch (authError: any) {
+//       console.warn(`[deleteUserAccount] Auth user deletion warning:`, authError.message);
+//     }
+//     return { success: true, message: `User account ${targetUid} deleted successfully.` };
+//   } catch (error: any) {
+//     console.error(`[deleteUserAccount] Failed to delete user ${targetUid}:`, error);
+//     throw new functions.https.HttpsError("internal", error.message || "Failed to delete user account.");
+//   }
+// });
 
-  const callerUid = context.auth.uid;
-  const targetUid = data?.targetUid || callerUid;
-
-  if (targetUid !== callerUid) {
-    const callerDoc = await getDb().collection("users").doc(callerUid).get();
-    const callerRole = (callerDoc.data()?.role || "").toString().toLowerCase();
-    const allowedRoles = ["admin", "super_admin", "owner"];
-    if (!allowedRoles.includes(callerRole) && context.auth.token?.admin !== true) {
-      throw new functions.https.HttpsError("permission-denied", "Unauthorized to delete other users.");
-    }
-  }
-
-  try {
-    await getDb().collection("users").doc(targetUid).delete();
-    try {
-      await admin.auth().deleteUser(targetUid);
-    } catch (authError: any) {
-      console.warn(`[deleteUserAccount] Auth user deletion warning:`, authError.message);
-    }
-    return { success: true, message: `User account ${targetUid} deleted successfully.` };
-  } catch (error: any) {
-    console.error(`[deleteUserAccount] Failed to delete user ${targetUid}:`, error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to delete user account.");
-  }
-});

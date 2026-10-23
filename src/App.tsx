@@ -1144,7 +1144,7 @@ export const App: React.FC = () => {
                       avatar:
                         userProfileData?.avatar ||
                         currentUser.photoURL ||
-                        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+                        '',
                       preferredVehicle:
                         userProfileData?.preferredVehicle ||
                         (savedVehicles.length > 0 ? (savedVehicles.find((v) => v.isPrimary)?.name || savedVehicles[0].name) : currentVehicle) ||

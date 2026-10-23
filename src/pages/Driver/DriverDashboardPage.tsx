@@ -11,7 +11,10 @@ import {
   LogOut,
   ExternalLink,
   MessageSquare,
+  User,
+  Radio,
 } from 'lucide-react'
+import logoBentley from '@/assets/Logo_Bentley.png'
 import { BookingRecord, BookingStatus, DriverProfile } from '@/types'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
@@ -309,132 +312,53 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       )}
 
       {/* 4. MAIN RESPONSIVE DASHBOARD LAYOUT */}
-      <main className="w-full max-w-full min-h-screen bg-canvas flex flex-col">
-        {/* TOP PROFILE & KPI HERO BAR */}
-        <div className="w-full bg-white border-b border-gray-200/80 shadow-2xs">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-5 flex flex-col gap-4">
-            {/* Top Row: Driver Profile & Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              {/* Driver info & clickable avatar to open profile */}
-              <div
+      <main className="w-full max-w-full min-h-screen bg-canvas flex flex-col pb-32">
+        {/* TOP RESPONSIVE HEADER: Logo on Left, User Profile on Right */}
+        <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/80 shadow-2xs">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between">
+            {/* Top Left: Bentley Logo */}
+            <div className="flex items-center gap-2.5">
+              <img
+                src={logoBentley}
+                alt="Bentley Mobile Car Wash"
+                className="h-9 sm:h-10 w-auto object-contain filter drop-shadow-xs"
+              />
+            </div>
+
+            {/* Top Right: User Profile Icon */}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex flex-col text-right">
+                <span className="text-xs font-bold text-gray-900 leading-tight">
+                  {profile.name}
+                </span>
+                <span className="text-[11px] text-gray-500 font-medium truncate max-w-[160px]">
+                  {profile.vanModel}
+                </span>
+              </div>
+
+              <button
+                type="button"
                 onClick={() => setIsProfileOpen(true)}
-                className="flex items-center gap-3 sm:gap-4 cursor-pointer group"
-                title="Click to view & edit driver profile"
+                className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-primary/30 hover:border-primary overflow-hidden shadow-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center bg-gray-100 group"
+                title="Driver Profile"
+                aria-label="Driver Profile"
               >
-                <img
-                  src={profile.avatar}
-                  alt={profile.name}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-primary/40 group-hover:ring-primary shadow-sm transition-all"
-                />
-
-                <div className="flex flex-col">
-                  <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight group-hover:text-primary transition-colors">
-                    {profile.name}
-                  </h1>
-                  <span className="text-xs text-gray-500 font-medium truncate max-w-[220px] sm:max-w-md">
-                    {profile.vanModel}{profile.licensePlate ? ` • ${profile.licensePlate}` : ''}
-                  </span>
-                </div>
-              </div>
-
-              {/* Top Controls: Logout (Icon Only) */}
-              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                {/* Top Logout Button */}
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 active:scale-95 border border-rose-200/60 transition-all cursor-pointer shadow-2xs"
-                  title="Log out from Driver account"
-                >
-                  <LogOut className="w-4 h-4 text-rose-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Metrics KPI Cards (Responsive 3-Column Grid) */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
-              <div className="p-3 sm:p-4 rounded-2xl bg-surface-subtle border border-gray-100 flex flex-col shadow-xs">
-                <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Live Requests
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-primary font-mono mt-0.5">
-                  {availableOrders.length}
-                </span>
-                <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 hidden sm:block">
-                  Ready to dispatch
-                </span>
-              </div>
-
-              <div className="p-3 sm:p-4 rounded-2xl bg-surface-subtle border border-gray-100 flex flex-col shadow-xs">
-                <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Active Dispatches
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-secondary font-mono mt-0.5">
-                  {myActiveOrders.length}
-                </span>
-                <span className="text-[10px] text-primary font-semibold mt-0.5 hidden sm:block">
-                  In progress
-                </span>
-              </div>
-
-              <div className="p-3 sm:p-4 rounded-2xl bg-surface-subtle border border-gray-100 flex flex-col shadow-xs">
-                <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Completed Washes
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono mt-0.5">
-                  {completedOrders.length}
-                </span>
-                <span className="text-[10px] text-gray-400 font-semibold mt-0.5 hidden sm:block">
-                  Verified receipts
-                </span>
-              </div>
+                {profile.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-gray-500 group-hover:text-primary transition-colors" />
+                )}
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* STICKY TAB CONTROLLER */}
-        <div className="w-full bg-white border-b border-gray-200/80 sticky top-0 z-20 shadow-2xs">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('available')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer text-center relative ${
-                activeTab === 'available'
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              <span>Live Requests ({availableOrders.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('active')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer text-center relative ${
-                activeTab === 'active'
-                  ? 'bg-secondary text-white shadow-xs'
-                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              <span>My Active ({myActiveOrders.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('completed')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer text-center relative ${
-                activeTab === 'completed'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              <span>Completed ({completedOrders.length})</span>
-            </button>
-          </div>
-        </div>
+        </header>
 
         {/* RESPONSIVE ORDER CARDS CONTAINER */}
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 flex-1 pb-28">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 flex-1">
           {/* TAB 1: AVAILABLE LIVE ORDERS */}
           {activeTab === 'available' && (
             <>
@@ -494,7 +418,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                       {/* Package Name */}
                       <div className="flex items-center justify-between text-xs text-gray-600 px-1">
                         <span>Package: <strong className="text-gray-900">{booking.title}</strong></span>
-                        <span className="text-gray-400 text-[11px]">ID: {booking.id}</span>
                       </div>
 
                       {/* Action Buttons */}
@@ -548,7 +471,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                             <span>{booking.status.replace('_', ' ')}</span>
                           </span>
-                          <span className="text-[11px] font-mono text-gray-400">{booking.id}</span>
                         </div>
                         <span className="text-sm sm:text-base font-black text-primary font-mono">
                           {booking.price}
@@ -692,7 +614,111 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             </>
           )}
         </div>
+
+        {/* 5. BOTTOM NAVIGATION TABS (Fixed at Bottom, Responsive) */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] select-none">
+          <div className="w-full max-w-lg mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
+            {/* Tab 1: Live Requests */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('available')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`flex-1 min-w-0 py-2 sm:py-2.5 px-1.5 sm:px-3 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1 sm:gap-2 transition-all cursor-pointer font-bold text-[11px] sm:text-xs ${
+                activeTab === 'available'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              <Radio className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'available' ? 'animate-pulse' : ''}`} />
+              <span className="truncate">
+                <span className="inline sm:hidden">Live</span>
+                <span className="hidden sm:inline">Live Requests</span>
+              </span>
+              <span
+                className={`shrink-0 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-[20px] px-1 flex items-center justify-center text-[10px] sm:text-[11px] font-black rounded-full leading-none ${
+                  activeTab === 'available'
+                    ? 'bg-white text-primary'
+                    : 'bg-primary/10 text-primary'
+                }`}
+              >
+                {availableOrders.length}
+              </span>
+            </button>
+
+            {/* Tab 2: My Active */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('active')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`flex-1 min-w-0 py-2 sm:py-2.5 px-1.5 sm:px-3 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1 sm:gap-2 transition-all cursor-pointer font-bold text-[11px] sm:text-xs ${
+                activeTab === 'active'
+                  ? 'bg-secondary text-white shadow-xs'
+                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">
+                <span className="inline sm:hidden">Active</span>
+                <span className="hidden sm:inline">My Active</span>
+              </span>
+              <span
+                className={`shrink-0 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-[20px] px-1 flex items-center justify-center text-[10px] sm:text-[11px] font-black rounded-full leading-none ${
+                  activeTab === 'active'
+                    ? 'bg-white text-secondary'
+                    : 'bg-secondary/10 text-secondary'
+                }`}
+              >
+                {myActiveOrders.length}
+              </span>
+            </button>
+
+            {/* Tab 3: Completed */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('completed')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`flex-1 min-w-0 py-2 sm:py-2.5 px-1.5 sm:px-3 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1 sm:gap-2 transition-all cursor-pointer font-bold text-[11px] sm:text-xs ${
+                activeTab === 'completed'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-surface-alt hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">
+                <span className="inline sm:hidden">Done</span>
+                <span className="hidden sm:inline">Completed</span>
+              </span>
+              <span
+                className={`shrink-0 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-[20px] px-1 flex items-center justify-center text-[10px] sm:text-[11px] font-black rounded-full leading-none ${
+                  activeTab === 'completed'
+                    ? 'bg-white text-emerald-700'
+                    : 'bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {completedOrders.length}
+              </span>
+            </button>
+          </div>
+        </nav>
       </main>
+
+      {/* 6. DRIVER PROFILE MODAL */}
+      <DriverProfilePage
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        profile={profile}
+        onSave={(updated) => {
+          setProfile(updated)
+          onUpdateDriverProfile?.(updated)
+        }}
+        onLogout={onLogout}
+      />
     </div>
   )
 }

@@ -10,7 +10,6 @@ import {
   Car,
   Play,
   Pause,
-  Sparkles,
   ExternalLink,
   LocateFixed,
   Send,
@@ -216,7 +215,6 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             }}
             className="w-full py-3.5 px-4 rounded-2xl bg-secondary hover:bg-black active:scale-98 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-amber-400" />
             <span>Finish Wash & Complete Order</span>
           </button>
         )}

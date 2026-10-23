@@ -60,6 +60,21 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
+  // Sync state when profile or isOpen changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setName(profile.name)
+      setEmail(profile.email)
+      setPhone(profile.phone)
+      setVanModel(profile.vanModel)
+      setLicensePlate(profile.licensePlate)
+      setServiceArea(profile.serviceArea)
+      setDriverLicenseNumber(profile.driverLicenseNumber || '')
+      setEmergencyContact(profile.emergencyContact || '')
+      setAvatar(profile.avatar)
+    }
+  }, [isOpen, profile])
+
   if (!isOpen) return null
 
   const handleApplyCustomAvatar = (e: React.FormEvent) => {
@@ -124,15 +139,16 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Logout Shortcut */}
+            {/* Logout Button */}
             {onLogout && (
               <button
                 type="button"
                 onClick={onLogout}
-                className="w-9 h-9 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center border border-rose-200/60 transition-all cursor-pointer"
-                title="Log out"
+                className="px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center gap-1.5 border border-rose-200/60 transition-all cursor-pointer font-bold text-xs shadow-2xs active:scale-95"
+                title="Log out from Driver account"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
               </button>
             )}
           </div>

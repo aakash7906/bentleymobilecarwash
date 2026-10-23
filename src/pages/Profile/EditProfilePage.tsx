@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   ChevronLeft,
   Camera,
@@ -13,6 +13,8 @@ import {
   X,
   Shield,
   Award,
+  Upload,
+  Trash2,
 } from 'lucide-react'
 import { UserProfile } from '@/types'
 
@@ -23,15 +25,6 @@ interface EditProfilePageProps {
   onSave: (updated: UserProfile) => void
   savedVehicles?: string[]
 }
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-]
 
 export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   isOpen,
@@ -46,23 +39,51 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   const [address, setAddress] = useState(userProfile.address || '')
   const [city, setCity] = useState(userProfile.city || '')
   const [postalCode, setPostalCode] = useState(userProfile.postalCode || '')
-  const [avatar, setAvatar] = useState(userProfile.avatar || AVATAR_PRESETS[0])
+  const [avatar, setAvatar] = useState(userProfile.avatar || '')
   const [preferredVehicle, setPreferredVehicle] = useState(
     userProfile.preferredVehicle || (savedVehicles[0] || '')
   )
 
-  const [showCustomAvatarInput, setShowCustomAvatarInput] = useState(false)
-  const [customAvatarUrl, setCustomAvatarUrl] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
   if (!isOpen) return null
 
-  const handleApplyCustomAvatar = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (customAvatarUrl.trim()) {
-      setAvatar(customAvatarUrl.trim())
-      setShowCustomAvatarInput(false)
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadError(null)
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file (PNG, JPG, JPEG, WEBP)')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image size should be less than 5MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setAvatar(reader.result)
+      }
+    }
+    reader.onerror = () => {
+      setUploadError('Failed to read image file. Please try another image.')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveAvatar = () => {
+    setAvatar('')
+    setUploadError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -128,7 +149,7 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
 
         {/* 2. SUCCESS TOAST ALERT */}
         {savedSuccess && (
-          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top duration-200">
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 bg-secondary/95 backdrop-blur-md text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-from-top duration-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>Profile updated successfully!</span>
           </div>
@@ -138,30 +159,74 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
         <form onSubmit={handleSave} className="p-4 sm:p-5 flex flex-col gap-5">
           {/* Avatar Section */}
           <div className="flex flex-col items-center gap-3 py-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageFileChange}
+            />
+
             <div className="relative group">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-100 ring-2 ring-primary/20">
-                <img
-                  src={avatar}
-                  alt={name}
-                  className="w-full h-full object-cover"
-                />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100 ring-2 ring-primary/20 flex items-center justify-center cursor-pointer group hover:ring-primary transition-all"
+                title="Click to upload profile photo"
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt={name || 'User Profile'}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <User className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400 group-hover:text-primary transition-colors" />
+                )}
               </div>
 
-              {/* Edit Icon Overlay */}
+              {/* Edit / Camera Icon Overlay */}
               <button
                 type="button"
-                onClick={() => setShowCustomAvatarInput(!showCustomAvatarInput)}
+                onClick={() => fileInputRef.current?.click()}
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground border-2 border-white flex items-center justify-center shadow-md hover:bg-primary-hover active:scale-95 transition-all cursor-pointer"
-                title="Change Photo"
+                title="Upload Photo"
               >
                 <Camera className="w-4 h-4 text-primary-foreground" />
               </button>
             </div>
 
-            <div className="text-center">
-              <span className="text-xs font-bold text-gray-800 block">
-                Profile Photo
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{avatar ? 'Change Photo' : 'Upload Photo'}</span>
+                </button>
+                {avatar && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  </>
+                )}
+              </div>
+              <span className="text-[11px] text-gray-400 font-normal">
+                Supports JPG, PNG or WEBP (Max 5MB)
               </span>
+              {uploadError && (
+                <span className="text-xs text-rose-500 font-medium mt-0.5">
+                  {uploadError}
+                </span>
+              )}
             </div>
           </div>
 
