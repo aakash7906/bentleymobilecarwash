@@ -391,26 +391,7 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Membership Info Pill (Read-only status) */}
-          <div className="bg-surface-alt rounded-2xl p-3 border border-gray-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-primary shadow-xs">
-                <Award className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-900 block">
-                  {userProfile.membershipTier || 'VIP Member'}
-                </span>
-                <span className="text-[11px] text-gray-500">
-                  Active Bentley Mobile Detailing Plan
-                </span>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              Active
-            </span>
-          </div>
+          
         </form>
 
         {/* 4. STICKY BOTTOM ACTIONS */}

@@ -16,14 +16,12 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 export interface SignupProps {
   onSignupSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
   onSwitchToLogin?: (role?: 'customer' | 'driver') => void
-  onSkip?: () => void
   initialRole?: 'customer' | 'driver'
 }
 
 export const Signup: React.FC<SignupProps> = ({
   onSignupSuccess,
   onSwitchToLogin,
-  onSkip,
   initialRole = 'customer',
 }) => {
   // Global Toast Hook
@@ -723,17 +721,7 @@ export const Signup: React.FC<SignupProps> = ({
           </div>
         </div>
 
-        {/* Optional Skip / Continue as Guest */}
-        {onSkip && (
-          <div className="w-full text-center mt-6">
-            <button
-              onClick={onSkip}
-              className="text-xs font-semibold text-[var(--text-light)] hover:text-[var(--text-muted)] transition-colors cursor-pointer py-1"
-            >
-              Skip and explore as guest →
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
   )

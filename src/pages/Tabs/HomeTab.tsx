@@ -242,14 +242,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           className="h-9 sm:h-11 md:h-12 w-auto object-contain cursor-pointer active:scale-95 transition-transform drop-shadow-sm"
         />
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Grid Layout Button */}
-          <button
-            type="button"
-            className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary-hover active:scale-95 transition-all cursor-pointer"
-            title="Categories"
-          >
-            <span className="material-symbols-outlined text-[18px] sm:text-[20px]">grid_view</span>
-          </button>
 
           {/* Shopping Cart Button */}
           <button
@@ -421,12 +413,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* 5. RED ACTION BANNER */}
-      <div className="px-4 sm:px-5 mt-3 sm:mt-3.5">
-        <div className="w-full bg-primary rounded-xl h-9.5 sm:h-10 px-4 flex items-center text-primary-foreground shadow-sm">
-          <span className="material-symbols-outlined text-[19px] sm:text-[21px]">grid_view</span>
-        </div>
-      </div>
 
       {/* 6. 4 CATEGORY CARDS (2x2 Asymmetric Bento Grid matching reference design) */}
       <div className="px-4 sm:px-5 mt-3 sm:mt-3.5 flex flex-col gap-2.5">
@@ -684,22 +670,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status */}
       {(() => {
         // DYNAMIC STATUS PILL LOGIC:
-        // For logged-in users: ONLY show when a driver accepts that request and has started arriving
+        // ONLY show when a driver accepts that request and has started arriving
         // (statuses: 'en_route', 'in_progress', or 'accepted' with driver assigned).
         // Never show for 'scheduled' or 'pending' where no driver has accepted yet.
-        // For guest users: Maintain fallback behavior with available active bookings.
-        const isUser = Boolean(userProfile)
-        const liveBooking = isUser
-          ? activeBookings.find(
-              (b) =>
-                b.status === 'en_route' ||
-                b.status === 'in_progress' ||
-                b.status === 'accepted'
-            )
-          : activeBookings.find((b) => b.status === 'en_route') ||
-            activeBookings.find((b) => b.status === 'in_progress') ||
-            activeBookings.find((b) => b.status === 'accepted') ||
-            activeBookings.find((b) => b.status === 'scheduled')
+        const liveBooking = activeBookings.find(
+          (b) =>
+            b.status === 'en_route' ||
+            b.status === 'in_progress' ||
+            b.status === 'accepted'
+        )
 
         if (!liveBooking) return null
 

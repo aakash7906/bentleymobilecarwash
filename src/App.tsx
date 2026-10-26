@@ -60,7 +60,6 @@ export const App: React.FC = () => {
       return false
     }
   })
-  const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
 
   // Live GPS address detected from Home tab, forwarded seamlessly to BookingPage
@@ -83,6 +82,7 @@ export const App: React.FC = () => {
 
   // STEP 1 INTEGRATION: Firebase User state from Auth
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
 
   // STEP 2 INTEGRATION: Live user profile data fetched from Firestore 'users' collection
   const [userProfileData, setUserProfileData] = useState<{
@@ -233,13 +233,12 @@ export const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user)
-        // If user is already authenticated, close auth screens automatically
-        setShowAuth(false)
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
         syncedUserCartRef.current = null
       }
+      setIsAuthLoading(false)
     })
     return () => unsubscribe()
   }, [])
@@ -294,7 +293,7 @@ export const App: React.FC = () => {
           }
 
           // CART SYNC ON LOGIN:
-          // Merge local guest cart and remote Firestore cloud cart seamlessly
+          // Merge local cart and remote Firestore cloud cart seamlessly
           if (syncedUserCartRef.current !== currentUser.uid) {
             syncedUserCartRef.current = currentUser.uid
             const cloudCart: CartItem[] = Array.isArray(data.cart) ? data.cart : []
@@ -436,7 +435,7 @@ export const App: React.FC = () => {
     return () => unsubBookings()
   }, [currentUser, currentRole])
 
-  // STEP 3.5 INTEGRATION: Guest-to-User Transition - Automatically sync locally added vehicles to Firestore on login
+  // STEP 3.5 INTEGRATION: Automatically sync locally added vehicles to Firestore on login
   useEffect(() => {
     if (!currentUser) return
 
@@ -459,12 +458,14 @@ export const App: React.FC = () => {
         },
         { merge: true }
       ).catch((err) => {
-        console.warn('Could not sync guest vehicles to Firestore upon login:', err)
+        console.warn('Could not sync user vehicles to Firestore upon login:', err)
       })
     }
   }, [currentUser?.uid])
 
-  const isAppReady = !showSplash && !showOnboarding && !showAuth
+  const isAuthenticated = Boolean(currentUser)
+  const isAppReady = !showSplash && !showOnboarding && !isAuthLoading && isAuthenticated
+  const showAuthScreen = !showSplash && !showOnboarding && !isAuthLoading && !isAuthenticated
 
   const navigateToTab = (tab: TabType) => {
     setPreviousTab(currentTab)
@@ -884,7 +885,6 @@ export const App: React.FC = () => {
     setUserProfileData(null)
     setCurrentRole('customer')
     setAuthMode('login')
-    setShowAuth(true)
   }
 
   // STEP 6 INTEGRATION: Save product order to Firestore 'orders' collection using original Firestore document ID
@@ -897,7 +897,7 @@ export const App: React.FC = () => {
       const payload = cleanUndefined({
         ...orderData,
         id: orderId,
-        userId: currentUser ? currentUser.uid : 'guest',
+        userId: currentUser ? currentUser.uid : '',
         userEmail: currentUser?.email || orderData.customerEmail || '',
         createdAt: serverTimestamp(),
         serverTimestamp: serverTimestamp(),
@@ -970,17 +970,15 @@ export const App: React.FC = () => {
               localStorage.setItem('bentley_onboarded', 'true')
             } catch { }
             setAuthMode('login')
-            setShowAuth(true)
           }}
         />
       )}
 
-      {/* 3. Launch Login & Signup Screen */}
-      {showAuth && authMode === 'login' && (
+      {/* 3. Launch Login & Signup Screen (Authentication Required) */}
+      {showAuthScreen && authMode === 'login' && (
         <Login
           initialRole={currentRole}
           onLoginSuccess={(user) => {
-            setShowAuth(false)
             if (user?.role === 'driver') {
               setCurrentRole('driver')
             } else {
@@ -993,19 +991,13 @@ export const App: React.FC = () => {
             if (role) setCurrentRole(role)
             setAuthMode('signup')
           }}
-          onSkip={() => {
-            setShowAuth(false)
-            setCurrentTab('home')
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
         />
       )}
 
-      {showAuth && authMode === 'signup' && (
+      {showAuthScreen && authMode === 'signup' && (
         <Signup
           initialRole={currentRole}
           onSignupSuccess={(user) => {
-            setShowAuth(false)
             if (user?.role === 'driver') {
               setCurrentRole('driver')
             } else {
@@ -1017,11 +1009,6 @@ export const App: React.FC = () => {
           onSwitchToLogin={(role) => {
             if (role) setCurrentRole(role)
             setAuthMode('login')
-          }}
-          onSkip={() => {
-            setShowAuth(false)
-            setCurrentTab('home')
-            window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         />
       )}
@@ -1185,11 +1172,6 @@ export const App: React.FC = () => {
                 }
                 onUpdateProfile={handleUpdateProfile}
                 onLogout={handleLogout}
-                isGuest={!currentUser}
-                onOpenAuth={() => {
-                  setShowAuth(true)
-                  setAuthMode('login')
-                }}
               />
             )}
           </div>
@@ -1210,11 +1192,6 @@ export const App: React.FC = () => {
               initialService={bookingService}
               currentVehicle={currentVehicle}
               savedVehicles={savedVehicles}
-              isGuest={!currentUser}
-              onRequestAuth={() => {
-                setShowAuth(true)
-                setAuthMode('login')
-              }}
               userProfile={{
                 name:
                   userProfileData?.Name ||

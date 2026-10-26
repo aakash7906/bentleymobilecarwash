@@ -177,9 +177,9 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
         )}
       </div>
 
-      {/* 3. Search Bar + Red Filter Button */}
-      <div className="mt-4 flex items-center gap-2.5 px-6">
-        <div className="relative flex-1">
+      {/* 3. Search Bar */}
+      <div className="mt-4 px-6">
+        <div className="relative w-full">
           <input
             type="text"
             value={searchQuery}
@@ -191,14 +191,6 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
             <span className="material-symbols-outlined text-[20px]">search</span>
           </button>
         </div>
-
-        {/* Red Filter Button */}
-        <button
-          onClick={() => setActiveCategory('all')}
-          className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shrink-0"
-        >
-          <span className="material-symbols-outlined text-[20px]">tune</span>
-        </button>
       </div>
 
       {/* 4. Category Pills */}

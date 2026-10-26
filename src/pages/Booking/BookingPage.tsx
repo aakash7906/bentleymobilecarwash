@@ -39,8 +39,6 @@ interface BookingPageProps {
     city?: string
     postalCode?: string
   }
-  isGuest?: boolean
-  onRequestAuth?: () => void
 }
 
 interface AddOnOption {
@@ -115,8 +113,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   savedVehicles = [],
   onSelectVehicle,
   userProfile,
-  isGuest = false,
-  onRequestAuth,
 }) => {
   // Service selection
   const [selectedService] = useState<ServiceItem>(
@@ -129,7 +125,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Frequency & Subscription
   const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
-  const [showGuestAuthModal, setShowGuestAuthModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
   // Booking location (Autofilled dynamically from Firestore profile)
@@ -324,10 +319,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   }
 
   const handleConfirmBooking = () => {
-    if (isGuest) {
-      setShowGuestAuthModal(true)
-      return
-    }
     executeBookingConfirmation()
   }
 
@@ -967,44 +958,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           </div>
         </div>
 
-        {/* Guest Auth Gate Modal */}
-        {showGuestAuthModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <ShieldCheck className="w-8 h-8" />
-              </div>
 
-              <h3 className="text-lg font-black text-gray-900 tracking-tight">
-                Sign In to Schedule Technician
-              </h3>
-
-              <div className="w-full flex flex-col gap-2.5 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGuestAuthModal(false)
-                    if (onRequestAuth) onRequestAuth()
-                  }}
-                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer"
-                >
-                  Sign In or Register (Recommended)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGuestAuthModal(false)
-                    executeBookingConfirmation()
-                  }}
-                  className="w-full py-2.5 text-xs text-gray-500 hover:text-gray-800 font-semibold transition-colors cursor-pointer"
-                >
-                  Save as Guest Offline Booking
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

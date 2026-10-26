@@ -20,8 +20,6 @@ interface ProfileTabProps {
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
   savedVehiclesList?: string[]
-  isGuest?: boolean
-  onOpenAuth?: () => void
 }
 
 interface MenuItem {
@@ -45,8 +43,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onUpdateProfile,
   savedVehiclesCount,
   savedVehiclesList,
-  isGuest = false,
-  onOpenAuth,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -102,19 +98,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   const menuItems: MenuItem[] = [
     {
-      icon: 'manage_accounts',
-      title: 'Edit Profile',
-      subtitle: 'Update your name, contact & address',
-      action: () => setIsEditProfileOpen(true),
-      badge: 'Account',
-    },
-    {
-      icon: 'receipt_long',
-      title: 'Quote & Bookings',
-      subtitle: 'Schedule or view appointments',
-      action: onOpenBooking || (() => showToast('Viewing past quotes & appointments', 'info')),
-    },
-    {
       icon: 'directions_car',
       title: 'Saved Vehicles',
       subtitle: 'Manage registered vehicles',
@@ -161,51 +144,23 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   return (
     <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
-      {/* Guest Mode Banner */}
-      {isGuest && (
-        <div className="mt-4 p-4 rounded-3xl bg-gradient-to-r from-red-500/10 via-amber-500/10 to-transparent border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shrink-0 shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">person_outline</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-gray-900">Exploring as Guest</span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Unsaved Session</span>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenAuth}
-            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            Sign In / Register
-          </button>
-        </div>
-      )}
+
 
       {/* User Information Card (Clickable to Edit) */}
       <div
-        onClick={() => {
-          if (isGuest && onOpenAuth) {
-            onOpenAuth()
-          } else {
-            setIsEditProfileOpen(true)
-          }
-        }}
+        onClick={() => setIsEditProfileOpen(true)}
         className="mt-4 p-4 rounded-3xl border border-gray-200/90 bg-white shadow-sm flex flex-col gap-3.5 hover:shadow-md transition-all cursor-pointer group"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative shrink-0">
               <div className="w-14 h-14 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm group-hover:border-primary transition-colors flex items-center justify-center bg-gray-100">
-                {isGuest || !profile.avatar ? (
+                {!profile.avatar ? (
                   <User className="w-7 h-7 text-gray-400" />
                 ) : (
                   <img
                     src={profile.avatar}
-                    alt={isGuest ? 'Guest User' : profile.name}
+                    alt={profile.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 )}
@@ -217,11 +172,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
             <div className="flex flex-col min-w-0 justify-center">
               <h2 className="text-base font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
-                {isGuest ? 'Guest Explorer' : profile.name}
+                {profile.name}
               </h2>
               {/* Email display */}
               <span className="text-xs text-gray-500 truncate font-normal">
-                {isGuest ? 'Tap to sign in or create account' : (profile.email || '')}
+                {profile.email || ''}
               </span>
             </div>
           </div>
@@ -230,17 +185,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              if (isGuest && onOpenAuth) {
-                onOpenAuth()
-              } else {
-                setIsEditProfileOpen(true)
-              }
+              setIsEditProfileOpen(true)
             }}
             className="w-8 h-8 rounded-full bg-surface-alt hover:bg-gray-200 text-gray-700 flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
-            title={isGuest ? 'Sign In' : 'Edit Profile'}
+            title="Edit Profile"
           >
             <span className="material-symbols-outlined text-[18px]">
-              {isGuest ? 'login' : 'edit'}
+              edit
             </span>
           </button>
         </div>
@@ -266,48 +217,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Membership section commented out as requested for now */}
-      {/*
-      <div
-        onClick={onOpenMembership}
-        onMouseEnter={preloadMembershipImages}
-        onTouchStart={preloadMembershipImages}
-        className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-primary to-primary-hover text-white shadow-md flex items-center justify-between cursor-pointer hover:shadow-lg active:scale-[0.99] transition-all overflow-hidden relative"
-      >
-        <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: `linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)`,
-            backgroundSize: '16px 16px',
-          }}
-        />
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px] text-white">
-              workspace_premium
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold tracking-tight">
-                {profile.membershipTier || 'Bentley Membership'}
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-white text-primary text-[10px] font-black uppercase">
-                {profile.membershipTier?.includes('Platinum') ? 'VIP' : 'MEMBER'}
-              </span>
-            </div>
-            <span className="text-[11px] text-white/90">
-              {profile.membershipTier ? `${profile.membershipTier} Plan Active` : 'Gold, Platinum & Custom wash bundles'}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-xs font-bold text-white relative z-10 pl-2">
-          <span>{profile.membershipTier ? 'Change' : 'View'}</span>
-          <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        </div>
-      </div>
-      */}
 
       {/* Profile Menu List Card */}
       <div className="mt-4 p-2 rounded-2xl border border-gray-200 bg-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-1 md:gap-2">
@@ -343,23 +252,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
       {/* Bottom Auth Action Button */}
       <div className="mt-6 flex justify-center">
-        {isGuest ? (
-          <button
-            onClick={onOpenAuth}
-            className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">login</span>
-            <span>Sign In or Register</span>
-          </button>
-        ) : (
-          <button
-            onClick={onLogout || (() => alert('Logged out successfully.'))}
-            className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">logout</span>
-            <span>Logout</span>
-          </button>
-        )}
+        <button
+          onClick={onLogout || (() => alert('Logged out successfully.'))}
+          className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[16px]">logout</span>
+          <span>Logout</span>
+        </button>
       </div>
 
       {/* Dedicated Edit Profile Full Page Modal */}

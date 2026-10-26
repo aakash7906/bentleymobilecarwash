@@ -19,7 +19,6 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
   const [cardholderName, setCardholderName] = useState(initialName)
   const [expiry, setExpiry] = useState('')
   const [cvc, setCvc] = useState('')
-  const [postalCode, setPostalCode] = useState(initialPostal)
 
   // Card formatting
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +50,6 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
     setCardholderName(cardholderName || 'John Bentley')
     setExpiry('12/28')
     setCvc('123')
-    setPostalCode(postalCode || 'V1A 1A1')
   }
 
   const brand = detectCardBrand(cardNumber)
@@ -71,11 +69,11 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
         cardholderName,
         expiry,
         cvc,
-        postalCode,
+        postalCode: initialPostal,
       },
       isValid
     )
-  }, [cardNumber, cardholderName, expiry, cvc, postalCode, isValid])
+  }, [cardNumber, cardholderName, expiry, cvc, initialPostal, isValid])
 
   return (
     <div className="w-full flex flex-col gap-3 p-3.5 sm:p-4 rounded-2xl bg-surface-alt border border-primary/20 shadow-xs animate-in fade-in duration-200">
@@ -140,8 +138,8 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
         </div>
       </div>
 
-      {/* Expiration, CVC, and Postal Code */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Expiration and CVC */}
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
             Expires
@@ -168,20 +166,6 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
             disabled={disabled}
             maxLength={4}
             className="w-full px-2.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-mono font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-center"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-            Postal / Zip
-          </label>
-          <input
-            type="text"
-            value={postalCode}
-            onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
-            placeholder="V1A 1A1"
-            disabled={disabled}
-            className="w-full px-2.5 py-2 rounded-xl bg-white border border-gray-200 text-xs font-mono font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-center uppercase"
           />
         </div>
       </div>
