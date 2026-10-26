@@ -191,6 +191,8 @@ export const App: React.FC = () => {
 
   // Tracks if the user's cart has been initialized/merged from Firestore for this session
   const syncedUserCartRef = React.useRef<string | null>(null)
+  const isDeletingAccountRef = React.useRef(false)
+  const userDocUnsubRef = React.useRef<(() => void) | null>(null)
 
   // Sync cartItems with localStorage and Cloud Firestore (when user is logged in)
   useEffect(() => {
@@ -199,7 +201,7 @@ export const App: React.FC = () => {
     } catch { }
 
     // If user is logged in and their initial cart sync has completed, update Firestore
-    if (currentUser && syncedUserCartRef.current === currentUser.uid) {
+    if (currentUser && syncedUserCartRef.current === currentUser.uid && !isDeletingAccountRef.current) {
       const userDocRef = doc(db, 'users', currentUser.uid)
       setDoc(userDocRef, { cart: cartItems, updatedAt: serverTimestamp() }, { merge: true }).catch((err) => {
         console.warn('Failed to sync cart update to Firestore:', err)
@@ -271,6 +273,7 @@ export const App: React.FC = () => {
     const unsubDoc = onSnapshot(
       userDocRef,
       async (docSnap) => {
+        if (isDeletingAccountRef.current) return
         if (docSnap.exists()) {
           const data = docSnap.data() as any
           setUserProfileData(data)
@@ -362,28 +365,21 @@ export const App: React.FC = () => {
             })
           }
         } else {
-          // Self-heal: If user exists in Firebase Auth but document is missing in Firestore, create it now
-          try {
-            await setDoc(userDocRef, {
-              uid: currentUser.uid,
-              Name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
-              name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
-              email: currentUser.email || '',
-              role: currentRole || 'customer',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            }, { merge: true })
-          } catch (e) {
-            console.warn('Could not auto-create missing user profile document:', e)
-          }
+          setUserProfileData(null)
         }
       },
       (error) => {
-        console.error('Error fetching real-time user profile from Firestore:', error)
+        if (!isDeletingAccountRef.current) {
+          console.error('Error fetching real-time user profile from Firestore:', error)
+        }
       }
     )
 
-    return () => unsubDoc()
+    userDocUnsubRef.current = unsubDoc
+    return () => {
+      unsubDoc()
+      userDocUnsubRef.current = null
+    }
   }, [currentUser])
 
   // STEP 3 INTEGRATION: Real-time listener for user vehicles subcollection ('users/{uid}/vehicles') (fallback/sync)
@@ -461,7 +457,7 @@ export const App: React.FC = () => {
 
   // STEP 3.5 INTEGRATION: Automatically sync locally added vehicles to Firestore on login
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUser || isDeletingAccountRef.current) return
 
     const realVehicles = savedVehicles.filter((v) => v && !v.id?.startsWith('veh-'))
     if (realVehicles.length > 0) {
@@ -927,6 +923,12 @@ export const App: React.FC = () => {
       return false
     }
 
+    isDeletingAccountRef.current = true
+    if (userDocUnsubRef.current) {
+      userDocUnsubRef.current()
+      userDocUnsubRef.current = null
+    }
+
     const uid = currentUser.uid
     const userEmail = currentUser.email?.trim() || userProfileData?.email?.trim() || ''
 
@@ -1032,8 +1034,10 @@ export const App: React.FC = () => {
 
       showToast('Your account and data have been permanently deleted.', 'info')
       setAuthMode('login')
+      isDeletingAccountRef.current = false
       return true
     } catch (err: any) {
+      isDeletingAccountRef.current = false
       console.error('Account deletion error:', err)
       if (err.code === 'auth/requires-recent-login') {
         showToast('For security reasons, please log in again before deleting your account.', 'warning')
