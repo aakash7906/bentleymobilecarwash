@@ -68,19 +68,7 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
         </div>
 
         {/* 2. BODY CONTENT */}
-        <div className="p-4 sm:p-5 flex flex-col gap-4 flex-1">
-          {/* Informational Mobile Detailing Banner */}
-          <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center text-primary shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col flex-1 text-xs">
-              <span className="font-bold text-gray-900">Customized Mobile Detailing</span>
-              <span className="text-gray-500 text-[11px] leading-relaxed">
-                Your active vehicle determines the recommended service packages, foam wash volume, and technician arrival instructions.
-              </span>
-            </div>
-          </div>
+        <div className="p-4 sm:p-5 flex flex-col gap-4 flex-1">        
 
           {/* Vehicle Cards List */}
           <div className="flex flex-col gap-3">
@@ -101,7 +89,7 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
                   className="mt-2 px-5 py-2.5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add First Vehicle</span>
+                  <span>Add Your Vehicle</span>
                 </button>
               </div>
             ) : (

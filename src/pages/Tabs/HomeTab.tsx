@@ -355,8 +355,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="w-full bg-white border border-primary rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary-light/50 active:scale-98 transition-all"
           >
-            <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight truncate">
-              {currentVehicle}
+            <span
+              className={`text-xs sm:text-sm tracking-tight truncate ${
+                currentVehicle ? 'font-semibold text-gray-900' : 'font-medium text-gray-400'
+              }`}
+            >
+              {currentVehicle || 'Add your vehicle'}
             </span>
             <svg
               className={`w-2.5 h-2.5 text-gray-900 transition-transform duration-200 shrink-0 ml-2 ${isDropdownOpen ? 'rotate-180' : ''
@@ -420,7 +424,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 }}
                 className="mt-1 w-full py-1.5 rounded-xl border border-dashed border-primary text-primary hover:bg-primary-light text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer"
               >
-                <span>+ Add another car</span>
+                <span>+ Add your vehicle</span>
               </button>
             </div>
           )}

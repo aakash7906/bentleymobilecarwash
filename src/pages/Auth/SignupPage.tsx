@@ -34,7 +34,6 @@ export const Signup: React.FC<SignupProps> = ({
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [agreeTerms, setAgreeTerms] = useState(true)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -651,28 +650,6 @@ export const Signup: React.FC<SignupProps> = ({
                 )}
               </div>
 
-              {/* Terms of Service Checkbox */}
-              <div className="flex items-center gap-2.5 pt-1">
-                <label
-                  onClick={() => setAgreeTerms(!agreeTerms)}
-                  className="flex items-center gap-2.5 cursor-pointer select-none"
-                >
-                  <div
-                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors shrink-0 ${agreeTerms
-                      ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                      : 'border border-[var(--border-light)] bg-[var(--surface-alt)]'
-                      }`}
-                  >
-                    {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-[var(--text-muted)]">
-                    I have read and agree to the{' '}
-                    <span className="text-[var(--primary)] font-semibold underline cursor-pointer">
-                      Terms of Service
-                    </span>
-                  </span>
-                </label>
-              </div>
 
               {/* Red Get Started Button with Loading State */}
               <button

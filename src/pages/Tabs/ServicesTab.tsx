@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { ServiceItem, SavedVehicle } from '@/types'
-import { SERVICES_CATALOG, USER_SAVED_VEHICLES } from '@/data/mockData'
+import { SERVICES_CATALOG } from '@/data/mockData'
 
 interface ServicesTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -85,8 +85,12 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="w-full bg-white border border-primary rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary-light/50 active:scale-98 transition-all"
           >
-            <span className="text-xs sm:text-sm font-semibold text-gray-900 tracking-tight">
-              {currentVehicle}
+            <span
+              className={`text-xs sm:text-sm tracking-tight truncate ${
+                currentVehicle ? 'font-semibold text-gray-900' : 'font-medium text-gray-400'
+              }`}
+            >
+              {currentVehicle || 'Add your vehicle'}
             </span>
             <svg
               className={`w-2.5 h-2.5 text-gray-900 transition-transform duration-200 ${
@@ -124,43 +128,41 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
               YOUR VEHICLES
             </span>
             <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
-              {(savedVehicles && savedVehicles.length > 0
-                ? savedVehicles
-                : USER_SAVED_VEHICLES.map((name, i) => ({
-                    id: `v-${i}`,
-                    name,
-                    type: 'Sedan' as const,
-                    licensePlate: undefined,
-                  }))
-              ).map((veh) => (
-                <div
-                  key={veh.id}
-                  onClick={() => {
-                    onSelectVehicle(veh.name)
-                    setIsDropdownOpen(false)
-                  }}
-                  className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
-                    veh.name === currentVehicle
-                      ? 'bg-primary-light text-primary font-bold'
-                      : 'hover:bg-gray-50 text-gray-800 font-medium'
-                  }`}
-                >
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs sm:text-sm truncate">{veh.name}</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
-                      {veh.licensePlate && (
-                        <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 rounded">
-                          {veh.licensePlate}
-                        </span>
-                      )}
+              {savedVehicles && savedVehicles.length > 0 ? (
+                savedVehicles.map((veh) => (
+                  <div
+                    key={veh.id}
+                    onClick={() => {
+                      onSelectVehicle(veh.name)
+                      setIsDropdownOpen(false)
+                    }}
+                    className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${
+                      veh.name === currentVehicle
+                        ? 'bg-primary-light text-primary font-bold'
+                        : 'hover:bg-gray-50 text-gray-800 font-medium'
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs sm:text-sm truncate">{veh.name}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-gray-500 font-normal">{veh.type}</span>
+                        {veh.licensePlate && (
+                          <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 rounded">
+                            {veh.licensePlate}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {veh.name === currentVehicle && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
+                    )}
                   </div>
-                  {veh.name === currentVehicle && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
-                  )}
+                ))
+              ) : (
+                <div className="py-2 px-3 text-xs text-gray-500">
+                  No vehicles saved. Click Add Car to register.
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Option to Add New Car */}
@@ -171,7 +173,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
               }}
               className="mt-2 w-full py-2 rounded-xl border border-dashed border-primary text-primary hover:bg-primary-light text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>+ Add another car</span>
+              <span>+ Add your vehicle</span>
             </button>
           </div>
         )}

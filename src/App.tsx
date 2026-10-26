@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile, CartItem } from '@/types'
-import { INITIAL_SAVED_VEHICLES, INITIAL_BOOKINGS } from '@/data/mockData'
+import { INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
 // Direct Page Imports
@@ -139,13 +139,18 @@ export const App: React.FC = () => {
     }
   })
 
-  // Persistent Saved Vehicles State (Synced with localStorage)
+  // Persistent Saved Vehicles State (Synced with localStorage & Firestore - only dynamic user vehicles)
   const [savedVehicles, setSavedVehicles] = useState<SavedVehicle[]>(() => {
     try {
       const stored = localStorage.getItem('bentley_saved_vehicles')
-      if (stored) return JSON.parse(stored)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          return parsed.filter((v) => v && !v.id?.startsWith('veh-'))
+        }
+      }
     } catch { }
-    return INITIAL_SAVED_VEHICLES
+    return []
   })
 
   // Persistent Bookings State (Synced with localStorage)
@@ -157,13 +162,13 @@ export const App: React.FC = () => {
     return INITIAL_BOOKINGS
   })
 
-  // Active Vehicle State
+  // Active Vehicle State (Dynamic)
   const [currentVehicle, setCurrentVehicle] = useState<string>(() => {
     try {
       const stored = localStorage.getItem('bentley_active_vehicle')
-      if (stored) return stored
+      if (stored && stored !== 'Audi A4 (5th Gen Facelift)') return stored
     } catch { }
-    return INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)'
+    return ''
   })
 
   // Global Shopping Cart State (Persisted in localStorage)
@@ -239,8 +244,12 @@ export const App: React.FC = () => {
         setCurrentUser(null)
         setUserProfileData(null)
         setDetectedAddress('')
+        setSavedVehicles([])
+        setCurrentVehicle('')
         try {
           localStorage.removeItem('bentley_detected_address')
+          localStorage.removeItem('bentley_saved_vehicles')
+          localStorage.removeItem('bentley_active_vehicle')
         } catch { }
         syncedUserCartRef.current = null
       }
@@ -287,15 +296,22 @@ export const App: React.FC = () => {
           // DYNAMIC VEHICLES MAP SYNC:
           // Read vehicles directly from key-value pair (object/map) in user document
           if (data.vehicles && typeof data.vehicles === 'object') {
-            const mapVehicles = Object.values(data.vehicles) as SavedVehicle[]
+            const mapVehicles = (Object.values(data.vehicles) as SavedVehicle[]).filter(
+              (v) => v && !v.id?.startsWith('veh-')
+            )
+            setSavedVehicles(mapVehicles)
             if (mapVehicles.length > 0) {
-              setSavedVehicles(mapVehicles)
               const hasActive = mapVehicles.some((v) => v.name === currentVehicle)
               if (!hasActive) {
                 const primaryVeh = mapVehicles.find((v) => v.isPrimary) || mapVehicles[0]
                 setCurrentVehicle(data.preferredVehicle || primaryVeh.name)
               }
+            } else {
+              setCurrentVehicle('')
             }
+          } else {
+            setSavedVehicles([])
+            setCurrentVehicle('')
           }
 
           // CART SYNC ON LOGIN:
@@ -379,12 +395,14 @@ export const App: React.FC = () => {
       vehiclesColRef,
       (snapshot) => {
         if (!snapshot.empty) {
-          const loadedVehicles: SavedVehicle[] = snapshot.docs.map((docSnap) => ({
-            ...(docSnap.data() as SavedVehicle),
-            id: docSnap.id,
-          }))
+          const loadedVehicles: SavedVehicle[] = snapshot.docs
+            .map((docSnap) => ({
+              ...(docSnap.data() as SavedVehicle),
+              id: docSnap.id,
+            }))
+            .filter((v) => v && !v.id?.startsWith('veh-'))
           setSavedVehicles((prev) => {
-            const merged = [...prev]
+            const merged = [...prev.filter((v) => !v.id?.startsWith('veh-'))]
             loadedVehicles.forEach((v) => {
               if (!merged.some((m) => m.id === v.id)) {
                 merged.push(v)
@@ -445,10 +463,11 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return
 
-    if (savedVehicles.length > 0) {
+    const realVehicles = savedVehicles.filter((v) => v && !v.id?.startsWith('veh-'))
+    if (realVehicles.length > 0) {
       const userDocRef = doc(db, 'users', currentUser.uid)
       const vehiclesMap: Record<string, any> = {}
-      savedVehicles.forEach((v) => {
+      realVehicles.forEach((v) => {
         const cleanV = Object.fromEntries(
           Object.entries(v).filter(([_, val]) => val !== undefined)
         )
@@ -459,7 +478,7 @@ export const App: React.FC = () => {
         userDocRef,
         {
           vehicles: vehiclesMap,
-          preferredVehicle: currentVehicle || savedVehicles[0].name,
+          preferredVehicle: currentVehicle || realVehicles[0].name,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -890,8 +909,12 @@ export const App: React.FC = () => {
     setCurrentUser(null)
     setUserProfileData(null)
     setDetectedAddress('')
+    setSavedVehicles([])
+    setCurrentVehicle('')
     try {
       localStorage.removeItem('bentley_detected_address')
+      localStorage.removeItem('bentley_saved_vehicles')
+      localStorage.removeItem('bentley_active_vehicle')
     } catch { }
     setCurrentRole('customer')
     setAuthMode('login')
@@ -1000,10 +1023,10 @@ export const App: React.FC = () => {
       setCurrentUser(null)
       setUserProfileData(null)
       setDetectedAddress('')
-      setSavedVehicles(INITIAL_SAVED_VEHICLES)
+      setSavedVehicles([])
       setBookings(INITIAL_BOOKINGS)
       setCartItems([])
-      setCurrentVehicle(INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)')
+      setCurrentVehicle('')
       setCurrentRole('customer')
       setCurrentTab('home')
 
@@ -1318,8 +1341,12 @@ export const App: React.FC = () => {
                         currentUser.photoURL ||
                         '',
                       preferredVehicle:
-                        userProfileData?.preferredVehicle ||
-                        (savedVehicles.length > 0 ? (savedVehicles.find((v) => v.isPrimary)?.name || savedVehicles[0].name) : currentVehicle) ||
+                        (userProfileData?.preferredVehicle && userProfileData.preferredVehicle !== 'Audi A4 (5th Gen Facelift)'
+                          ? userProfileData.preferredVehicle
+                          : '') ||
+                        (savedVehicles.length > 0
+                          ? (savedVehicles.find((v) => v.isPrimary)?.name || savedVehicles[0].name)
+                          : (currentVehicle && currentVehicle !== 'Audi A4 (5th Gen Facelift)' ? currentVehicle : '')) ||
                         '',
                       membershipTier: userProfileData?.membershipTier || 'General Member',
                     }

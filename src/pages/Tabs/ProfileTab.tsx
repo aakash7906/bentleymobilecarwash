@@ -106,9 +106,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     {
       icon: 'directions_car',
       title: 'Saved Vehicles',
-      subtitle: 'Manage registered vehicles',
+      subtitle: savedVehiclesCount && savedVehiclesCount > 0 ? 'Manage registered vehicles' : 'Add your vehicle',
       action: onOpenSavedVehicles,
-      badge: savedVehiclesCount !== undefined ? `${savedVehiclesCount} Cars` : undefined,
+      badge: savedVehiclesCount !== undefined && savedVehiclesCount > 0 ? `${savedVehiclesCount} Cars` : undefined,
     },
     {
       icon: 'notifications',
@@ -206,8 +206,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             <span className="material-symbols-outlined text-primary text-[16px] shrink-0">
               directions_car
             </span>
-            <span className="font-semibold text-gray-900 truncate max-w-[140px]">
-              {profile.preferredVehicle || 'No Vehicle Added'}
+            <span
+              className={`font-semibold truncate max-w-[140px] ${
+                profile.preferredVehicle ? 'text-gray-900' : 'text-gray-400 font-normal'
+              }`}
+            >
+              {profile.preferredVehicle || 'Add your vehicle'}
             </span>
           </div>
 
