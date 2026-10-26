@@ -45,8 +45,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [driverLicenseNumber, setDriverLicenseNumber] = useState(profile.driverLicenseNumber || '')
   const [emergencyContact, setEmergencyContact] = useState(profile.emergencyContact || '')
   const [avatar, setAvatar] = useState(profile.avatar || '')
-  const [bio, setBio] = useState(profile.bio || '')
-  const [isAvailable, setIsAvailable] = useState<boolean>(profile.isAvailable !== false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -65,8 +63,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       setDriverLicenseNumber(profile.driverLicenseNumber || '')
       setEmergencyContact(profile.emergencyContact || '')
       setAvatar(profile.avatar || '')
-      setBio(profile.bio || '')
-      setIsAvailable(profile.isAvailable !== false)
       setUploadError(null)
     }
   }, [isOpen, profile])
@@ -131,8 +127,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       serviceArea: serviceArea.trim() || profile.serviceArea,
       driverLicenseNumber: driverLicenseNumber.trim(),
       emergencyContact: emergencyContact.trim(),
-      bio: bio.trim(),
-      isAvailable,
       avatar,
     }
 
@@ -267,31 +261,18 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                   <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
                     {name}
                   </h2>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
-                    isAvailable
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
-                    <span>{isAvailable ? 'Active & Ready' : 'Off-Duty'}</span>
-                  </span>
                 </div>
 
                 <p className="text-xs sm:text-sm text-gray-500">
-                  {vanModel} {licensePlate ? `• ${licensePlate}` : ''}
+                  {vanModel}
                 </p>
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-gray-500 mt-1">
-                  <span className="flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                    ★ {profile.rating || '5.0'} Rating
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-md border border-primary-border/40">
-                    {profile.totalJobs || 0} Washes Done
-                  </span>
-                  <div className="flex items-center gap-1 text-gray-600">
-                    <MapPin className="w-3.5 h-3.5 text-primary" />
-                    <span>{serviceArea}</span>
-                  </div>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 text-xs text-gray-500 mt-1">
+                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                  <span>{serviceArea}</span>
+                  <span className="text-gray-300">•</span>
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{email}</span>
                 </div>
               </div>
             </div>
@@ -310,29 +291,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                   </div>
                 </div>
 
-                {/* Availability Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-subtle border border-gray-100">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-900">Dispatch Availability</span>
-                    <span className="text-[11px] text-gray-500">
-                      {isAvailable ? 'You are receiving real-time customer wash dispatches' : 'Dispatches are paused while off-duty'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsAvailable((prev) => !prev)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      isAvailable ? 'bg-primary' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                        isAvailable ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
                 {/* Full Name */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-gray-700">Full Name</label>
@@ -343,7 +301,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter full legal name"
+                      placeholder="e.g. Alex Rivera"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -381,7 +339,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Contact phone number"
+                      placeholder="+1 (800) 555-9274"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -399,22 +357,10 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       type="tel"
                       value={emergencyContact}
                       onChange={(e) => setEmergencyContact(e.target.value)}
-                      placeholder="Emergency contact phone number"
+                      placeholder="+1 (998) 555-0199"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
-                </div>
-
-                {/* Driver Bio / Experience */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Bio & Experience</label>
-                  <textarea
-                    rows={2}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Briefly state your detailing experience, IDA certifications, or special equipment."
-                    className="w-full p-3 rounded-xl bg-surface-subtle border border-gray-200 text-xs text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all resize-none"
-                  />
                 </div>
               </div>
 
@@ -440,7 +386,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={vanModel}
                       onChange={(e) => setVanModel(e.target.value)}
-                      placeholder="e.g. Mercedes-Benz Sprinter / Ford Transit / Ram ProMaster"
+                      placeholder="e.g. Mercedes-Benz Sprinter 2500"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -458,7 +404,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={licensePlate}
                       onChange={(e) => setLicensePlate(e.target.value)}
-                      placeholder="Van license plate"
+                      placeholder="e.g. BNT-8821"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm uppercase font-mono tracking-wider text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -474,7 +420,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={serviceArea}
                       onChange={(e) => setServiceArea(e.target.value)}
-                      placeholder="Operating city / territory"
+                      placeholder="e.g. Ontario, Canada"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -489,7 +435,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       type="text"
                       value={driverLicenseNumber}
                       onChange={(e) => setDriverLicenseNumber(e.target.value)}
-                      placeholder="Driver License or Certification ID"
+                      placeholder="e.g. DL-ON-883921"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>

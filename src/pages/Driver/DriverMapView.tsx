@@ -19,78 +19,6 @@ import {
 import { BookingRecord, BookingStatus } from '@/types'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 
-// Known city anchors for instantaneous 0ms fallback before Nominatim geocoder finishes
-const KNOWN_CITIES: Record<string, [number, number]> = {
-  noida: [77.3910, 28.5355],
-  'greater noida': [77.5030, 28.4744],
-  delhi: [77.2090, 28.6139],
-  'new delhi': [77.2090, 28.6139],
-  gurugram: [77.0266, 28.4595],
-  gurgaon: [77.0266, 28.4595],
-  ghaziabad: [77.4538, 28.6692],
-  mumbai: [72.8777, 19.0760],
-  bangalore: [77.5946, 12.9716],
-  bengaluru: [77.5946, 12.9716],
-  hyderabad: [78.4867, 17.3850],
-  pune: [73.8567, 18.5204],
-  chennai: [80.2707, 13.0827],
-  kolkata: [88.3639, 22.5726],
-  toronto: [-79.3832, 43.6532],
-  ontario: [-79.3832, 43.6532],
-  vancouver: [-123.1207, 49.2827],
-  calgary: [-114.0719, 51.0447],
-  montreal: [-73.5673, 45.5017],
-  ottawa: [-75.6972, 45.4215],
-  edmonton: [-113.4938, 53.5461],
-  'new york': [-74.0060, 40.7128],
-  london: [-0.1276, 51.5074],
-  dubai: [55.2708, 25.2048],
-}
-
-function getKnownCoordsForAddress(addr: string): [number, number] | null {
-  if (!addr) return null
-  const lower = addr.toLowerCase()
-  for (const [key, coords] of Object.entries(KNOWN_CITIES)) {
-    if (lower.includes(key)) {
-      return coords
-    }
-  }
-  return null
-}
-
-// Haversine formula to compute distance in km dynamically
-function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
-  const [lon1, lat1] = coord1
-  const [lon2, lat2] = coord2
-  const R = 6371
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLon = ((lon2 - lon1) * Math.PI) / 180
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return parseFloat((R * c).toFixed(1))
-}
-
-// Dynamically generate smooth curved road waypoints between start and end coordinates
-function generateCurvedRoute(start: [number, number], end: [number, number]): [number, number][] {
-  const points: [number, number][] = []
-  const steps = 7
-  const midLon = (start[0] + end[0]) / 2 + (end[1] - start[1]) * 0.12
-  const midLat = (start[1] + end[1]) / 2 + (start[0] - end[0]) * 0.12
-
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps
-    const lon = (1 - t) * (1 - t) * start[0] + 2 * (1 - t) * t * midLon + t * t * end[0]
-    const lat = (1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * midLat + t * t * end[1]
-    points.push([parseFloat(lon.toFixed(5)), parseFloat(lat.toFixed(5))])
-  }
-  return points
-}
-
 interface DriverMapViewProps {
   booking: BookingRecord
   onBack: () => void
@@ -104,76 +32,33 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 }) => {
   const mapRef = useRef<MapRef>(null)
 
-  // Dynamically resolve customer coordinates from booking, known city lookup, or fallback
-  const initialCustomerCoords = useMemo<[number, number]>(() => {
-    if (booking.customerCoords && Array.isArray(booking.customerCoords) && booking.customerCoords.length === 2) {
-      return booking.customerCoords
-    }
-    const known = getKnownCoordsForAddress(booking.address || '')
-    if (known) return known
-    return [-79.3832, 43.6532]
-  }, [booking.customerCoords, booking.address])
+  // Default coordinate anchors (Ontario demo region or booking coords)
+  const defaultCustomerCoords = useMemo<[number, number]>(() => {
+    return booking.customerCoords || [-79.3832, 43.6532]
+  }, [booking.customerCoords])
 
-  const [customerCoords, setCustomerCoords] = useState<[number, number]>(initialCustomerCoords)
+  const defaultDriverCoords = useMemo<[number, number]>(() => {
+    return booking.driverCoords || [-79.4035, 43.6635]
+  }, [booking.driverCoords])
 
-  // Dynamic Nominatim geocoder fetch for custom addresses
-  useEffect(() => {
-    if (booking.customerCoords) {
-      setCustomerCoords(booking.customerCoords)
-      return
-    }
-    let isMounted = true
-    const query = encodeURIComponent(booking.address || '')
-    if (query) {
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-        headers: { 'Accept-Language': 'en' },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (isMounted && Array.isArray(data) && data.length > 0) {
-            const lat = parseFloat(data[0].lat)
-            const lon = parseFloat(data[0].lon)
-            if (!isNaN(lat) && !isNaN(lon)) {
-              setCustomerCoords([lon, lat])
-            }
-          }
-        })
-        .catch(() => {})
-    }
-    return () => {
-      isMounted = false
-    }
-  }, [booking.address, booking.customerCoords])
-
-  // Dynamically resolve initial driver coordinates (either booking.driverCoords, or realistic dynamic offset)
-  const initialDriverCoords = useMemo<[number, number]>(() => {
-    if (booking.driverCoords && Array.isArray(booking.driverCoords) && booking.driverCoords.length === 2) {
-      return booking.driverCoords
-    }
-    return [
-      parseFloat((customerCoords[0] - 0.016).toFixed(5)),
-      parseFloat((customerCoords[1] + 0.011).toFixed(5)),
-    ]
-  }, [booking.driverCoords, customerCoords])
-
-  const [driverPos, setDriverPos] = useState<[number, number]>(initialDriverCoords)
-
-  // Dynamically compute curved route waypoints between driver and customer
-  const routeWaypoints = useMemo<[number, number][]>(() => {
-    return generateCurvedRoute(driverPos, customerCoords)
-  }, [driverPos, customerCoords])
-
-  // Dynamic distance and ETA calculations
-  const totalRouteDistKm = useMemo(() => {
-    return booking.distanceKm || calculateDistanceKm(driverPos, customerCoords) || 2.4
-  }, [booking.distanceKm, driverPos, customerCoords])
+  // Waypoints along route
+  const routeWaypoints = useMemo<[number, number][]>(
+    () => [
+      defaultDriverCoords,
+      [-79.3995, 43.6625],
+      [-79.3955, 43.659],
+      [-79.391, 43.6565],
+      [-79.387, 43.6545],
+      defaultCustomerCoords,
+    ],
+    [defaultDriverCoords, defaultCustomerCoords]
+  )
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [driverPos, setDriverPos] = useState<[number, number]>(defaultDriverCoords)
   const [isSimulating, setIsSimulating] = useState(false)
-  const [distanceKm, setDistanceKm] = useState<number>(totalRouteDistKm)
-  const [etaMins, setEtaMins] = useState<number>(() => {
-    return booking.estimatedMins || Math.max(2, Math.round((totalRouteDistKm / 30) * 60))
-  })
+  const [etaMins, setEtaMins] = useState(booking.estimatedMins || 7)
+  const [distanceKm, setDistanceKm] = useState(booking.distanceKm || 2.8)
   const [showSmsModal, setShowSmsModal] = useState(false)
   const [washTimerSeconds, setWashTimerSeconds] = useState(0)
   const [isExploreMode, setIsExploreMode] = useState(false)
@@ -181,12 +66,6 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   useEffect(() => {
     isExploreModeRef.current = isExploreMode
   }, [isExploreMode])
-
-  // Update distance & ETA when coords or booking updates
-  useEffect(() => {
-    setDistanceKm(totalRouteDistKm)
-    setEtaMins(booking.estimatedMins || Math.max(2, Math.round((totalRouteDistKm / 30) * 60)))
-  }, [totalRouteDistKm, booking.estimatedMins])
 
   // Current status
   const currentStatus = booking.status
@@ -226,7 +105,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           if (prev >= routeWaypoints.length - 1) {
             setIsSimulating(false)
             // Arrived at destination
-            onUpdateStatus(booking.id, 'in_progress', customerCoords)
+            onUpdateStatus(booking.id, 'in_progress', defaultCustomerCoords)
             return prev
           }
           const nextIndex = prev + 1
@@ -234,11 +113,10 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           setDriverPos(nextPos)
           onUpdateStatus(booking.id, 'en_route', nextPos)
 
-          // Recalculate remaining distance/ETA dynamically
+          // Recalculate remaining distance/ETA
           const remainingPct = 1 - nextIndex / (routeWaypoints.length - 1)
-          const newDist = parseFloat((totalRouteDistKm * remainingPct).toFixed(1))
-          setDistanceKm(newDist)
-          setEtaMins(Math.max(1, Math.round((newDist / 30) * 60)))
+          setDistanceKm(parseFloat((2.8 * remainingPct).toFixed(1)))
+          setEtaMins(Math.max(1, Math.round(7 * remainingPct)))
 
           // Only auto-follow camera if driver is not actively exploring the map
           if (!isExploreModeRef.current) {
@@ -254,7 +132,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
       }, 2500)
     }
     return () => clearInterval(timer)
-  }, [isSimulating, booking.id, onUpdateStatus, routeWaypoints, customerCoords, totalRouteDistKm])
+  }, [isSimulating, booking.id, onUpdateStatus, routeWaypoints, defaultCustomerCoords])
 
   const handleStepStatus = (newStatus: BookingStatus) => {
     onUpdateStatus(booking.id, newStatus, driverPos)
@@ -290,17 +168,17 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     window.open(url, '_blank')
   }
 
-  const smsTemplates = useMemo(() => [
-    `Hi ${booking.customerName}, I'm on my way in the ${booking.driverVehicle || 'mobile detailing van'} for your ${booking.title || 'Car Wash'}! ETA ~${etaMins} mins.`,
-    `Hi ${booking.customerName}, I have arrived outside your location (${booking.address.split(',')[0] || 'destination'}) and am ready to start washing your ${booking.vehicle}.`,
-    `Hi ${booking.customerName}, your wash & detailing is completed! Please feel free to inspect your vehicle. Thank you!`,
-  ], [booking.customerName, booking.driverVehicle, booking.title, booking.address, booking.vehicle, etaMins])
+  const smsTemplates = [
+    `Hi ${booking.customerName}, I'm on my way for your Bentley Mobile Car Wash! ETA ~${etaMins} mins.`,
+    `Hi ${booking.customerName}, I have arrived outside your location and am ready to start washing.`,
+    `Hi ${booking.customerName}, your wash & detailing is complete! Please let me know if you'd like to inspect.`,
+  ]
 
   // Next direction text helper
   const nextInstructionText =
     currentStepIndex >= routeWaypoints.length - 1
       ? 'Arrived at Customer Address!'
-      : `In ${Math.max(80, Math.round((distanceKm / Math.max(1, routeWaypoints.length)) * 1000))}m, proceed toward ${booking.address.split(',')[0] || 'destination'}`
+      : `In 350m, head toward ${booking.address.split(',')[0] || 'destination'}`
 
   // Render Action Button
   const renderActionButton = (isFullWidth = true) => {
@@ -376,21 +254,6 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
         {/* Right: Controls & ETA Badge */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Live Simulation Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsSimulating((prev) => !prev)}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
-              isSimulating
-                ? 'bg-amber-500 text-white animate-pulse'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-            title={isSimulating ? 'Pause Route Simulation' : 'Simulate Drive Along Route'}
-          >
-            {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isSimulating ? 'Simulating' : 'Simulate'}</span>
-          </button>
-
           {/* Live GPS button */}
           <button
             type="button"
@@ -562,7 +425,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             />
 
             {/* Customer Location Destination Pin */}
-            <MapMarker longitude={customerCoords[0]} latitude={customerCoords[1]}>
+            <MapMarker longitude={defaultCustomerCoords[0]} latitude={defaultCustomerCoords[1]}>
               <div className="flex flex-col items-center group pointer-events-none select-none">
                 <div className="px-2 py-0.5 rounded-full bg-secondary text-white text-[9px] font-bold shadow-md mb-1 whitespace-nowrap pointer-events-none">
                   👤 {booking.customerName}
@@ -622,7 +485,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
                   {booking.customerName}
                 </span>
                 <span className="text-[11px] text-gray-500 font-medium truncate">
-                  {booking.vehicle} • {booking.licensePlate ? `Plate: ${booking.licensePlate}` : (booking.vehicleType || 'Vehicle')}
+                  {booking.vehicle} ({booking.licensePlate || 'Plate: BC-8492'})
                 </span>
                 <span className="text-[10px] text-primary font-semibold truncate max-w-[200px] sm:max-w-xs">
                   {booking.address}
@@ -778,7 +641,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-900">{booking.customerName}</span>
                     <span className="text-xs text-gray-500 font-medium">
-                      {booking.vehicle} • {booking.licensePlate ? `Plate: ${booking.licensePlate}` : (booking.vehicleType || 'Vehicle')}
+                      {booking.vehicle} • {booking.licensePlate || 'Plate: BC-8492'}
                     </span>
                   </div>
                 </div>
