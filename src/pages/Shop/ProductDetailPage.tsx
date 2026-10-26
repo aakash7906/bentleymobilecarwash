@@ -21,6 +21,7 @@ import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
+import { Button } from '@/components/ui/button'
 
 interface ProductDetailPageProps {
   product: ProductItem | null
@@ -500,23 +501,27 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
             {/* Action Buttons */}
             <div className="flex-1 flex items-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleAddToCartClick}
-                className="flex-1 py-3 px-3 rounded-full bg-surface-alt hover:bg-gray-200 text-secondary text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-gray-300"
+                className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-secondary text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-gray-300 h-10"
               >
                 <ShoppingCart className="w-4 h-4 text-secondary" />
                 <span>Add to Cart</span>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant="default"
+                size="sm"
                 onClick={handleBuyNowClick}
-                className="flex-1 py-3 px-3 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md"
+                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md h-10"
               >
                 <span>Buy Now</span>
                 <ArrowRight className="w-4 h-4 text-primary-foreground" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -534,7 +539,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <span className="text-base font-bold text-gray-900">
                       Express Checkout
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-light px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-light px-2 py-0.5 rounded-sm">
                       Instant
                     </span>
                   </div>
@@ -751,20 +756,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
 
                 <div className="w-full flex flex-col gap-2 pt-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="default"
+                    size="sm"
                     onClick={handleCloseAll}
-                    className="w-full py-3 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer"
+                    className="w-full rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer h-10"
                   >
                     Continue Shopping
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={handleCloseAll}
-                    className="w-full py-2.5 rounded-full bg-surface-alt hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-all cursor-pointer"
+                    className="w-full rounded-sm bg-surface-alt hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-all cursor-pointer h-9"
                   >
                     Back to Home
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

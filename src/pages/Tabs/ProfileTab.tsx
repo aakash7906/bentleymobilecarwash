@@ -6,6 +6,7 @@ import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
 import { ContactUsPage } from '@/pages/Contact/ContactUsPage'
 import { AboutUsPage } from '@/pages/About/AboutUsPage'
 import { useToast } from '@/context/ToastContext'
+import { Button } from '@/components/ui/button'
 
 interface ProfileTabProps {
   onBack: () => void
@@ -242,7 +243,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs sm:text-sm font-bold text-gray-900">{item.title}</span>
                   {item.badge && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-primary-light text-primary text-[10px] font-extrabold uppercase tracking-wide">
+                    <span className="px-1.5 py-0.2 rounded-sm bg-primary-light text-primary text-[10px] font-extrabold uppercase tracking-wide">
                       {item.badge}
                     </span>
                   )}
@@ -260,23 +261,27 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
       {/* Bottom Auth Action Button */}
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={onLogout || (() => alert('Logged out successfully.'))}
-          className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto px-6 rounded-sm bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
           <span>Logout</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="destructive"
+          size="sm"
           onClick={() => setShowDeleteModal(true)}
-          className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto px-5 rounded-sm border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span>Delete Account</span>
-        </button>
+        </Button>
       </div>
 
       {/* Confirmation Modal for Delete Account */}
@@ -297,17 +302,21 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 disabled={isDeleting}
                 onClick={() => setShowDeleteModal(false)}
-                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
               >
                 Cancel
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 disabled={isDeleting}
                 onClick={async () => {
                   setIsDeleting(true)
@@ -324,7 +333,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                     setShowDeleteModal(false)
                   }
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                className="w-full rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
                 {isDeleting ? (
                   <>
@@ -337,7 +346,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                     <span>Yes, Delete</span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

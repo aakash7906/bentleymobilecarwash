@@ -23,6 +23,7 @@ import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
+import { Button } from '@/components/ui/button'
 
 interface CartPageProps {
   isOpen: boolean
@@ -271,7 +272,7 @@ export const CartPage: React.FC<CartPageProps> = ({
               My Shopping Cart
             </h1>
             {totalItemsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-[11px] font-bold border border-primary/20">
+              <span className="px-2 py-0.5 rounded-sm bg-primary-light text-primary text-[11px] font-bold border border-primary/20">
                 {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'}
               </span>
             )}
@@ -303,17 +304,19 @@ export const CartPage: React.FC<CartPageProps> = ({
             <p className="text-xs sm:text-sm text-gray-500 mt-1.5 max-w-xs leading-relaxed">
               Explore official Bentley detailing chemicals, ceramic sprays, and merchandise to keep your vehicle in pristine condition.
             </p>
-            <button
+            <Button
               type="button"
+              variant="default"
+              size="default"
               onClick={() => {
                 onClose()
                 if (onContinueShopping) onContinueShopping()
               }}
-              className="mt-6 px-6 py-3 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-bold shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              className="mt-6 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-bold shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-2"
             >
               <span>Explore Bentley Shop</span>
               <ArrowRight className="w-4 h-4 text-primary-foreground" />
-            </button>
+            </Button>
           </div>
         ) : (
           /* POPULATED CART */
@@ -552,14 +555,16 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </span>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant="default"
+                size="default"
                 onClick={() => setShowCheckoutModal(true)}
-                className="flex-1 py-3.5 px-5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer h-11"
               >
                 <span>Proceed to Checkout</span>
                 <ArrowRight className="w-4 h-4 text-primary-foreground" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -577,7 +582,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                     <span className="text-base font-bold text-gray-900">
                       Confirm &amp; Place Order
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-light px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-light px-2 py-0.5 rounded-sm">
                       Cart Checkout
                     </span>
                   </div>
@@ -638,7 +643,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                         <span className="text-xs font-bold text-gray-900 truncate">
                           {selectedAddress.recipientName} ({selectedAddress.label})
                         </span>
-                        <span className="text-[10px] text-primary font-bold bg-primary-light px-2 py-0.5 rounded-full border border-primary/20 shrink-0 ml-2">
+                        <span className="text-[10px] text-primary font-bold bg-primary-light px-2 py-0.5 rounded-sm border border-primary/20 shrink-0 ml-2">
                           Edit / Change
                         </span>
                       </div>
@@ -711,11 +716,13 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
 
                 {/* Confirm Pay Button */}
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="default"
                   onClick={handleConfirmOrder}
                   disabled={isProcessing}
-                  className="w-full py-3.5 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="w-full rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 h-11"
                 >
                   {isProcessing ? (
                     <>
@@ -728,7 +735,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                       <span>Pay ${grandTotal} &amp; Complete</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             ) : (
               /* ORDER CELEBRATION VIEW */
@@ -780,13 +787,15 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
 
                 <div className="w-full flex flex-col gap-2 pt-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="default"
+                    size="default"
                     onClick={handleFinishCheckout}
-                    className="w-full py-3 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer"
+                    className="w-full rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground font-bold text-xs shadow-sm active:scale-95 transition-all cursor-pointer h-10"
                   >
                     Done &amp; Return to Home
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

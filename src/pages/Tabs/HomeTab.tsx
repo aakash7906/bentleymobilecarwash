@@ -15,6 +15,7 @@ import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
 import { ProductDetailPage } from '@/pages/Shop/ProductDetailPage'
 import { CartPage } from '@/pages/Orders/CartPage'
 import { useToast } from '@/context/ToastContext'
+import { Button } from '@/components/ui/button'
 import { auth, db } from '@/firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -324,13 +325,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             for Car Care
           </h1>
 
-          <button
+          <Button
             onClick={onAddCar}
-            className="shrink-0 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold shadow-md hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            variant="default"
+            size="sm"
+            className="shrink-0 px-3.5 sm:px-4 rounded-sm bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold shadow-md hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
             <span>+</span>
             <span>Add Car</span>
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -404,7 +407,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         </div>
                       </div>
                       {veh.isPrimary && (
-                        <span className="text-[9px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded-full shrink-0">
+                        <span className="text-[9px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded-sm shrink-0">
                           Primary
                         </span>
                       )}
@@ -556,7 +559,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Category Pill & Starting at Price */}
               <div className="mt-2 flex items-center justify-between gap-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wide shrink-0">
+                <span className="px-2.5 py-0.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-bold tracking-wide shrink-0">
                   {card.category}
                 </span>
                 <div className="text-right">
@@ -576,20 +579,26 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Side-by-Side Action Buttons: View Detail > & Book Now > */}
               <div className="flex items-center gap-2 mt-3 pt-1">
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => onSelectService(card.serviceItem)}
-                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-gray-200 text-primary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer"
+                  className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-primary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
                 >
                   View Detail &gt;
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
                   onClick={() =>
                     onBookNow ? onBookNow(card.serviceItem) : onSelectService(card.serviceItem)
                   }
-                  className="flex-1 py-2 px-1 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold transition-all active:scale-95 shadow-sm text-center cursor-pointer"
+                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
                 >
                   Book Now &gt;
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -625,14 +634,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                 {/* Badge Overlay */}
                 {prod.badge && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-extrabold uppercase tracking-wider shadow-xs">
+                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-sm bg-primary text-primary-foreground text-[9px] font-extrabold uppercase tracking-wider shadow-xs">
                     {prod.badge}
                   </span>
                 )}
 
                 {/* Volume Pill Overlay */}
                 {prod.volume && (
-                  <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[9px] font-semibold tracking-tight shadow-xs">
+                  <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-sm bg-secondary text-secondary-foreground text-[9px] font-semibold tracking-tight shadow-xs">
                     {prod.volume}
                   </span>
                 )}
@@ -668,26 +677,30 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               {/* Action Buttons: View Details & Add to Cart */}
               <div className="flex items-center gap-2 mt-3 pt-1">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedProduct(prod)
                   }}
-                  className="flex-1 py-2 px-1 rounded-full bg-surface-alt hover:bg-gray-200 text-secondary text-[11px] font-semibold transition-all active:scale-95 text-center cursor-pointer border border-gray-200"
+                  className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-secondary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
                 >
                   Details &gt;
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="default"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleAddToCart(prod, 1)
                   }}
-                  className="flex-1 py-2 px-1 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold transition-all active:scale-95 shadow-xs text-center cursor-pointer"
+                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
                 >
                   Add to Cart
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -738,7 +751,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               >
                 {/* Left Content */}
                 <div className="flex flex-col items-start gap-0.5">
-                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
+                  <span className="px-2.5 py-0.5 rounded-sm bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
                     {liveBooking.title || 'Car Wash'}
                   </span>
                   <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">

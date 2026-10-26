@@ -15,6 +15,7 @@ import { ServiceItem, BookingRecord, BookingStatus } from '@/types'
 import { SERVICES_CATALOG, INITIAL_BOOKINGS } from '@/data/mockData'
 import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
+import { Button } from '@/components/ui/button'
 
 interface BookingsTabProps {
   onBack: () => void
@@ -123,46 +124,46 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
     switch (status) {
       case 'pending':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-sm bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             Pending Driver
           </span>
         )
       case 'accepted':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-[10px] font-bold border border-teal-200 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-sm bg-teal-50 text-teal-700 text-[10px] font-bold border border-teal-200 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
             Driver Accepted
           </span>
         )
       case 'scheduled':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
+          <span className="px-2.5 py-0.5 rounded-sm bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
             Scheduled
           </span>
         )
       case 'en_route':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-sm bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
             Tech En Route
           </span>
         )
       case 'in_progress':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+          <span className="px-2.5 py-0.5 rounded-sm bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
             In Progress
           </span>
         )
       case 'completed':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+          <span className="px-2.5 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
             Completed
           </span>
         )
       case 'cancelled':
         return (
-          <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-[10px] font-bold border border-neutral-200">
+          <span className="px-2.5 py-0.5 rounded-sm bg-neutral-100 text-neutral-600 text-[10px] font-bold border border-neutral-200">
             Cancelled
           </span>
         )
@@ -215,7 +216,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col items-start gap-1 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-bold">
                         {booking.category}
                       </span>
                       {renderStatusBadge(booking.status)}
@@ -255,43 +256,55 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                 </div>
 
                 {/* Primary Button: Track Order */}
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleTrackOrder(booking)}
-                  className="w-full py-2.5 rounded-xl bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
+                  className="w-full rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center"
                 >
                   Track Order &gt;
-                </button>
+                </Button>
 
                 {/* Secondary Actions: Reschedule, Cancel, Invoice */}
                 <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setRescheduleTarget(booking)
                       setNewSelectedDate(RESCHEDULE_DATES[0])
                       setNewSelectedTime(booking.time || RESCHEDULE_TIME_SLOTS[1])
                     }}
-                    className="flex-1 py-1.5 px-2.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+                    className="flex-1 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3 text-neutral-500" />
                     <span>Reschedule</span>
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setCancelTarget(booking)}
-                    className="flex-1 py-1.5 px-2.5 rounded-lg border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+                    className="group flex-1 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 shadow-none font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Ban className="w-3 h-3 text-neutral-400 group-hover:text-red-500" />
                     <span>Cancel</span>
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
                     onClick={() => setSelectedInvoiceBooking(booking)}
-                    className="p-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition"
+                    className="h-8 w-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0"
                     title="View Receipt"
                     aria-label="View Receipt"
                   >
                     <Receipt className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -315,7 +328,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col items-start gap-1 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-bold">
                       {booking.category}
                     </span>
                     {renderStatusBadge(booking.status)}
@@ -381,7 +394,10 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
 
               {/* Bottom Buttons: View Detail, Book Again & Receipt */}
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     const s =
                       booking.serviceItem ||
@@ -389,12 +405,15 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                       SERVICES_CATALOG[0]
                     onViewServiceDetail(s)
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold transition-all active:scale-[0.99] cursor-pointer text-center"
+                  className="flex-1 rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center"
                 >
                   View Detail &gt;
-                </button>
+                </Button>
 
-                <button
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
                   onClick={() => {
                     const s =
                       booking.serviceItem ||
@@ -402,19 +421,22 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                       SERVICES_CATALOG[0]
                     onBookAgain(s)
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold transition-all active:scale-[0.99] shadow-sm cursor-pointer text-center"
+                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-xs cursor-pointer text-center"
                 >
                   Book Again &gt;
-                </button>
+                </Button>
 
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
                   onClick={() => setSelectedInvoiceBooking(booking)}
-                  className="p-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition shadow-sm"
+                  className="h-8 w-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0 shadow-xs"
                   title="View Invoice"
                   aria-label="View Invoice"
                 >
-                  <Receipt className="w-4 h-4" />
-                </button>
+                  <Receipt className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
           ))}
@@ -516,18 +538,24 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setRescheduleTarget(null)}
-                className="flex-1 py-2 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
               >
                 Nevermind
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
                 onClick={handleConfirmReschedule}
-                className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-sm"
+                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
               >
                 Confirm New Slot
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -558,18 +586,24 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setCancelTarget(null)}
-                className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
               >
                 Keep Booking
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
                 onClick={handleConfirmCancel}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm"
+                className="flex-1 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs"
               >
                 Yes, Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -634,18 +668,24 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setRatingTarget(null)}
-                className="flex-1 py-2 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
               >
                 Skip
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
                 onClick={handleConfirmRating}
-                className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-sm"
+                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
               >
                 Submit Review
-              </button>
+              </Button>
             </div>
           </div>
         </div>

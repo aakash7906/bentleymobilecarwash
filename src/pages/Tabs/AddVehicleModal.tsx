@@ -7,6 +7,7 @@ import {
 import { SavedVehicle, VehicleCategory } from '@/types'
 import { ChevronLeft, Car } from 'lucide-react'
 import { Select } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 
 interface AddVehicleModalProps {
   isOpen: boolean
@@ -172,7 +173,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
             <button
               type="button"
               onClick={() => setMode('guided')}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 rounded-sm text-xs font-bold transition-all cursor-pointer ${
                 mode === 'guided'
                   ? 'bg-white text-primary shadow-xs'
                   : 'text-gray-600 hover:text-gray-900'
@@ -183,7 +184,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
             <button
               type="button"
               onClick={() => setMode('quick')}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 rounded-sm text-xs font-bold transition-all cursor-pointer ${
                 mode === 'quick'
                   ? 'bg-white text-primary shadow-xs'
                   : 'text-gray-600 hover:text-gray-900'
@@ -486,13 +487,15 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   </span>
                 </div>
 
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="default"
                   onClick={() => setStep(6)}
-                  className="w-full mt-3 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md cursor-pointer"
+                  className="w-full mt-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md cursor-pointer"
                 >
                   Continue to Review
-                </button>
+                </Button>
               </div>
             )}
 
@@ -542,13 +545,15 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="default"
                   onClick={handleFinalAdd}
-                  className="w-full mt-2 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer"
+                  className="w-full mt-2 rounded-sm bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer h-11"
                 >
                   Save Vehicle to Garage
-                </button>
+                </Button>
               </div>
             )}
           </div>
