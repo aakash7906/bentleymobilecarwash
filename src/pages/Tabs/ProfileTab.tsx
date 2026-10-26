@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User } from 'lucide-react'
+import { User, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'
 import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
@@ -16,6 +16,7 @@ interface ProfileTabProps {
   onOpenContactUs?: () => void
   onOpenAboutUs?: () => void
   onLogout?: () => void
+  onDeleteAccount?: () => Promise<boolean | void>
   userProfile?: UserProfile
   onUpdateProfile?: (updated: UserProfile) => void
   savedVehiclesCount?: number
@@ -39,6 +40,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onOpenContactUs,
   onOpenAboutUs,
   onLogout,
+  onDeleteAccount,
   userProfile: externalProfile,
   onUpdateProfile,
   savedVehiclesCount,
@@ -46,6 +48,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
+
+  // State for Delete Account confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Dynamic user profile state with local persistence
   const [profile, setProfile] = useState<UserProfile>(() => {
@@ -143,9 +149,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   ]
 
   return (
-    <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
-
-
+    <div className="flex flex-col w-full pb-28 screen-padding px-4 sm:px-6 md:px-8">
       {/* User Information Card (Clickable to Edit) */}
       <div
         onClick={() => setIsEditProfileOpen(true)}
@@ -251,15 +255,89 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       </div>
 
       {/* Bottom Auth Action Button */}
-      <div className="mt-6 flex justify-center">
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
         <button
+          type="button"
           onClick={onLogout || (() => alert('Logged out successfully.'))}
-          className="px-6 py-2 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
           <span>Logout</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>Delete Account</span>
+        </button>
       </div>
+
+      {/* Confirmation Modal for Delete Account */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150 border border-gray-100">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
+            </div>
+
+            <div className="text-center flex flex-col gap-1.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900">
+                Delete Account?
+              </h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                This will permanently remove your profile, garage vehicles, and cloud bookings from Firebase. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true)
+                  try {
+                    if (onDeleteAccount) {
+                      await onDeleteAccount()
+                    } else {
+                      showToast('Account deleted successfully.', 'info')
+                    }
+                  } catch (err: any) {
+                    showToast(err?.message || 'Failed to delete account.', 'error')
+                  } finally {
+                    setIsDeleting(false)
+                    setShowDeleteModal(false)
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dedicated Edit Profile Full Page Modal */}
       <EditProfilePage

@@ -55,12 +55,12 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
   return (
     <div className="flex flex-col w-full pb-28">
       {/* 1. Header Title */}
-      <div className="py-2 text-center px-5">
+      <div className="py-2 text-center screen-padding">
         <h1 className="text-lg font-bold text-[var(--text-main)]">Services</h1>
       </div>
 
       {/* 2. RED CONTOUR VEHICLE SELECTOR - Same as HomeTab */}
-      <div className="relative w-full my-2 px-8 flex items-center justify-center">
+      <div className="relative w-full my-2 screen-padding flex items-center justify-center">
         {/* Left Downward Curved Line in margin */}
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-9 overflow-hidden flex items-center pointer-events-none z-0">
           <svg
@@ -178,7 +178,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       </div>
 
       {/* 3. Search Bar */}
-      <div className="mt-4 px-6">
+      <div className="mt-4 screen-padding">
         <div className="relative w-full">
           <input
             type="text"
@@ -194,7 +194,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       </div>
 
       {/* 4. Category Pills */}
-      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none px-6">
+      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none screen-padding">
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id
           return (
@@ -217,7 +217,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       {(activeCategory === 'all' ||
         activeCategory === 'Cleaning Packages' ||
         activeCategory === 'Specialty') && (
-        <section className="mt-6 flex flex-col gap-3 px-6">
+        <section className="mt-6 flex flex-col gap-3 screen-padding">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 border-b border-gray-100">
             <div>
               <div className="flex items-center gap-2">
@@ -392,7 +392,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
       {/* 6. BOTTOM SECTION: SERVICES (WITHOUT PRICE) */}
       {(activeCategory === 'all' ||
         (activeCategory !== 'Cleaning Packages' && activeCategory !== 'Specialty')) && (
-        <section className="mt-8 flex flex-col gap-3 px-6">
+        <section className="mt-8 flex flex-col gap-3 screen-padding">
           <div className="pb-1 border-b border-gray-100">
             <h2 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight">
               Individual Services

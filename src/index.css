@@ -146,6 +146,26 @@ html, body {
   width: 16px;
 }
 
+/* Unified Responsive Screen Horizontal Padding */
+.screen-padding {
+  padding-left: 1rem;       /* 16px - Mobile standard */
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .screen-padding {
+    padding-left: 1.25rem;  /* 20px - Large Mobile / Small Tablet */
+    padding-right: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .screen-padding {
+    padding-left: 1.5rem;   /* 24px - Tablet / iPad */
+    padding-right: 1.5rem;
+  }
+}
+
 /* UI Components & Utilities */
 .figma-card {
   background-color: var(--surface-card);

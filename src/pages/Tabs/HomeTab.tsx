@@ -15,6 +15,8 @@ import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
 import { ProductDetailPage } from '@/pages/Shop/ProductDetailPage'
 import { CartPage } from '@/pages/Orders/CartPage'
 import { useToast } from '@/context/ToastContext'
+import { auth, db } from '@/firebase'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -30,6 +32,7 @@ interface HomeTabProps {
     email?: string
     phone?: string
     address?: string
+    lastLocation?: string
     city?: string
     postalCode?: string
   }
@@ -68,16 +71,39 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [currentAddress, setCurrentAddress] = useState(
-    userProfile?.address || 'Ontario, Canada'
+    userProfile?.lastLocation || userProfile?.address || ''
   )
   const [isLocating, setIsLocating] = useState(false)
 
-  // Sync user address if profile updates
+  // Sync user address if profile updates (e.g., when user logs in and Firestore data loads)
   React.useEffect(() => {
-    if (userProfile?.address) {
-      setCurrentAddress(userProfile.address)
+    const savedLoc = userProfile?.lastLocation || userProfile?.address || ''
+    setCurrentAddress(savedLoc)
+  }, [userProfile?.lastLocation, userProfile?.address])
+
+  // Helper to persist location to state, parent, and Firestore
+  const persistDetectedLocation = async (addrStr: string) => {
+    setCurrentAddress(addrStr)
+    showToast(`Location detected: ${addrStr}`, 'success')
+    onUpdateLocation?.(addrStr)
+
+    // Store last fetched location in Firebase in user's collection
+    if (auth.currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', auth.currentUser.uid)
+        await setDoc(
+          userDocRef,
+          {
+            lastLocation: addrStr,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      } catch (err) {
+        console.error('Failed to save lastLocation to Firestore in HomeTab:', err)
+      }
     }
-  }, [userProfile?.address])
+  }
 
   // Fetch live user GPS location & reverse geocode to address
   const handleFetchLiveLocation = () => {
@@ -116,20 +142,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             } else {
               resolvedAddress = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
             }
-            setCurrentAddress(resolvedAddress)
-            showToast(`Location detected: ${resolvedAddress}`, 'success')
-            onUpdateLocation?.(resolvedAddress)
+            await persistDetectedLocation(resolvedAddress)
           } else {
             const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
-            setCurrentAddress(fallback)
-            showToast(`Location detected: ${fallback}`, 'success')
-            onUpdateLocation?.(fallback)
+            await persistDetectedLocation(fallback)
           }
         } catch {
           const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
-          setCurrentAddress(fallback)
-          showToast(`Location detected: ${fallback}`, 'success')
-          onUpdateLocation?.(fallback)
+          await persistDetectedLocation(fallback)
         } finally {
           setIsLocating(false)
         }
@@ -235,7 +255,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <div className="flex flex-col w-full pb-32 relative select-none">
       {/* 1. TOP HEADER: Bentley Mascot Logo & Red Action Buttons */}
-      <div className="px-4 sm:px-5 pt-3 sm:pt-4 flex items-center justify-between">
+      <div className="screen-padding pt-3 sm:pt-4 flex items-center justify-between">
         <img
           src={logoBentley}
           alt="Bentley Mobile Auto Detail & Car Wash"
@@ -260,8 +280,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* 2. LOCATION PILL BAR (Interactive Live GPS Detection) */}
-      <div className="px-4 sm:px-5 mt-2.5 sm:mt-3">
+      {/* 2. LOCATION BAR (Interactive Live GPS Detection) */}
+      <div className="screen-padding mt-2.5 sm:mt-3">
         <button
           type="button"
           onClick={handleFetchLiveLocation}
@@ -277,8 +297,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             >
               {isLocating ? 'sync' : 'location_on'}
             </span>
-            <span className="text-[11px] sm:text-xs font-medium text-gray-700 truncate tracking-tight">
-              {isLocating ? 'Detecting your live location...' : currentAddress}
+            <span
+              className={`text-[11px] sm:text-xs truncate tracking-tight ${
+                !isLocating && !currentAddress
+                  ? 'text-gray-400 font-normal'
+                  : 'text-gray-700 font-medium'
+              }`}
+            >
+              {isLocating ? 'Detecting your live location...' : (currentAddress || 'Select your location')}
             </span>
           </div>
 
@@ -290,7 +316,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* 3. HERO BLUEPRINT SECTION: Headline + Add Car */}
-      <section className="relative w-full bg-grid-blueprint mt-2.5 sm:mt-3 py-3.5 sm:py-4 px-4 sm:px-5 overflow-hidden">
+      <section className="relative w-full bg-grid-blueprint mt-2.5 sm:mt-3 py-3.5 sm:py-4 screen-padding overflow-hidden">
         <div className="relative z-10 flex items-center justify-between gap-2.5 sm:gap-4">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-secondary tracking-tight leading-[1.18]">
             Find all your needs
@@ -309,7 +335,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </section>
 
       {/* 4. RED CONTOUR VEHICLE SELECTOR */}
-      <div className="relative w-full px-4 sm:px-5 mt-1 z-20">
+      <div className="relative w-full screen-padding mt-1.5 z-20">
         {/* Left Downward Curved Line */}
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-9 overflow-hidden flex items-center pointer-events-none z-0">
           <svg className="w-full h-full" viewBox="0 0 20 36" preserveAspectRatio="none" fill="none">
@@ -415,7 +441,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
 
       {/* 6. 4 CATEGORY CARDS (2x2 Asymmetric Bento Grid matching reference design) */}
-      <div className="px-4 sm:px-5 mt-3 sm:mt-3.5 flex flex-col gap-2.5">
+      <div className="screen-padding mt-5 sm:mt-6 flex flex-col gap-2.5">
         {/* Row 1: Car Wash (~38%) + Exterior Detailing (~62%) */}
         <div className="flex items-center gap-2.5">
           {/* Card 1: Car Wash */}
@@ -492,16 +518,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* 7. "RECOMMENDED FOR YOU" SECTION */}
-      <section className="mt-6 sm:mt-7 flex flex-col gap-3">
-        <div className="px-4 sm:px-5 flex items-center justify-between">
+      <section className="mt-5 sm:mt-6 flex flex-col gap-3">
+        <div className="screen-padding flex items-center justify-between">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
             Recommended for You
           </h2>
-          <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Swipe &gt;</span>
+          <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">more &gt;</span>
         </div>
 
         {/* Horizontal Scrollable Cards Strip with smooth touch momentum scrolling */}
-        <div className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto overscroll-x-contain pb-3 pt-1 px-4 sm:px-5 scrollbar-none snap-x snap-mandatory">
+        <div className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto overscroll-x-contain pb-3.5 pt-1.5 px-4 sm:px-5 scroll-px-4 sm:scroll-px-5 scrollbar-none snap-x snap-mandatory">
           {recommendedCards.map((card) => (
             <div
               key={card.id}
@@ -568,20 +594,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 8. "BENTLEY SHOP" SECTION */}
       <section className="mt-5 sm:mt-6 flex flex-col gap-3">
-        <div className="px-4 sm:px-5 flex items-center justify-between">
+        <div className="screen-padding flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
               Bentley Shop
             </h2>
-            <span className="text-[10px] font-bold text-primary bg-primary-light border border-primary/25 px-2 py-0.5 rounded-full">
-              Official Care
-            </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Swipe &gt;</span>
+          <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">more &gt;</span>
         </div>
 
         {/* Horizontal Scrollable Shop Products Strip */}
-        <div className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto overscroll-x-contain pb-4 pt-1 px-4 sm:px-5 scrollbar-none snap-x snap-mandatory">
+        <div className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto overscroll-x-contain pb-3.5 pt-1.5 px-4 sm:px-5 scroll-px-4 sm:scroll-px-5 scrollbar-none snap-x snap-mandatory">
           {shopProducts.map((prod) => (
             <div
               key={prod.id}

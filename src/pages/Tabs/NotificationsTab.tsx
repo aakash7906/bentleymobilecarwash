@@ -44,7 +44,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
   })
 
   return (
-    <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
+    <div className="flex flex-col w-full pb-28 screen-padding">
       {/* Dynamic Activity Header */}
       <div className="mt-3 flex items-center justify-between pb-2 border-b border-gray-100">
         <div className="flex items-center gap-2">

@@ -25,13 +25,14 @@ import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth and session state listener
 import { auth, db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
-import { onAuthStateChanged, signOut, User } from 'firebase/auth'
+import { onAuthStateChanged, signOut, deleteUser, User } from 'firebase/auth'
 // STEP 2 & 3 INTEGRATION: Import Firestore real-time listeners and mutations
 import {
   doc,
   collection,
   query,
   where,
+  getDocs,
   onSnapshot,
   setDoc,
   deleteDoc,
@@ -93,6 +94,7 @@ export const App: React.FC = () => {
     phone?: string
     city?: string
     address?: string
+    lastLocation?: string
     postalCode?: string
     role?: string
     driverPhone?: string
@@ -236,6 +238,10 @@ export const App: React.FC = () => {
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
+        setDetectedAddress('')
+        try {
+          localStorage.removeItem('bentley_detected_address')
+        } catch { }
         syncedUserCartRef.current = null
       }
       setIsAuthLoading(false)
@@ -883,8 +889,141 @@ export const App: React.FC = () => {
     showToast('You have been logged out.', 'info')
     setCurrentUser(null)
     setUserProfileData(null)
+    setDetectedAddress('')
+    try {
+      localStorage.removeItem('bentley_detected_address')
+    } catch { }
     setCurrentRole('customer')
     setAuthMode('login')
+  }
+
+  // Unified Delete Account handler from both Firestore & Firebase Authentication
+  const handleDeleteAccount = async (): Promise<boolean> => {
+    if (!currentUser) {
+      showToast('No active account session found to delete.', 'error')
+      return false
+    }
+
+    const uid = currentUser.uid
+    const userEmail = currentUser.email?.trim() || userProfileData?.email?.trim() || ''
+
+    try {
+      // 1. Delete only this user's vehicles subcollection ('users/{uid}/vehicles')
+      try {
+        const vehiclesRef = collection(db, 'users', uid, 'vehicles')
+        const snap = await getDocs(vehiclesRef)
+        const deleteVehiclePromises = snap.docs.map((d) => deleteDoc(d.ref))
+        await Promise.all(deleteVehiclePromises)
+      } catch (vehErr) {
+        console.warn('Could not delete subcollection vehicles:', vehErr)
+      }
+
+      // 2. Delete only this user's bookings from 'bookings' collection (where userId == uid)
+      try {
+        const userBookingsQuery = query(collection(db, 'bookings'), where('userId', '==', uid))
+        const bookingsSnap = await getDocs(userBookingsQuery)
+        const deleteBookingPromises = bookingsSnap.docs.map((d) => deleteDoc(d.ref))
+        await Promise.all(deleteBookingPromises)
+      } catch (bookErr) {
+        console.warn('Could not delete user bookings from Firestore:', bookErr)
+      }
+
+      // Fallback: Also check if any bookings were recorded with userEmail
+      if (userEmail) {
+        try {
+          const emailBookingsQuery = query(collection(db, 'bookings'), where('userEmail', '==', userEmail))
+          const emailBookingsSnap = await getDocs(emailBookingsQuery)
+          const deleteEmailBookingPromises = emailBookingsSnap.docs.map((d) => deleteDoc(d.ref))
+          await Promise.all(deleteEmailBookingPromises)
+        } catch (emailBookErr) {
+          console.warn('Could not delete email-matched bookings:', emailBookErr)
+        }
+      }
+
+      // 3. Delete only this user's product orders from 'orders' collection (where userId == uid)
+      try {
+        const userOrdersQuery = query(collection(db, 'orders'), where('userId', '==', uid))
+        const ordersSnap = await getDocs(userOrdersQuery)
+        const deleteOrderPromises = ordersSnap.docs.map((d) => deleteDoc(d.ref))
+        await Promise.all(deleteOrderPromises)
+      } catch (orderErr) {
+        console.warn('Could not delete user orders from Firestore:', orderErr)
+      }
+
+      // Fallback: Also check if any orders were recorded with userEmail
+      if (userEmail) {
+        try {
+          const emailOrdersQuery = query(collection(db, 'orders'), where('userEmail', '==', userEmail))
+          const emailOrdersSnap = await getDocs(emailOrdersQuery)
+          const deleteEmailOrderPromises = emailOrdersSnap.docs.map((d) => deleteDoc(d.ref))
+          await Promise.all(deleteEmailOrderPromises)
+        } catch (emailOrderErr) {
+          console.warn('Could not delete email-matched orders:', emailOrderErr)
+        }
+      }
+
+      // 4. Delete only this user's inquiries from 'inquiries' collection (where email == userEmail)
+      if (userEmail) {
+        try {
+          const userInquiriesQuery = query(collection(db, 'inquiries'), where('email', '==', userEmail))
+          const inquiriesSnap = await getDocs(userInquiriesQuery)
+          const deleteInquiryPromises = inquiriesSnap.docs.map((d) => deleteDoc(d.ref))
+          await Promise.all(deleteInquiryPromises)
+        } catch (inqErr) {
+          console.warn('Could not delete user inquiries:', inqErr)
+        }
+      }
+
+      // 5. Delete only this user's profile document from 'users' collection ('users/{uid}')
+      try {
+        const userDocRef = doc(db, 'users', uid)
+        await deleteDoc(userDocRef)
+      } catch (docErr) {
+        console.warn('Could not delete user document from Firestore:', docErr)
+      }
+
+      // 6. Delete user from Firebase Authentication
+      await deleteUser(currentUser)
+
+      // 7. Clean up local storage
+      try {
+        localStorage.removeItem('bentley_user_profile')
+        localStorage.removeItem('bentley_saved_vehicles')
+        localStorage.removeItem('bentley_active_vehicle')
+        localStorage.removeItem('bentley_cart_items')
+        localStorage.removeItem('bentley_bookings')
+        localStorage.removeItem('bentley_current_role')
+        localStorage.removeItem('bentley_detected_address')
+      } catch {}
+
+      // 8. Reset local state
+      setCurrentUser(null)
+      setUserProfileData(null)
+      setDetectedAddress('')
+      setSavedVehicles(INITIAL_SAVED_VEHICLES)
+      setBookings(INITIAL_BOOKINGS)
+      setCartItems([])
+      setCurrentVehicle(INITIAL_SAVED_VEHICLES[0]?.name || 'Audi A4 (5th Gen Facelift)')
+      setCurrentRole('customer')
+      setCurrentTab('home')
+
+      showToast('Your account and data have been permanently deleted.', 'info')
+      setAuthMode('login')
+      return true
+    } catch (err: any) {
+      console.error('Account deletion error:', err)
+      if (err.code === 'auth/requires-recent-login') {
+        showToast('For security reasons, please log in again before deleting your account.', 'warning')
+        try {
+          await signOut(auth)
+        } catch {}
+        setCurrentUser(null)
+        setAuthMode('login')
+        return false
+      }
+      showToast(err.message || 'Failed to delete account. Please try again.', 'error')
+      return false
+    }
   }
 
   // STEP 6 INTEGRATION: Save product order to Firestore 'orders' collection using original Firestore document ID
@@ -1075,7 +1214,8 @@ export const App: React.FC = () => {
                         '',
                       email: userProfileData?.email || currentUser.email || '',
                       phone: userProfileData?.phone || currentUser.phoneNumber || '',
-                      address: userProfileData?.address || '',
+                      address: userProfileData?.lastLocation || userProfileData?.address || '',
+                      lastLocation: userProfileData?.lastLocation || userProfileData?.address || '',
                       city: userProfileData?.city || '',
                       postalCode: userProfileData?.postalCode || '',
                     }
@@ -1088,11 +1228,26 @@ export const App: React.FC = () => {
                 onClearCart={handleClearCart}
                 onCheckoutOrder={handleCheckoutOrder}
                 onOpenTracking={() => navigateToTab('bookings')}
-                onUpdateLocation={(addr) => {
+                onUpdateLocation={async (addr) => {
                   setDetectedAddress(addr)
                   try {
                     localStorage.setItem('bentley_detected_address', addr)
                   } catch { }
+                  if (currentUser) {
+                    try {
+                      const userDocRef = doc(db, 'users', currentUser.uid)
+                      await setDoc(
+                        userDocRef,
+                        {
+                          lastLocation: addr,
+                          updatedAt: serverTimestamp(),
+                        },
+                        { merge: true }
+                      )
+                    } catch (err) {
+                      console.error('Failed to save lastLocation to Firestore in App:', err)
+                    }
+                  }
                 }}
               />
             )}
@@ -1172,6 +1327,7 @@ export const App: React.FC = () => {
                 }
                 onUpdateProfile={handleUpdateProfile}
                 onLogout={handleLogout}
+                onDeleteAccount={handleDeleteAccount}
               />
             )}
           </div>
@@ -1202,7 +1358,7 @@ export const App: React.FC = () => {
                   '',
                 email: userProfileData?.email || currentUser?.email || '',
                 phone: userProfileData?.phone || currentUser?.phoneNumber || '',
-                address: userProfileData?.address || detectedAddress || '',
+                address: userProfileData?.lastLocation || userProfileData?.address || detectedAddress || '',
                 city: userProfileData?.city || '',
                 postalCode: userProfileData?.postalCode || '',
               }}

@@ -432,7 +432,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     <div className="fixed inset-0 z-50 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
       <div className="w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-32">
         {/* Top Header */}
-        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md screen-padding py-3 border-b border-gray-100 flex items-center justify-between">
           <button
             onClick={onBack}
             className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -448,7 +448,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         </div>
 
         {/* Booking Form Content */}
-        <div className="p-5 flex flex-col gap-5">
+        <div className="screen-padding py-5 flex flex-col gap-5">
           {/* 1. Selected Service Preview */}
           <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center gap-3.5">
             <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0">

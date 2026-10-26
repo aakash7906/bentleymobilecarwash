@@ -172,7 +172,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full pb-28 px-4 sm:px-6 md:px-8">
+    <div className="flex flex-col w-full pb-28 screen-padding">
       {/* 1. Top Header */}
       <div className="py-2.5 flex items-center justify-between border-b border-gray-100">
         <button
