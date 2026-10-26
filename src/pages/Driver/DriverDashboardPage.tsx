@@ -29,6 +29,7 @@ interface DriverDashboardProps {
   driverEmail?: string
   driverProfile?: DriverProfile
   onUpdateDriverProfile?: (updated: DriverProfile) => void
+  onDeleteAccount?: () => Promise<boolean | void>
 }
 
 const DEFAULT_DRIVER_PROFILE: DriverProfile = {
@@ -55,6 +56,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   driverEmail = 'driver@bentleycarwash.com',
   driverProfile: externalProfile,
   onUpdateDriverProfile,
+  onDeleteAccount,
 }) => {
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<'available' | 'active' | 'completed'>('available')
@@ -160,6 +162,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         profile={profile}
         onSave={handleSaveProfile}
         onLogout={onLogout}
+        onDeleteAccount={onDeleteAccount}
+        completedJobsCount={completedOrders.length}
       />
 
       {/* 2. DRIVER MAP MODAL */}
@@ -707,17 +711,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         </nav>
       </main>
 
-      {/* 6. DRIVER PROFILE MODAL */}
-      <DriverProfilePage
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        profile={profile}
-        onSave={(updated) => {
-          setProfile(updated)
-          onUpdateDriverProfile?.(updated)
-        }}
-        onLogout={onLogout}
-      />
+      {/* Bottom spacer */}
     </div>
   )
 }

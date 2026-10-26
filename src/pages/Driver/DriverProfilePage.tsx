@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   ChevronLeft,
   Camera,
@@ -14,6 +14,9 @@ import {
   Upload,
   Trash2,
   Lock,
+  AlertTriangle,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import { DriverProfile } from '@/types'
 import { useToast } from '@/context/ToastContext'
@@ -24,6 +27,42 @@ interface DriverProfilePageProps {
   profile: DriverProfile
   onSave: (updated: DriverProfile) => void
   onLogout?: () => void
+  onDeleteAccount?: () => Promise<boolean | void>
+  completedJobsCount?: number
+}
+
+// Mobile phone number validation helper
+const validatePhone = (value: string): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return 'Mobile phone number is required'
+  }
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length < 10) {
+    return 'Phone number must have at least 10 digits'
+  }
+  if (digits.length > 15) {
+    return 'Phone number cannot exceed 15 digits'
+  }
+  const phonePattern = /^(\+?\d{1,4}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?[\d\s.-]{6,14}$/
+  if (!phonePattern.test(trimmed)) {
+    return 'Please enter a valid phone number (e.g. +1 (800) 555-9274)'
+  }
+  return null
+}
+
+// Emergency contact optional validation helper
+const validateEmergency = (value: string): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length < 10) {
+    return 'Emergency phone must have at least 10 digits'
+  }
+  if (digits.length > 15) {
+    return 'Emergency phone cannot exceed 15 digits'
+  }
+  return null
 }
 
 export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
@@ -32,6 +71,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   profile,
   onSave,
   onLogout,
+  onDeleteAccount,
+  completedJobsCount,
 }) => {
   const { showToast } = useToast()
 
@@ -39,11 +80,17 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [name, setName] = useState(profile.name)
   const [email, setEmail] = useState(profile.email)
   const [phone, setPhone] = useState(profile.phone)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [phoneTouched, setPhoneTouched] = useState(false)
+
   const [vanModel, setVanModel] = useState(profile.vanModel)
   const [licensePlate, setLicensePlate] = useState(profile.licensePlate)
   const [serviceArea, setServiceArea] = useState(profile.serviceArea)
   const [driverLicenseNumber, setDriverLicenseNumber] = useState(profile.driverLicenseNumber || '')
+
   const [emergencyContact, setEmergencyContact] = useState(profile.emergencyContact || '')
+  const [emergencyError, setEmergencyError] = useState<string | null>(null)
+
   const [avatar, setAvatar] = useState(profile.avatar || '')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -51,24 +98,58 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
+  // State for Delete Driver Profile confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Dynamic completed jobs count (from actual completed bookings or profile totalJobs)
+  const effectiveCompletedJobs =
+    completedJobsCount !== undefined ? completedJobsCount : profile.totalJobs || 0
+
   // Sync state when profile or isOpen changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setName(profile.name)
       setEmail(profile.email)
       setPhone(profile.phone)
+      setPhoneError(null)
+      setPhoneTouched(false)
       setVanModel(profile.vanModel)
       setLicensePlate(profile.licensePlate)
       setServiceArea(profile.serviceArea)
       setDriverLicenseNumber(profile.driverLicenseNumber || '')
       setEmergencyContact(profile.emergencyContact || '')
+      setEmergencyError(null)
       setAvatar(profile.avatar || '')
       setUploadError(null)
+      setShowDeleteModal(false)
     }
   }, [isOpen, profile])
 
   if (!isOpen) return null
 
+  // Handle phone changes with real-time validation
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setPhone(val)
+    if (phoneTouched) {
+      setPhoneError(validatePhone(val))
+    }
+  }
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true)
+    setPhoneError(validatePhone(phone))
+  }
+
+  // Handle emergency phone changes
+  const handleEmergencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setEmergencyContact(val)
+    setEmergencyError(validateEmergency(val))
+  }
+
+  // Handle profile image upload
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -113,21 +194,42 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
     showToast('Photo removed', 'info')
   }
 
+  // Form submission with complete validation
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate phone number
+    setPhoneTouched(true)
+    const pError = validatePhone(phone)
+    if (pError) {
+      setPhoneError(pError)
+      showToast(pError, 'error')
+      return
+    }
+
+    // Validate emergency phone if entered
+    const emError = validateEmergency(emergencyContact)
+    if (emError) {
+      setEmergencyError(emError)
+      showToast(emError, 'error')
+      return
+    }
+
     setIsSaving(true)
 
     const updated: DriverProfile = {
       ...profile,
       name: name.trim() || profile.name,
       email: profile.email,
-      phone: phone.trim() || profile.phone,
+      phone: phone.trim(),
       vanModel: vanModel.trim() || profile.vanModel,
       licensePlate: licensePlate.trim().toUpperCase() || profile.licensePlate,
       serviceArea: serviceArea.trim() || profile.serviceArea,
       driverLicenseNumber: driverLicenseNumber.trim(),
       emergencyContact: emergencyContact.trim(),
       avatar,
+      isAvailable: profile.isAvailable,
+      totalJobs: effectiveCompletedJobs,
     }
 
     setTimeout(() => {
@@ -144,23 +246,26 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 flex justify-center">
-      <div className="w-full min-h-screen bg-canvas flex flex-col">
+    <div className="fixed inset-0 z-50 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+      <div className="w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-24">
         {/* TOP RESPONSIVE APP BAR */}
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-6 md:px-8 py-3.5 flex items-center justify-between shadow-xs">
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-4 sm:px-6 md:px-8 py-3.5 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 flex items-center justify-center transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
               title="Return to Dashboard"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight">
-                {name}
+              <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight leading-tight">
+                {name || 'Driver Profile'}
               </h1>
+              <p className="text-[11px] text-gray-500 font-medium">
+                Bentley Partner ID & Mobile Detailing Unit
+              </p>
             </div>
           </div>
 
@@ -170,22 +275,22 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className="px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center gap-1.5 border border-rose-200/60 transition-all cursor-pointer font-bold text-xs shadow-2xs active:scale-95"
+                className="px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center gap-1.5 border border-rose-200/60 transition-all cursor-pointer font-bold text-xs shadow-2xs active:scale-95"
                 title="Log out from Driver account"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Log Out</span>
+                <span className="hidden sm:inline">Log Out</span>
               </button>
             )}
           </div>
         </header>
 
         {/* MAIN FORM CONTAINER */}
-        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8">
+        <main className="flex-1 w-full px-4 sm:px-6 md:px-8 py-6 sm:py-8">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             {/* 1. HERO PROFILE OVERVIEW CARD */}
-            <div className="w-full bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
+            <div className="w-full bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-200/80 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-72 h-72 bg-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
 
               <input
                 ref={fileInputRef}
@@ -255,24 +360,48 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                 )}
               </div>
 
-              {/* Driver Details */}
+              {/* Dynamic Driver Details & Badges */}
               <div className="flex-1 text-center md:text-left flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                   <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                    {name}
+                    {name || 'Alex Rivera'}
                   </h2>
                 </div>
 
-                <p className="text-xs sm:text-sm text-gray-500">
-                  {vanModel}
+                <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                  {vanModel} {licensePlate ? `• Plate: ${licensePlate}` : ''}
                 </p>
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 text-xs text-gray-500 mt-1">
-                  <MapPin className="w-3.5 h-3.5 text-primary" />
-                  <span>{serviceArea}</span>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-gray-500 mt-1">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-primary" />
+                    <span>{serviceArea || 'Ontario, Canada'}</span>
+                  </span>
                   <span className="text-gray-300">•</span>
-                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{email}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Mail className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{email}</span>
+                  </span>
+                </div>
+
+                {/* Dynamic Metrics Row */}
+                <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3">
+                  <div className="px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200/80 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-xs font-bold text-gray-900">
+                      {effectiveCompletedJobs}
+                    </span>
+                    <span className="text-[11px] text-gray-500">Jobs Completed</span>
+                  </div>
+
+                  {driverLicenseNumber && (
+                    <div className="px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200/80 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[11px] font-mono font-semibold text-gray-700">
+                        {driverLicenseNumber}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -280,14 +409,16 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
             {/* 2. FORM GRID SECTIONS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* SECTION A: PERSONAL & CONTACT INFORMATION */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+              <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-200/80 flex flex-col gap-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-gray-900">Personal & Contact Info</h3>
-                    <p className="text-[11px] text-gray-400">Used for customer communication and dispatches</p>
+                    <p className="text-[11px] text-gray-400">
+                      Used for client notifications and mobile dispatches
+                    </p>
                   </div>
                 </div>
 
@@ -302,7 +433,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Alex Rivera"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
                 </div>
@@ -329,56 +460,99 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                   </div>
                 </div>
 
-                {/* Direct Phone Number */}
+                {/* Direct Mobile Phone Number WITH VALIDATION */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Mobile Phone</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700">
+                      Mobile Phone Number <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-gray-400">Min 10 digits</span>
+                  </div>
+
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Phone
+                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                        phoneError ? 'text-rose-500' : 'text-gray-400'
+                      }`}
+                    />
                     <input
                       type="tel"
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={handlePhoneChange}
+                      onBlur={handlePhoneBlur}
                       placeholder="+1 (800) 555-9274"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${
+                        phoneError
+                          ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20 focus:border-rose-500'
+                          : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
+                      }`}
                     />
                   </div>
-                  <span className="text-[10px] text-gray-400">
-                    Customers can reach you at this number during service.
-                  </span>
+
+                  {phoneError ? (
+                    <div className="flex items-center gap-1.5 text-rose-500 text-[11px] font-semibold mt-0.5">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{phoneError}</span>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-gray-400">
+                      Customers will contact you through this verified direct number.
+                    </span>
+                  )}
                 </div>
 
                 {/* Emergency Contact */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Emergency Contact Number</label>
+                  <label className="text-xs font-bold text-gray-700">
+                    Emergency Contact Number (Optional)
+                  </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Phone
+                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${
+                        emergencyError ? 'text-rose-500' : 'text-gray-400'
+                      }`}
+                    />
                     <input
                       type="tel"
                       value={emergencyContact}
-                      onChange={(e) => setEmergencyContact(e.target.value)}
+                      onChange={handleEmergencyChange}
                       placeholder="+1 (998) 555-0199"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${
+                        emergencyError
+                          ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20'
+                          : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
+                      }`}
                     />
                   </div>
+                  {emergencyError && (
+                    <div className="flex items-center gap-1 text-rose-500 text-[11px] font-semibold">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{emergencyError}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* SECTION B: SERVICE VAN & VEHICLE SPECIFICATIONS */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+              <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-200/80 flex flex-col gap-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
                     <Truck className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-gray-900">Mobile Service Van</h3>
-                    <p className="text-[11px] text-gray-400">Vehicle details used on active jobs</p>
+                    <p className="text-[11px] text-gray-400">
+                      Vehicle details shown to customers on active bookings
+                    </p>
                   </div>
                 </div>
 
                 {/* Service Van Model */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Service Van / Vehicle Model</label>
+                  <label className="text-xs font-bold text-gray-700">
+                    Service Van / Vehicle Model
+                  </label>
                   <div className="relative">
                     <Truck className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -387,7 +561,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       value={vanModel}
                       onChange={(e) => setVanModel(e.target.value)}
                       placeholder="e.g. Mercedes-Benz Sprinter 2500"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
                 </div>
@@ -403,16 +577,18 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       type="text"
                       required
                       value={licensePlate}
-                      onChange={(e) => setLicensePlate(e.target.value)}
-                      placeholder="e.g. BNT-8821"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm uppercase font-mono tracking-wider text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                      placeholder="e.g. BC-8492"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm uppercase font-mono tracking-wider text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
                 {/* Service Area / Territory */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Operating City / Coverage Area</label>
+                  <label className="text-xs font-bold text-gray-700">
+                    Operating City / Coverage Area
+                  </label>
                   <div className="relative">
                     <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -421,26 +597,52 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       value={serviceArea}
                       onChange={(e) => setServiceArea(e.target.value)}
                       placeholder="e.g. Ontario, Canada"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
                 {/* Driver License / Cert ID */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Commercial / Driver License ID</label>
+                  <label className="text-xs font-bold text-gray-700">
+                    Commercial / Driver License ID
+                  </label>
                   <div className="relative">
                     <ShieldCheck className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={driverLicenseNumber}
                       onChange={(e) => setDriverLicenseNumber(e.target.value)}
-                      placeholder="e.g. DL-ON-883921"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
+                      placeholder="e.g. DL-ON-992014-B"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* SECTION C: DANGER ZONE - DELETE DRIVER PROFILE (JUST LIKE USER PROFILE) */}
+            <div className="bg-red-50/50 rounded-3xl p-5 sm:p-6 border border-red-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-900">Delete Driver Profile</h3>
+                  <p className="text-xs text-red-700/80 mt-0.5">
+                    Permanently delete your driver profile, vehicle specifications, and partner registration from Firebase. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-red-300 bg-white hover:bg-red-600 hover:text-white text-red-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Profile</span>
+              </button>
             </div>
 
             {/* 3. ACTIONS FOOTER BAR */}
@@ -448,7 +650,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-xs sm:text-sm font-bold text-gray-700 transition-all cursor-pointer text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-xs sm:text-sm font-bold text-gray-700 transition-all cursor-pointer text-center shadow-2xs"
               >
                 Cancel & Close
               </button>
@@ -479,7 +681,76 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
           </form>
         </main>
       </div>
+
+      {/* CONFIRMATION MODAL FOR DELETE DRIVER PROFILE (IDENTICAL PATTERN TO USER PROFILE) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150 border border-gray-100">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
+            </div>
+
+            <div className="text-center flex flex-col gap-1.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900">
+                Delete Driver Profile?
+              </h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                This will permanently delete your driver profile, vehicle registration, and cloud driver account from Firebase. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true)
+                  try {
+                    if (onDeleteAccount) {
+                      await onDeleteAccount()
+                    } else {
+                      try {
+                        localStorage.removeItem('bentley_driver_profile')
+                      } catch {}
+                      showToast('Driver profile deleted successfully.', 'info')
+                      onLogout?.()
+                    }
+                  } catch (err: any) {
+                    showToast(err?.message || 'Failed to delete driver profile.', 'error')
+                  } finally {
+                    setIsDeleting(false)
+                    setShowDeleteModal(false)
+                  }
+                }}
+                className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
+export default DriverProfilePage

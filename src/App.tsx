@@ -919,11 +919,21 @@ export const App: React.FC = () => {
     setAuthMode('login')
   }
 
-  // Unified Delete Account handler from both Firestore & Firebase Authentication
   const handleDeleteAccount = async (): Promise<boolean> => {
     if (!currentUser) {
-      showToast('No active account session found to delete.', 'error')
-      return false
+      try {
+        localStorage.removeItem('bentley_user_profile')
+        localStorage.removeItem('bentley_driver_profile')
+        localStorage.removeItem('bentley_saved_vehicles')
+        localStorage.removeItem('bentley_active_vehicle')
+        localStorage.removeItem('bentley_cart_items')
+        localStorage.removeItem('bentley_bookings')
+        localStorage.removeItem('bentley_current_role')
+        localStorage.removeItem('bentley_detected_address')
+      } catch {}
+      showToast('Profile and local account data deleted.', 'info')
+      handleLogout()
+      return true
     }
 
     isDeletingAccountRef.current = true
@@ -1016,6 +1026,7 @@ export const App: React.FC = () => {
       // 7. Clean up local storage
       try {
         localStorage.removeItem('bentley_user_profile')
+        localStorage.removeItem('bentley_driver_profile')
         localStorage.removeItem('bentley_saved_vehicles')
         localStorage.removeItem('bentley_active_vehicle')
         localStorage.removeItem('bentley_cart_items')
@@ -1196,6 +1207,7 @@ export const App: React.FC = () => {
             driverEmail={driverProfile.email}
             driverProfile={driverProfile}
             onUpdateDriverProfile={handleUpdateDriverProfile}
+            onDeleteAccount={handleDeleteAccount}
           />
         </div>
       )}
