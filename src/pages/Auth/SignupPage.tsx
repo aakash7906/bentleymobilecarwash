@@ -205,16 +205,14 @@ export const Signup: React.FC<SignupProps> = ({
       showToast('Account created successfully! Welcome to Bentley Car Wash.', 'success')
 
       // -------------------------------------------------------------
-      // Step 2.4: Trigger App Success Callback to continue user session
+      // Step 2.4: Trigger App Success Callback immediately to continue user session
       // -------------------------------------------------------------
-      setTimeout(() => {
-        onSignupSuccess({
-          name: fullName.trim(),
-          email: user.email || signupEmail,
-          uid: user.uid,
-          role: selectedRole,
-        })
-      }, 700)
+      onSignupSuccess({
+        name: fullName.trim(),
+        email: user.email || signupEmail,
+        uid: user.uid,
+        role: selectedRole,
+      })
     } catch (err: any) {
       console.error('Firebase Signup Error:', err)
       if (err.code === 'auth/email-already-in-use') {
@@ -277,14 +275,12 @@ export const Signup: React.FC<SignupProps> = ({
       }
 
       showToast('Google registration successful! Welcome.', 'success')
-      setTimeout(() => {
-        onSignupSuccess({
-          name: user.displayName || 'Google User',
-          email: user.email || '',
-          uid: user.uid,
-          role: selectedRole,
-        })
-      }, 600)
+      onSignupSuccess({
+        name: user.displayName || 'Google User',
+        email: user.email || '',
+        uid: user.uid,
+        role: selectedRole,
+      })
     } catch (err: any) {
       console.error('Firebase Google Signup Error:', err)
       if (err.code !== 'auth/popup-closed-by-user') {

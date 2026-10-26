@@ -42,7 +42,7 @@ function resolveColorToken(color: string): string {
 }
 
 // Free high-performance basemap styles with zero API key required
-export const MAP_STYLES = {
+const MAP_STYLES = {
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
@@ -106,7 +106,6 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
   const mapRef = useRef<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const isUserInteractingRef = useRef(false)
-  const userInteractionTimeoutRef = useRef<any>(null)
   const isMiddleDraggingRef = useRef(false)
 
   // Resolve current active style URL from styles or mapStyle
@@ -128,6 +127,12 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     let mapInstance: MapLibreMap | null = null
 
     try {
+      const fastPanInertia = {
+        linearity: 0.35,
+        maxSpeed: 3600,
+        deceleration: 1400,
+      }
+
       mapInstance = new MapLibreMap({
         container: containerRef.current,
         style: activeStyleUrl,
@@ -136,12 +141,13 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         pitch,
         bearing,
         interactive,
-        dragPan: true,
+        dragPan: fastPanInertia,
         dragRotate: true,
         scrollZoom: true,
         boxZoom: true,
         doubleClickZoom: true,
         touchZoomRotate: true,
+        touchPitch: false,
         attributionControl: false,
       })
 
@@ -216,61 +222,52 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         }
       }
 
-      // Use capture: true & passive: false so browser autoscroll is reliably intercepted
       if (targetEl) {
-        targetEl.addEventListener('auxclick', handleAuxClick, { capture: true, passive: false })
-        targetEl.addEventListener('mousedown', handleMouseDown, { capture: true, passive: false })
+        targetEl.addEventListener('auxclick', handleAuxClick, { passive: false })
+        targetEl.addEventListener('mousedown', handleMouseDown, { passive: false })
       }
-      window.addEventListener('mousemove', handleMouseMove, { capture: true, passive: false })
-      window.addEventListener('mouseup', handleMouseUp, { capture: true, passive: false })
+      window.addEventListener('mousemove', handleMouseMove, { passive: false })
+      window.addEventListener('mouseup', handleMouseUp, { passive: true })
       window.addEventListener('blur', handleMouseUp)
 
       mapInstance.on('load', () => {
         setIsLoaded(true)
         if (mapInstance) {
-          // Explicitly ensure dragPan and all navigation handlers are active
-          mapInstance.dragPan.enable()
+          // 1. Enable fast, fluid Google Maps-style drag panning with high fling inertia
+          mapInstance.dragPan.enable(fastPanInertia)
+
+          // 2. Fast, responsive mouse wheel and trackpad zoom
           mapInstance.scrollZoom.enable()
+          mapInstance.scrollZoom.setWheelZoomRate(1 / 150)
+          mapInstance.scrollZoom.setZoomRate(1 / 40)
+
+          // 3. Fast, fluid two-finger pinch-to-zoom
+          mapInstance.touchZoomRotate.enable()
+          mapInstance.touchZoomRotate.disableRotation()
+          const touchZoom = (mapInstance.touchZoomRotate as any)._touchZoom
+          if (touchZoom) {
+            touchZoom.setZoomRate(1.8)
+            touchZoom.setZoomThreshold(0)
+          }
+
+          // 4. Disable touch pitch so vertical finger movement does not hijack pinch-to-zoom
+          mapInstance.touchPitch.disable()
           mapInstance.resize()
           if (onLoad) onLoad(mapInstance)
         }
       })
 
-      mapInstance.on('idle', () => {
-        if (mapInstance) {
-          mapInstance.resize()
-        }
-      })
-
-      // INDUSTRY PATTERN: User Interaction Detection
+      // USER INTERACTION DETECTION: Inform parent without killing MapLibre's momentum or easing
       const handleInteractionStart = () => {
         isUserInteractingRef.current = true
-        if (userInteractionTimeoutRef.current) {
-          clearTimeout(userInteractionTimeoutRef.current)
-        }
         if (onUserInteract) onUserInteract(true)
       }
 
-      const handleInteractionEnd = () => {
-        if (userInteractionTimeoutRef.current) {
-          clearTimeout(userInteractionTimeoutRef.current)
-        }
-        // Retain user exploration mode for 8 seconds before auto-resuming, or until re-center is pressed
-        userInteractionTimeoutRef.current = setTimeout(() => {
-          isUserInteractingRef.current = false
-          if (onUserInteract) onUserInteract(false)
-        }, 8000)
-      }
-
+      // Allow natural momentum and continuous gestures without stopping camera animations
       mapInstance.on('dragstart', handleInteractionStart)
       mapInstance.on('zoomstart', handleInteractionStart)
       mapInstance.on('rotatestart', handleInteractionStart)
       mapInstance.on('pitchstart', handleInteractionStart)
-      mapInstance.on('touchstart', handleInteractionStart)
-
-      mapInstance.on('dragend', handleInteractionEnd)
-      mapInstance.on('zoomend', handleInteractionEnd)
-      mapInstance.on('touchend', handleInteractionEnd)
 
       mapInstance.on('error', (e) => {
         console.warn('MapLibre event notice:', e)
@@ -296,7 +293,6 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         clearTimeout(timer1)
         clearTimeout(timer2)
         if (resizeTimer) clearTimeout(resizeTimer)
-        if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current)
         resizeObserver.disconnect()
         if (targetEl) {
           targetEl.removeEventListener('auxclick', handleAuxClick)
@@ -357,7 +353,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     <MapContext.Provider value={{ map: mapRef.current, isLoaded }}>
       <div
         ref={wrapperRef}
-        className={`relative overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
+        className={`relative overflow-hidden select-none ${className}`}
         style={{
           touchAction: 'none',
           overscrollBehavior: 'contain',
@@ -462,82 +458,108 @@ export const MapRoute: React.FC<MapRouteProps> = ({
 }) => {
   const { map, isLoaded } = useMap()
 
-  const updateRoute = useCallback(() => {
-    if (!map || !isLoaded || coordinates.length < 2) return
+  // 1. Setup Layer and Source Lifecycle (Mount once, re-attach on style change, clean up only on unmount or id change)
+  useEffect(() => {
+    if (!map || !isLoaded) return
 
-    const resolvedColor = resolveColorToken(color)
     const sourceId = `source-${id}`
     const layerId = `layer-${id}`
 
-    const geojsonData: any = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates,
-      },
-    }
-
-    try {
-      const existingSource = map.getSource(sourceId) as any
-
-      if (existingSource) {
-        existingSource.setData(geojsonData)
-      } else {
-        map.addSource(sourceId, {
-          type: 'geojson',
-          data: geojsonData,
-        })
-
-        const paintProps: Record<string, any> = {
-          'line-color': resolvedColor,
-          'line-width': width,
-          'line-opacity': opacity,
+    const setupRouteLayer = () => {
+      try {
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: coordinates.length >= 2 ? coordinates : [],
+              },
+            },
+          })
         }
 
-        if (dashArray) {
-          paintProps['line-dasharray'] = dashArray
-        }
+        if (!map.getLayer(layerId)) {
+          const resolvedColor = resolveColorToken(color)
+          const paintProps: Record<string, any> = {
+            'line-color': resolvedColor,
+            'line-width': width,
+            'line-opacity': opacity,
+          }
 
-        map.addLayer({
-          id: layerId,
-          type: 'line',
-          source: sourceId,
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round',
-          },
-          paint: paintProps,
-        })
+          if (dashArray) {
+            paintProps['line-dasharray'] = dashArray
+          }
+
+          map.addLayer({
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+            paint: paintProps,
+          })
+        }
+      } catch (err) {
+        console.warn('Error configuring map route layer:', err)
       }
-    } catch (err) {
-      console.warn('Error configuring map route:', err)
     }
-  }, [map, isLoaded, id, coordinates, color, width, opacity, dashArray])
 
-  useEffect(() => {
-    if (!map) return
-
-    updateRoute()
-
-    // Automatically re-apply route layer when map style changes
-    const handleStyleLoad = () => {
-      updateRoute()
-    }
-    map.on('style.load', handleStyleLoad)
+    setupRouteLayer()
+    map.on('style.load', setupRouteLayer)
 
     return () => {
-      map.off('style.load', handleStyleLoad)
+      map.off('style.load', setupRouteLayer)
       try {
-        const sourceId = `source-${id}`
-        const layerId = `layer-${id}`
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
       } catch {
         // Ignored on cleanup
       }
     }
-  }, [map, updateRoute, id])
+  }, [map, isLoaded, id])
+
+  // 2. High-performance GeoJSON data update without destroying/recreating WebGL layers
+  useEffect(() => {
+    if (!map || !isLoaded || coordinates.length < 2) return
+    const sourceId = `source-${id}`
+    try {
+      const existingSource = map.getSource(sourceId) as any
+      if (existingSource && typeof existingSource.setData === 'function') {
+        existingSource.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates,
+          },
+        })
+      }
+    } catch (err) {
+      console.warn('Error updating route coordinates:', err)
+    }
+  }, [map, isLoaded, id, coordinates])
+
+  // 3. Dynamic paint property updates without layer recreation
+  useEffect(() => {
+    if (!map || !isLoaded) return
+    const layerId = `layer-${id}`
+    try {
+      if (map.getLayer(layerId)) {
+        const resolvedColor = resolveColorToken(color)
+        map.setPaintProperty(layerId, 'line-color', resolvedColor)
+        map.setPaintProperty(layerId, 'line-width', width)
+        map.setPaintProperty(layerId, 'line-opacity', opacity)
+        if (dashArray) {
+          map.setPaintProperty(layerId, 'line-dasharray', dashArray)
+        }
+      }
+    } catch {}
+  }, [map, isLoaded, id, color, width, opacity, dashArray])
 
   return null
 }
@@ -557,11 +579,11 @@ export const MapControls: React.FC<MapControlsProps> = ({
   const { map } = useMap()
 
   const handleZoomIn = () => {
-    if (map) map.zoomIn({ duration: 300 })
+    if (map) map.zoomIn({ duration: 200 })
   }
 
   const handleZoomOut = () => {
-    if (map) map.zoomOut({ duration: 300 })
+    if (map) map.zoomOut({ duration: 200 })
   }
 
   const handleReset = () => {

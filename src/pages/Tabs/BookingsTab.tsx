@@ -93,6 +93,10 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
   )
 
   const handleTrackOrder = (booking: BookingRecord) => {
+    if (!booking.driverName && booking.status !== 'accepted' && booking.status !== 'en_route' && booking.status !== 'in_progress') {
+      alert('This booking has not been accepted by a driver yet. Live tracking unlocks once a driver accepts your booking.')
+      return
+    }
     setActiveTrackingBooking(booking)
     setTrackingModalOpen(true)
   }
@@ -255,16 +259,23 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                   </div>
                 </div>
 
-                {/* Primary Button: Track Order */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleTrackOrder(booking)}
-                  className="w-full rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center"
-                >
-                  Track Order &gt;
-                </Button>
+                {/* Primary Button: Track Order (Only if driver has accepted) */}
+                {Boolean(booking.driverName && (booking.status === 'accepted' || booking.status === 'en_route' || booking.status === 'in_progress')) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTrackOrder(booking)}
+                    className="w-full rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center flex items-center justify-center gap-1.5"
+                  >
+                    <span>Track Technician ({booking.driverName}) &gt;</span>
+                  </Button>
+                ) : (
+                  <div className="w-full py-2 px-3 rounded-sm bg-amber-50/70 border border-amber-200/60 text-amber-800 text-[11px] font-medium text-center flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Awaiting Driver Acceptance</span>
+                  </div>
+                )}
 
                 {/* Secondary Actions: Reschedule, Cancel, Invoice */}
                 <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
@@ -450,17 +461,14 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
           booking={activeTrackingBooking}
           serviceTitle={activeTrackingBooking.title}
           serviceCategory={activeTrackingBooking.category}
-          customerName={activeTrackingBooking.customerName || 'Sarah Jenkins'}
-          customerPhone={activeTrackingBooking.customerPhone || '+1 (998) 877-5561'}
-          customerAddress={
-            activeTrackingBooking.address ||
-            '21/22, 5th Avenue, Jamesford Road, Ontario, Canada'
-          }
-          technicianName={activeTrackingBooking.driverName || activeTrackingBooking.technicianName || 'Alex Rivera'}
+          customerName={activeTrackingBooking.customerName}
+          customerPhone={activeTrackingBooking.customerPhone}
+          customerAddress={activeTrackingBooking.address}
+          technicianName={activeTrackingBooking.driverName || activeTrackingBooking.technicianName}
           driverCoords={activeTrackingBooking.driverCoords}
           customerCoords={activeTrackingBooking.customerCoords}
-          driverVanNumber={activeTrackingBooking.driverVanNumber || 'Van #04'}
-          driverPhone={activeTrackingBooking.driverPhone || '+1 (800) 555-9274'}
+          driverVanNumber={activeTrackingBooking.driverVanNumber}
+          driverPhone={activeTrackingBooking.driverPhone}
           bookingStatus={activeTrackingBooking.status}
         />
       )}

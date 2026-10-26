@@ -242,12 +242,14 @@ export const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user)
+        setCurrentTab('home')
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
         setDetectedAddress('')
         setSavedVehicles([])
         setCurrentVehicle('')
+        setCurrentTab('home')
         try {
           localStorage.removeItem('bentley_detected_address')
           localStorage.removeItem('bentley_saved_vehicles')
@@ -913,6 +915,7 @@ export const App: React.FC = () => {
       localStorage.removeItem('bentley_active_vehicle')
     } catch { }
     setCurrentRole('customer')
+    setCurrentTab('home')
     setAuthMode('login')
   }
 
@@ -1155,6 +1158,7 @@ export const App: React.FC = () => {
           }}
           onSwitchToSignup={(role) => {
             if (role) setCurrentRole(role)
+            setCurrentTab('home')
             setAuthMode('signup')
           }}
         />
@@ -1174,6 +1178,7 @@ export const App: React.FC = () => {
           }}
           onSwitchToLogin={(role) => {
             if (role) setCurrentRole(role)
+            setCurrentTab('home')
             setAuthMode('login')
           }}
         />

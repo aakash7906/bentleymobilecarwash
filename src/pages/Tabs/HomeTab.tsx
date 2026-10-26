@@ -783,20 +783,23 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           }}
           booking={
             selectedTrackingBooking ||
-            activeBookings.find((b) => b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') ||
-            activeBookings[0]
+            activeBookings.find(
+              (b) =>
+                (b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') &&
+                Boolean(b.driverName || b.technicianName)
+            )
           }
-          serviceTitle={(selectedTrackingBooking || activeBookings[0])?.title || 'Car Wash'}
-          serviceCategory={(selectedTrackingBooking || activeBookings[0])?.category || 'Exterior Cleaning'}
-          customerName={userProfile?.name || (selectedTrackingBooking || activeBookings[0])?.customerName || 'Customer'}
-          customerPhone={userProfile?.phone || (selectedTrackingBooking || activeBookings[0])?.customerPhone || ''}
-          customerAddress={userProfile?.address || (selectedTrackingBooking || activeBookings[0])?.address || currentAddress}
-          technicianName={(selectedTrackingBooking || activeBookings[0])?.technicianName || (selectedTrackingBooking || activeBookings[0])?.driverName || 'Alex Rivera'}
-          driverCoords={(selectedTrackingBooking || activeBookings[0])?.driverCoords}
-          customerCoords={(selectedTrackingBooking || activeBookings[0])?.customerCoords}
-          driverVanNumber={(selectedTrackingBooking || activeBookings[0])?.driverVanNumber || 'Van #04'}
-          driverPhone={(selectedTrackingBooking || activeBookings[0])?.driverPhone || '+1 (800) 555-9274'}
-          bookingStatus={(selectedTrackingBooking || activeBookings[0])?.status || 'scheduled'}
+          serviceTitle={selectedTrackingBooking?.title}
+          serviceCategory={selectedTrackingBooking?.category}
+          customerName={userProfile?.name || selectedTrackingBooking?.customerName}
+          customerPhone={userProfile?.phone || selectedTrackingBooking?.customerPhone}
+          customerAddress={userProfile?.address || selectedTrackingBooking?.address || currentAddress}
+          technicianName={selectedTrackingBooking?.technicianName || selectedTrackingBooking?.driverName}
+          driverCoords={selectedTrackingBooking?.driverCoords}
+          customerCoords={selectedTrackingBooking?.customerCoords}
+          driverVanNumber={selectedTrackingBooking?.driverVanNumber}
+          driverPhone={selectedTrackingBooking?.driverPhone}
+          bookingStatus={selectedTrackingBooking?.status}
         />
       )}
 

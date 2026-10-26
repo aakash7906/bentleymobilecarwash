@@ -13,12 +13,34 @@ import {
   MessageSquare,
   User,
   Radio,
+  Search,
+  DollarSign,
+  TrendingUp,
+  SlidersHorizontal,
+  AlertTriangle,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { BookingRecord, BookingStatus, DriverProfile } from '@/types'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
+
+// Haversine formula to compute dynamic distance in km
+function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
+  const [lon1, lat1] = coord1
+  const [lon2, lat2] = coord2
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return parseFloat((R * c).toFixed(1))
+}
 
 interface DriverDashboardProps {
   bookings: BookingRecord[]
@@ -31,27 +53,12 @@ interface DriverDashboardProps {
   onUpdateDriverProfile?: (updated: DriverProfile) => void
 }
 
-const DEFAULT_DRIVER_PROFILE: DriverProfile = {
-  name: 'Alex Rivera',
-  email: 'driver@bentleycarwash.com',
-  phone: '+1 (800) 555-9274',
-  vanModel: 'Mercedes-Benz Sprinter 2500',
-  licensePlate: 'BC-8492',
-  serviceArea: 'Ontario, Canada',
-  driverLicenseNumber: '',
-  emergencyContact: '',
-  avatar: '',
-  isAvailable: true,
-  rating: 5.0,
-  totalJobs: 0,
-}
-
 export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   bookings,
   onAcceptOrder,
   onUpdateStatus,
   onLogout,
-  driverName = 'Alex Rivera',
+  driverName = 'Driver Partner',
   driverEmail = 'driver@bentleycarwash.com',
   driverProfile: externalProfile,
   onUpdateDriverProfile,
@@ -61,6 +68,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   const [selectedBookingForMap, setSelectedBookingForMap] = useState<BookingRecord | null>(null)
   const [selectedDetailBooking, setSelectedDetailBooking] = useState<BookingRecord | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('All')
 
   // Driver profile state with external prop syncing & fallback
   const [profile, setProfile] = useState<DriverProfile>(() => {
@@ -70,9 +79,18 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       if (stored) return JSON.parse(stored)
     } catch {}
     return {
-      ...DEFAULT_DRIVER_PROFILE,
-      name: driverName || DEFAULT_DRIVER_PROFILE.name,
-      email: driverEmail || DEFAULT_DRIVER_PROFILE.email,
+      name: driverName || 'Driver Partner',
+      email: driverEmail || 'driver@bentleycarwash.com',
+      phone: '+1 (800) 555-9274',
+      vanModel: 'Mobile Detailing Van',
+      licensePlate: 'BC-8492',
+      serviceArea: 'Greater Region',
+      driverLicenseNumber: '',
+      emergencyContact: '',
+      avatar: '',
+      isAvailable: true,
+      rating: 5.0,
+      totalJobs: 0,
     }
   })
 
@@ -134,6 +152,68 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     if (onUpdateDriverProfile) {
       onUpdateDriverProfile(updated)
     }
+  }
+
+  // Dynamic revenue and performance metrics computed directly from live bookings
+  const totalEarnings = useMemo(() => {
+    return completedOrders.reduce((acc, b) => {
+      const num = b.totalNumeric || parseFloat(String(b.price || '').replace(/[^0-9.]/g, '')) || 0
+      return acc + num
+    }, 0)
+  }, [completedOrders])
+
+  // Quick toggle online/offline availability
+  const toggleAvailability = () => {
+    const nextStatus = !profile.isAvailable
+    const updated = { ...profile, isAvailable: nextStatus }
+    handleSaveProfile(updated)
+    showToast(
+      nextStatus ? 'Status updated to Online • Receiving live dispatches' : 'Status updated to Offline • Dispatches paused',
+      nextStatus ? 'success' : 'info'
+    )
+  }
+
+  // Dynamically compute unique service categories from bookings
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>()
+    bookings.forEach((b) => {
+      if (b.category) cats.add(b.category)
+    })
+    return ['All', ...Array.from(cats)]
+  }, [bookings])
+
+  // Dynamically filter available orders by search and category
+  const filteredAvailableOrders = useMemo(() => {
+    return availableOrders.filter((b) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matches =
+          (b.customerName || '').toLowerCase().includes(q) ||
+          (b.vehicle || '').toLowerCase().includes(q) ||
+          (b.address || '').toLowerCase().includes(q) ||
+          (b.title || '').toLowerCase().includes(q) ||
+          (b.id || '').toLowerCase().includes(q) ||
+          (b.licensePlate && b.licensePlate.toLowerCase().includes(q))
+        if (!matches) return false
+      }
+      if (selectedCategory !== 'All') {
+        if (!b.category.toLowerCase().includes(selectedCategory.toLowerCase())) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [availableOrders, searchQuery, selectedCategory])
+
+  // Helper to dynamically calculate order distance from driver coordinates
+  const getOrderDistance = (booking: BookingRecord) => {
+    if (booking.distanceKm) return `${booking.distanceKm} km away`
+    if (booking.customerCoords && Array.isArray(booking.customerCoords) && booking.customerCoords.length === 2) {
+      const driverCoords = booking.driverCoords || [-79.4035, 43.6635]
+      const dist = calculateDistanceKm(driverCoords, booking.customerCoords)
+      return `${dist} km away`
+    }
+    return 'In Service Area'
   }
 
   // Handle accepting order
@@ -312,7 +392,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
       {/* 4. MAIN RESPONSIVE DASHBOARD LAYOUT */}
       <main className="w-full max-w-full min-h-screen bg-canvas flex flex-col pb-32">
-        {/* TOP RESPONSIVE HEADER: Logo on Left, User Profile on Right */}
+        {/* TOP RESPONSIVE HEADER: Logo on Left, Status & User Profile on Right */}
         <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/80 shadow-2xs">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between">
             {/* Top Left: Bentley Logo */}
@@ -324,8 +404,23 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               />
             </div>
 
-            {/* Top Right: User Profile Icon */}
-            <div className="flex items-center gap-3">
+            {/* Top Right: Status Badge & User Profile Icon */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Live Online / Offline Dispatch Toggle */}
+              <button
+                type="button"
+                onClick={toggleAvailability}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                  profile.isAvailable
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                }`}
+                title="Click to toggle Online/Offline dispatch status"
+              >
+                <span className={`w-2 h-2 rounded-full ${profile.isAvailable ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+                <span>{profile.isAvailable ? 'Online' : 'Offline'}</span>
+              </button>
+
               <div className="hidden sm:flex flex-col text-right">
                 <span className="text-xs font-bold text-gray-900 leading-tight">
                   {profile.name}
@@ -357,21 +452,67 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         </header>
 
         {/* RESPONSIVE ORDER CARDS CONTAINER */}
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 flex-1">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-5 flex-1">
           {/* TAB 1: AVAILABLE LIVE ORDERS */}
           {activeTab === 'available' && (
             <>
-              {availableOrders.length === 0 ? (
+              {/* Dynamic Search & Category Filter Bar */}
+              <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {/* Search input */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by customer, car, address, or package..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-2xs transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Chips Filter */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                  {availableCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        selectedCategory === cat
+                          ? 'bg-primary text-white shadow-2xs'
+                          : 'bg-white hover:bg-gray-100 text-gray-600 border border-gray-200/80'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredAvailableOrders.length === 0 ? (
                 <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
                   <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                  <span className="text-base font-bold text-gray-800">No pending orders right now</span>
+                  <span className="text-base font-bold text-gray-800">
+                    {searchQuery || selectedCategory !== 'All' ? 'No orders match your filter' : 'No pending orders right now'}
+                  </span>
                   <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                    New customer car wash and detailing requests will appear here in real-time.
+                    {searchQuery || selectedCategory !== 'All'
+                      ? 'Try clearing the search query or category filter.'
+                      : 'New customer car wash and detailing requests will appear here in real-time.'}
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {availableOrders.map((booking) => (
+                  {filteredAvailableOrders.map((booking) => (
                     <div
                       key={booking.id}
                       className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5"
@@ -397,7 +538,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                             {booking.price}
                           </span>
                           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
-                            {booking.distanceKm ? `${booking.distanceKm} km away` : 'Available'}
+                            {getOrderDistance(booking)}
                           </span>
                         </div>
                       </div>
@@ -706,18 +847,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
           </div>
         </nav>
       </main>
-
-      {/* 6. DRIVER PROFILE MODAL */}
-      <DriverProfilePage
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        profile={profile}
-        onSave={(updated) => {
-          setProfile(updated)
-          onUpdateDriverProfile?.(updated)
-        }}
-        onLogout={onLogout}
-      />
     </div>
   )
 }

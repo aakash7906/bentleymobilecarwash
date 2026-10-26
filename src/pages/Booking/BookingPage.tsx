@@ -22,6 +22,7 @@ import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { useToast } from '@/context/ToastContext'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
+import { Select, SelectOption } from '@/components/ui/select'
 
 interface BookingPageProps {
   initialService?: ServiceItem | null
@@ -104,6 +105,60 @@ const TIME_SLOTS = [
   { time: '05:00 PM', label: 'Evening' },
 ]
 
+// Helper to infer vehicle type
+const getInferredVehicleType = (
+  vehicleName: string,
+  vehicleObj?: SavedVehicle
+): 'Sedan' | 'SUV' | 'Truck' | 'Van' | 'Coupe' | 'Hatchback' => {
+  if (vehicleObj?.type) return vehicleObj.type as any
+  const lower = (vehicleName || '').toLowerCase()
+  if (
+    lower.includes('truck') ||
+    lower.includes('f-150') ||
+    lower.includes('tacoma') ||
+    lower.includes('silverado') ||
+    lower.includes('ram')
+  ) {
+    return 'Truck'
+  }
+  if (
+    lower.includes('van') ||
+    lower.includes('transit') ||
+    lower.includes('sienna') ||
+    lower.includes('carnival')
+  ) {
+    return 'Van'
+  }
+  if (
+    lower.includes('suv') ||
+    lower.includes('crossover') ||
+    lower.includes('cr-v') ||
+    lower.includes('rav4') ||
+    lower.includes('cx-5') ||
+    lower.includes('x5') ||
+    lower.includes('q7') ||
+    lower.includes('model y') ||
+    lower.includes('tucson') ||
+    lower.includes('explorer')
+  ) {
+    return 'SUV'
+  }
+  if (
+    lower.includes('coupe') ||
+    lower.includes('911') ||
+    lower.includes('mustang') ||
+    lower.includes('supra') ||
+    lower.includes('brz') ||
+    lower.includes('8 series')
+  ) {
+    return 'Coupe'
+  }
+  if (lower.includes('hatchback') || lower.includes('golf') || lower.includes('gti')) {
+    return 'Hatchback'
+  }
+  return 'Sedan'
+}
+
 export const BookingPage: React.FC<BookingPageProps> = ({
   initialService,
   currentVehicle,
@@ -114,20 +169,92 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onSelectVehicle,
   userProfile,
 }) => {
-  // Service selection
-  const [selectedService] = useState<ServiceItem>(
+  // Service selection (Dynamic sync with incoming service)
+  const [selectedService, setSelectedService] = useState<ServiceItem>(
     initialService || SERVICES_CATALOG[0]
   )
-  const [selectedVehicle, setSelectedVehicle] = useState<string>(
-    currentVehicle || (savedVehicles[0]?.name || '')
-  )
+
+  React.useEffect(() => {
+    if (initialService) {
+      setSelectedService(initialService)
+    }
+  }, [initialService])
+
+  // Dynamic Saved Vehicles resolution (combining props, localStorage & user profile)
+  const dynamicVehicles = React.useMemo(() => {
+    let list: SavedVehicle[] = [...(savedVehicles || [])]
+    if (list.length === 0) {
+      try {
+        const stored = localStorage.getItem('bentley_saved_vehicles')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            list = parsed
+          }
+        }
+      } catch {}
+    }
+    return list
+  }, [savedVehicles])
+
+  // Vehicle select options for select.tsx
+  const vehicleOptions: SelectOption[] = React.useMemo(() => {
+    const opts: SelectOption[] = []
+
+    dynamicVehicles.forEach((v) => {
+      opts.push({
+        label: `${v.name}${v.licensePlate ? ` • ${v.licensePlate}` : ''} (${v.type || 'Sedan'})`,
+        value: v.name,
+      })
+    })
+
+    if (currentVehicle && !opts.some((o) => o.value === currentVehicle)) {
+      opts.unshift({
+        label: `${currentVehicle} (Active Vehicle)`,
+        value: currentVehicle,
+      })
+    }
+
+    if (opts.length === 0) {
+      opts.push(
+        { label: 'Sedan (Standard Size)', value: 'Sedan (Standard)' },
+        { label: 'SUV / Crossover (+Size Adjustment)', value: 'SUV / Crossover' },
+        { label: 'Truck / Large Van (+Size Adjustment)', value: 'Truck / Large Van' }
+      )
+    }
+
+    if (!opts.some((o) => o.value === 'Custom Vehicle')) {
+      opts.push({
+        label: 'Custom Vehicle...',
+        value: 'Custom Vehicle',
+      })
+    }
+
+    return opts
+  }, [dynamicVehicles, currentVehicle])
+
+  const [selectedVehicle, setSelectedVehicle] = useState<string>(() => {
+    if (currentVehicle) return currentVehicle
+    if (dynamicVehicles.length > 0) return dynamicVehicles[0].name
+    return vehicleOptions[0]?.value || 'Custom Vehicle'
+  })
+  const [customVehicleName, setCustomVehicleName] = useState<string>('')
+
+  // Sync selectedVehicle when currentVehicle or options load
+  React.useEffect(() => {
+    if (currentVehicle) {
+      setSelectedVehicle(currentVehicle)
+    } else if (!selectedVehicle && vehicleOptions.length > 0) {
+      setSelectedVehicle(vehicleOptions[0].value)
+    }
+  }, [currentVehicle, vehicleOptions])
 
   // Frequency & Subscription
   const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
-  // Booking location (Autofilled dynamically from Firestore profile)
+  // Booking location (Autofilled dynamically from Firestore profile & address detection)
   const [locationType, setLocationType] = useState<'mobile' | 'shop'>('mobile')
   const [address, setAddress] = useState(userProfile?.address || '')
   const [city, setCity] = useState(userProfile?.city || '')
@@ -156,16 +283,18 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       setCustomerEmail((prev) => prev || userProfile.email || '')
       setCustomerPhone((prev) => prev || userProfile.phone || '')
       setAddress((prev) => prev || userProfile.address || '')
-      setCity((prev) => prev || userProfile.city || '')
+
+      if (userProfile.city) {
+        setCity((prev) => prev || userProfile.city || '')
+      } else if (userProfile.address) {
+        const parts = userProfile.address.split(',').map((p) => p.trim()).filter(Boolean)
+        if (parts.length >= 2) {
+          setCity((prev) => prev || parts[parts.length - 2])
+        }
+      }
       setPostalCode((prev) => prev || userProfile.postalCode || '')
     }
   }, [userProfile])
-
-  React.useEffect(() => {
-    if (currentVehicle) {
-      setSelectedVehicle(currentVehicle)
-    }
-  }, [currentVehicle])
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
@@ -184,9 +313,16 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [isSuccess, setIsSuccess] = useState(false)
   const [bookingRef, setBookingRef] = useState('')
 
-  // Vehicle Sizing calculation
-  const selectedVehicleObj = savedVehicles?.find((v) => v.name === selectedVehicle)
-  const vehicleType = selectedVehicleObj?.type || 'Sedan'
+  // Effective vehicle & Vehicle Sizing dynamic calculation
+  const effectiveVehicle =
+    selectedVehicle === 'Custom Vehicle' && customVehicleName.trim()
+      ? customVehicleName.trim()
+      : selectedVehicle
+
+  const selectedVehicleObj = dynamicVehicles.find(
+    (v) => v.name === effectiveVehicle || v.name === selectedVehicle
+  )
+  const vehicleType = getInferredVehicleType(effectiveVehicle, selectedVehicleObj)
   const isTieredService = !!selectedService.tieredPricing
   const vehicleSizeSurcharge = isTieredService
     ? 0 // Vehicle size rate is built into the package tiered pricing
@@ -223,10 +359,15 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal
   const recurringDiscount =
     frequency !== 'one_time' ? Math.round(preDiscountSubtotal * 0.15) : 0
-  const mobileFee = locationType === 'mobile' ? 0 : 0 // Free mobile dispatch in Kelowna
+  const mobileFee = 0 // Free mobile dispatch in service area
   const subtotal = Math.max(0, preDiscountSubtotal - recurringDiscount + mobileFee)
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
   const grandTotal = (subtotal + tax).toFixed(2)
+
+  const fullAddress =
+    locationType === 'mobile'
+      ? `${address}${city ? `, ${city}` : ''}${postalCode ? ` ${postalCode}` : ''}`
+      : `Bentley Studio ${city ? `(${city})` : ''}`
 
   const executeBookingConfirmation = async () => {
     let stripeTx: any = null
@@ -269,17 +410,13 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     const newBookingDocRef = doc(collection(db, 'bookings'))
     const newBookingId = newBookingDocRef.id
     const ref = `BW-${newBookingId.slice(-6).toUpperCase()}`
-    const fullAddress =
-      locationType === 'mobile'
-        ? `${address}, ${city} ${postalCode}`
-        : 'Bentley Studio (Kelowna)'
     const formattedDate = `${dateSlots[selectedDateIndex].dayName}, ${dateSlots[selectedDateIndex].month} ${dateSlots[selectedDateIndex].dayNumber}`
 
     const newBooking: BookingRecord = {
       id: newBookingId,
       title: selectedService.title,
       category: selectedService.category,
-      vehicle: selectedVehicle,
+      vehicle: effectiveVehicle,
       vehicleType: vehicleType || 'Sedan',
       licensePlate: selectedVehicleObj?.licensePlate || '',
       image: selectedService.image,
@@ -293,7 +430,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       customerName: customerName || 'Valued Customer',
       customerPhone: customerPhone || '',
       customerEmail: customerEmail || '',
-      technicianName: 'Alex Rivera',
       addons: selectedAddonIds
         .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
         .filter(Boolean) as string[],
@@ -353,7 +489,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-500">Vehicle:</span>
-              <span className="font-semibold text-gray-900">{selectedVehicle}</span>
+              <span className="font-semibold text-gray-900">{effectiveVehicle}</span>
             </div>
 
             <div className="flex items-center justify-between text-xs">
@@ -366,7 +502,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-500">Location:</span>
               <span className="font-semibold text-gray-900 text-right truncate max-w-[180px]">
-                {locationType === 'mobile' ? address : 'Bentley Studio (Kelowna)'}
+                {createdBooking?.address || fullAddress}
               </span>
             </div>
 
@@ -470,7 +606,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               </span>
               {isPackage ? (
                 <span className="text-sm font-extrabold text-primary font-mono mt-1">
-                  {selectedService.price}
+                  {isTieredService && selectedService.tieredPricing
+                    ? `$${basePrice}.00`
+                    : selectedService.price}
                 </span>
               ) : (
                 <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1 self-start">
@@ -480,37 +618,47 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             </div>
           </div>
 
-          {/* 2. Vehicle Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Car className="w-3.5 h-3.5 text-primary" />
-              <span>Vehicle to be Detailed</span>
-            </label>
-            <div className="p-3 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-900">{selectedVehicle}</span>
-                <span className="text-[11px] text-gray-500">Registered Vehicle</span>
-              </div>
-              <select
-                value={selectedVehicle}
-                onChange={(e) => {
-                  setSelectedVehicle(e.target.value)
-                  if (onSelectVehicle) onSelectVehicle(e.target.value)
-                }}
-                className="text-xs font-semibold text-primary bg-primary-light py-1.5 px-3 rounded-lg border-0 cursor-pointer focus:outline-none"
-              >
-                {savedVehicles.length === 0 && (
-                  <option value={selectedVehicle || 'Custom Vehicle'}>
-                    {selectedVehicle || 'Custom Vehicle'}
-                  </option>
-                )}
-                {savedVehicles.map((veh) => (
-                  <option key={veh.id} value={veh.name}>
-                    {veh.name} {veh.licensePlate ? `• ${veh.licensePlate}` : ''}
-                  </option>
-                ))}
-              </select>
+          {/* 2. Vehicle Selector (Using Select component from select.tsx) */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <Car className="w-3.5 h-3.5 text-primary" />
+                <span>Vehicle to be Detailed</span>
+              </label>
+              {selectedVehicleObj?.licensePlate && (
+                <span className="text-[10px] font-mono font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                  {selectedVehicleObj.licensePlate}
+                </span>
+              )}
             </div>
+
+            <Select
+              options={vehicleOptions}
+              value={selectedVehicle}
+              onValueChange={(val) => {
+                setSelectedVehicle(val)
+                if (onSelectVehicle) onSelectVehicle(val)
+              }}
+              placeholder="Select vehicle to be detailed"
+              icon={<Car className="w-4 h-4 text-primary" />}
+              triggerClassName="bg-white border-gray-200 hover:border-gray-300 shadow-xs"
+            />
+
+            {/* Custom Vehicle Name Entry if selected */}
+            {selectedVehicle === 'Custom Vehicle' && (
+              <div className="animate-in fade-in duration-150">
+                <input
+                  type="text"
+                  value={customVehicleName}
+                  onChange={(e) => {
+                    setCustomVehicleName(e.target.value)
+                    if (onSelectVehicle) onSelectVehicle(e.target.value)
+                  }}
+                  placeholder="Enter vehicle make, model & year (e.g. 2024 Honda Civic)"
+                  className="w-full text-xs font-semibold text-gray-800 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 shadow-xs"
+                />
+              </div>
+            )}
 
             {/* Vehicle Sizing Tier Notice */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle rounded-lg border border-neutral-100 text-[11px]">
@@ -569,7 +717,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   )}
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">Bentley Studio</span>
-                <span className="text-[10px] text-gray-500 leading-tight">Drop-off in Kelowna, BC</span>
+                <span className="text-[10px] text-gray-500 leading-tight">
+                  Drop-off in {city || 'Kelowna, BC'}
+                </span>
               </button>
             </div>
 
@@ -913,7 +1063,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             )}
 
             <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Mobile Dispatch Fee (Kelowna)</span>
+              <span>Mobile Dispatch Fee {city ? `(${city})` : ''}</span>
               <span className="font-semibold text-emerald-600">Free</span>
             </div>
 

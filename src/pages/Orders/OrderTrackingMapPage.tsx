@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ChevronLeft, Navigation, User } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
+import { BookingStatus, BookingRecord } from '@/types'
 
 const mapStyles = {
   default: undefined,
@@ -10,19 +11,74 @@ const mapStyles = {
 
 type StyleKey = keyof typeof mapStyles
 
-// Coordinates for customer address & approaching technician van
-const CUSTOMER_COORDS: [number, number] = [-79.3832, 43.6532]
-const TECHNICIAN_COORDS: [number, number] = [-79.4035, 43.6635]
-const TRACKING_ROUTE: [number, number][] = [
-  [-79.4035, 43.6635],
-  [-79.3985, 43.6620],
-  [-79.3950, 43.6585],
-  [-79.3905, 43.6565],
-  [-79.3860, 43.6545],
-  [-79.3832, 43.6532],
-]
+// Known city anchors for instantaneous 0ms rendering before Nominatim geocoder finishes
+const KNOWN_CITIES: Record<string, [number, number]> = {
+  noida: [77.3910, 28.5355],
+  'greater noida': [77.5030, 28.4744],
+  delhi: [77.2090, 28.6139],
+  'new delhi': [77.2090, 28.6139],
+  gurugram: [77.0266, 28.4595],
+  gurgaon: [77.0266, 28.4595],
+  ghaziabad: [77.4538, 28.6692],
+  mumbai: [72.8777, 19.0760],
+  bangalore: [77.5946, 12.9716],
+  bengaluru: [77.5946, 12.9716],
+  hyderabad: [78.4867, 17.3850],
+  pune: [73.8567, 18.5204],
+  chennai: [80.2707, 13.0827],
+  kolkata: [88.3639, 22.5726],
+  toronto: [-79.3832, 43.6532],
+  ontario: [-79.3832, 43.6532],
+  vancouver: [-123.1207, 49.2827],
+  calgary: [-114.0719, 51.0447],
+  montreal: [-73.5673, 45.5017],
+  'new york': [-74.0060, 40.7128],
+  london: [-0.1276, 51.5074],
+  dubai: [55.2708, 25.2048],
+}
 
-import { BookingStatus, BookingRecord } from '@/types'
+function getKnownCoordsForAddress(addr: string): [number, number] | null {
+  const lower = addr.toLowerCase()
+  for (const [key, coords] of Object.entries(KNOWN_CITIES)) {
+    if (lower.includes(key)) {
+      return coords
+    }
+  }
+  return null
+}
+
+// Haversine formula to compute distance in km
+function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
+  const [lon1, lat1] = coord1
+  const [lon2, lat2] = coord2
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return parseFloat((R * c).toFixed(1))
+}
+
+// Generate smooth curved road fallback polyline between technician and customer
+function generateCurvedRoute(start: [number, number], end: [number, number]): [number, number][] {
+  const points: [number, number][] = []
+  const steps = 6
+  const midLon = (start[0] + end[0]) / 2 + (end[1] - start[1]) * 0.12
+  const midLat = (start[1] + end[1]) / 2 + (start[0] - end[0]) * 0.12
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const lon = (1 - t) * (1 - t) * start[0] + 2 * (1 - t) * t * midLon + t * t * end[0]
+    const lat = (1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * midLat + t * t * end[1]
+    points.push([parseFloat(lon.toFixed(5)), parseFloat(lat.toFixed(5))])
+  }
+  return points
+}
 
 interface OrderTrackingMapPageProps {
   onBack: () => void
@@ -43,7 +99,6 @@ interface OrderTrackingMapPageProps {
 export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   onBack,
   serviceTitle,
-  serviceCategory,
   customerName,
   customerPhone,
   customerAddress,
@@ -55,77 +110,297 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   bookingStatus,
   booking,
 }) => {
-  const activeTitle = booking?.title || serviceTitle || 'Car Wash'
-  const activeTechName = booking?.driverName || technicianName || booking?.technicianName || 'Alex Rivera'
-  const activeTechPhone = booking?.driverPhone || driverPhone || '+1 (800) 555-9274'
+  // 1. Dynamic Text & Profile Information
+  const activeTitle = booking?.title || serviceTitle || 'Car Wash Service'
+  const activeTechName =
+    booking?.driverName || technicianName || booking?.technicianName || ''
+  const activeTechPhone = booking?.driverPhone || driverPhone || ''
   const activeTechAvatar = booking?.driverAvatar || ''
-  const activeVan = booking?.driverVanNumber || driverVanNumber || 'Van #04'
+  const activeVan =
+    booking?.driverVanNumber ||
+    driverVanNumber ||
+    booking?.licensePlate ||
+    'Service Unit'
   const activeCustomer = booking?.customerName || customerName || 'Customer'
   const activePhone = booking?.customerPhone || customerPhone || ''
   const activeAddress = booking?.address || customerAddress || 'Address on file'
-  const activeStatus = booking?.status || bookingStatus || 'en_route'
-  const activeMins = booking?.estimatedMins || 8
-  const activeKm = booking?.distanceKm || 2.4
+  const activeStatus = booking?.status || bookingStatus || 'scheduled'
 
-  const activeTechnicianCoords: [number, number] =
-    booking?.driverCoords || driverCoords || TECHNICIAN_COORDS
-  const activeCustomerCoords: [number, number] =
-    booking?.customerCoords || customerCoords || CUSTOMER_COORDS
+  // Only allow live tracking if a technician has accepted the order
+  const isDriverAccepted = Boolean(
+    activeTechName &&
+      (activeStatus === 'accepted' ||
+        activeStatus === 'en_route' ||
+        activeStatus === 'in_progress' ||
+        activeStatus === 'completed')
+  )
 
-  const activeRoute = [
-    activeTechnicianCoords,
-    [-79.3985, 43.6620] as [number, number],
-    [-79.3950, 43.6585] as [number, number],
-    [-79.3905, 43.6565] as [number, number],
-    [-79.3860, 43.6545] as [number, number],
-    activeCustomerCoords,
-  ]
+  // 2. Dynamic Customer Coordinates (Geocoded from real address)
+  const initialCustomerCoords = useMemo<[number, number]>(() => {
+    if (booking?.customerCoords) return booking.customerCoords
+    if (customerCoords) return customerCoords
+    const known = getKnownCoordsForAddress(activeAddress)
+    return known || [77.391, 28.5355] // Default to Noida region if none recognized
+  }, [booking?.customerCoords, customerCoords, activeAddress])
+
+  const [customerCoordsState, setCustomerCoordsState] = useState<[number, number]>(
+    initialCustomerCoords
+  )
+
+  // Real-time Geocoder for accurate latitude & longitude from the address text
+  useEffect(() => {
+    if (booking?.customerCoords) {
+      setCustomerCoordsState(booking.customerCoords)
+      return
+    }
+    if (customerCoords) {
+      setCustomerCoordsState(customerCoords)
+      return
+    }
+
+    const known = getKnownCoordsForAddress(activeAddress)
+    if (known) {
+      setCustomerCoordsState(known)
+    }
+
+    let active = true
+    const fetchGeocode = async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          activeAddress
+        )}&limit=1`
+        const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+        const data = await res.json()
+        if (active && data && data.length > 0) {
+          const lat = parseFloat(data[0].lat)
+          const lon = parseFloat(data[0].lon)
+          if (!isNaN(lat) && !isNaN(lon)) {
+            setCustomerCoordsState([lon, lat])
+          }
+        }
+      } catch (err) {
+        console.warn('Geocoding notice:', err)
+      }
+    }
+
+    fetchGeocode()
+    return () => {
+      active = false
+    }
+  }, [activeAddress, booking?.customerCoords, customerCoords])
+
+  // 3. Dynamic Technician Coordinates (Positioned in the same city/locality ~2km away)
+  const [technicianCoordsState, setTechnicianCoordsState] = useState<[number, number]>(() => {
+    if (booking?.driverCoords && calculateDistanceKm(booking.driverCoords, initialCustomerCoords) < 30) {
+      return booking.driverCoords
+    }
+    if (driverCoords && calculateDistanceKm(driverCoords, initialCustomerCoords) < 30) {
+      return driverCoords
+    }
+    // Place technician van ~1.8 km to 2.2 km away on a nearby road in the customer's city
+    return [initialCustomerCoords[0] - 0.015, initialCustomerCoords[1] + 0.012]
+  })
+
+  // Synchronize technician position if customer address changes to a completely different region
+  useEffect(() => {
+    const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
+    if (dist > 30) {
+      // Re-anchor technician in the same city/region
+      setTechnicianCoordsState([
+        customerCoordsState[0] - 0.015,
+        customerCoordsState[1] + 0.012,
+      ])
+    }
+  }, [customerCoordsState])
+
+  // 4. Dynamic Driving Route (OSRM Real Street Network)
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>(() =>
+    generateCurvedRoute(technicianCoordsState, customerCoordsState)
+  )
+
+  const [liveDistanceKm, setLiveDistanceKm] = useState<number>(() => {
+    if (booking?.distanceKm) return booking.distanceKm
+    return calculateDistanceKm(technicianCoordsState, customerCoordsState) || 2.4
+  })
+
+  const [liveEstimatedMins, setLiveEstimatedMins] = useState<number>(() => {
+    if (booking?.estimatedMins) return booking.estimatedMins
+    return Math.max(3, Math.round(liveDistanceKm * 2.8)) || 8
+  })
+
+  // Fetch real-world turn-by-turn road route from OSRM
+  useEffect(() => {
+    let isSubscribed = true
+    const fetchRealRoute = async () => {
+      const [techLon, techLat] = technicianCoordsState
+      const [custLon, custLat] = customerCoordsState
+
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${techLon},${techLat};${custLon},${custLat}?overview=full&geometries=geojson`
+        const res = await fetch(url)
+        const data = await res.json()
+
+        if (isSubscribed && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          const route = data.routes[0]
+          if (route.geometry?.coordinates?.length >= 2) {
+            setRouteCoordinates(route.geometry.coordinates)
+          }
+          const km = parseFloat((route.distance / 1000).toFixed(1))
+          const mins = Math.max(1, Math.round(route.duration / 60))
+          setLiveDistanceKm(km)
+          setLiveEstimatedMins(mins)
+        } else if (isSubscribed) {
+          // Smooth curved fallback
+          setRouteCoordinates(generateCurvedRoute(technicianCoordsState, customerCoordsState))
+          const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
+          setLiveDistanceKm(dist)
+          setLiveEstimatedMins(Math.max(2, Math.round(dist * 2.5)))
+        }
+      } catch {
+        if (isSubscribed) {
+          setRouteCoordinates(generateCurvedRoute(technicianCoordsState, customerCoordsState))
+        }
+      }
+    }
+
+    fetchRealRoute()
+    return () => {
+      isSubscribed = false
+    }
+  }, [technicianCoordsState, customerCoordsState])
+
+  // 5. Live Simulation: Van dynamically drives towards customer when status is 'en_route'
+  useEffect(() => {
+    if (activeStatus !== 'en_route' || routeCoordinates.length < 3) return
+
+    let stepIndex = 0
+    const movementInterval = setInterval(() => {
+      stepIndex++
+      if (stepIndex < routeCoordinates.length - 1) {
+        const nextCoord = routeCoordinates[stepIndex]
+        setTechnicianCoordsState(nextCoord)
+        const remainingFraction = 1 - stepIndex / (routeCoordinates.length - 1)
+        setLiveDistanceKm(parseFloat((liveDistanceKm * remainingFraction).toFixed(1)))
+        setLiveEstimatedMins(Math.max(1, Math.round(liveEstimatedMins * remainingFraction)))
+      }
+    }, 4500)
+
+    return () => clearInterval(movementInterval)
+  }, [activeStatus, routeCoordinates])
+
+  // Map Controls & Style
   const mapRef = useRef<MapRef>(null)
   const [style, setStyle] = useState<StyleKey>('default')
   const selectedStyle = mapStyles[style]
   const is3D = style === 'openstreetmap3d'
+  const [isExploreMode, setIsExploreMode] = useState(false)
 
   useEffect(() => {
-    mapRef.current?.easeTo({ pitch: is3D ? 60 : 25, duration: 600 })
+    mapRef.current?.easeTo({ pitch: is3D ? 60 : 0, duration: 600 })
   }, [is3D])
 
+  // Fly to new customer coordinates when geocoded
+  useEffect(() => {
+    if (mapRef.current && !isExploreMode) {
+      mapRef.current.easeTo({
+        center: customerCoordsState,
+        zoom: 14.2,
+        duration: 900,
+      })
+    }
+  }, [customerCoordsState, isExploreMode])
+
+  // Modals & Chat State
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isCallOpen, setIsCallOpen] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
-  const [callDuration, setCallDuration] = useState(14)
-  const [chatMessages, setChatMessages] = useState([
-    {
-      sender: 'technician',
-      text: `Hello ${activeCustomer}! I'm on the way with your mobile wash unit. Arriving shortly!`,
-      time: 'Just now',
-    },
-  ])
+  const [callDuration, setCallDuration] = useState(0)
+
+  // Real-time ticking call duration timer
+  useEffect(() => {
+    let timer: any = null
+    if (isCallOpen) {
+      setCallDuration(1)
+      timer = setInterval(() => {
+        setCallDuration((prev) => prev + 1)
+      }, 1000)
+    } else {
+      setCallDuration(0)
+    }
+    return () => clearInterval(timer)
+  }, [isCallOpen])
+
+  // Dynamic context-aware Chat Messages
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: string; text: string; time: string }>>([])
   const [inputMsg, setInputMsg] = useState('')
+
+  useEffect(() => {
+    const addressName = activeAddress.split(',')[0] || 'your location'
+    setChatMessages([
+      {
+        sender: 'technician',
+        text: `Hello ${activeCustomer}! I'm on the way to ${addressName} with your mobile wash unit. Arriving in ~${liveEstimatedMins} mins!`,
+        time: 'Just now',
+      },
+    ])
+  }, [activeCustomer, activeAddress, liveEstimatedMins])
 
   const handleSendMessage = () => {
     if (!inputMsg.trim()) return
+    const userText = inputMsg.trim()
     const newMsg = {
       sender: 'user',
-      text: inputMsg.trim(),
+      text: userText,
       time: 'Just now',
     }
     setChatMessages((prev) => [...prev, newMsg])
     setInputMsg('')
 
-    // Simulated technician response
+    // Context-aware dynamic technician reply
     setTimeout(() => {
+      const lower = userText.toLowerCase()
+      let reply = `Got it, ${activeCustomer}! Setting up the wash equipment right away.`
+      if (lower.includes('driveway') || lower.includes('park')) {
+        reply = `Understood! I will pull our mobile wash unit into the driveway safely.`
+      } else if (lower.includes('gate') || lower.includes('code')) {
+        reply = `Thank you! Gate instructions received and noted on my dispatch terminal.`
+      } else if (lower.includes('outside') || lower.includes('meet')) {
+        reply = `Great! I will look out for you outside in approximately ~${liveEstimatedMins} mins.`
+      }
+
       setChatMessages((prev) => [
         ...prev,
         {
           sender: 'technician',
-          text: 'Got it! Setting up the water & power system right away.',
+          text: reply,
           time: 'Just now',
         },
       ])
-    }, 1200)
+    }, 1100)
   }
 
-  const [isExploreMode, setIsExploreMode] = useState(false)
+  if (!isDriverAccepted) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 text-center shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-[32px] animate-pulse">hourglass_top</span>
+          </div>
+          <h3 className="text-base font-bold text-gray-900 mb-1.5">Waiting for Driver to Accept</h3>
+          <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+            Your booking {booking?.id ? `#${booking.id}` : ''} has been scheduled. Live map tracking and technician details will unlock here as soon as a certified technician accepts your booking.
+          </p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full py-3.5 rounded-2xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+          >
+            Return to Bookings
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-surface-subtle flex flex-col overflow-y-auto w-full max-w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto shadow-2xl animate-in slide-in-from-right duration-250">
@@ -160,16 +435,16 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         <div className="w-10" />
       </div>
 
-      {/* 2. REAL INTERACTIVE MAPCN MAP SECTION */}
+      {/* 2. REAL INTERACTIVE MAP SECTION */}
       <div
         className="relative w-full flex-1 min-h-[380px] sm:min-h-[440px] bg-slate-100 overflow-hidden select-none border-b border-gray-200/50"
         style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
       >
         <Map
           ref={mapRef}
-          center={activeCustomerCoords}
-          zoom={14.1}
-          pitch={25}
+          center={customerCoordsState}
+          zoom={14.2}
+          pitch={is3D ? 60 : 0}
           followUser={!isExploreMode}
           onUserInteract={(interacting) => setIsExploreMode(interacting)}
           styles={
@@ -179,17 +454,17 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           }
           className="w-full h-full min-h-[380px] sm:min-h-[440px]"
         >
-          {/* Driving Route Polyline from Technician Van to Customer */}
+          {/* Dynamic Driving Route Polyline from Technician Van to Customer */}
           <MapRoute
             id="order-tracking-route"
-            coordinates={activeRoute}
+            coordinates={routeCoordinates}
             color="var(--primary)"
             width={5.5}
             opacity={0.9}
           />
 
           {/* Technician Mobile Wash Van Live Marker */}
-          <MapMarker longitude={activeTechnicianCoords[0]} latitude={activeTechnicianCoords[1]}>
+          <MapMarker longitude={technicianCoordsState[0]} latitude={technicianCoordsState[1]}>
             <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group pointer-events-none">
               {/* Outer Pulsing Green Beacon */}
               <div className="absolute w-12 h-12 rounded-full bg-status-active/30 animate-ping pointer-events-none" />
@@ -205,7 +480,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           </MapMarker>
 
           {/* Customer Destination House Pin Marker */}
-          <MapMarker longitude={activeCustomerCoords[0]} latitude={activeCustomerCoords[1]}>
+          <MapMarker longitude={customerCoordsState[0]} latitude={customerCoordsState[1]}>
             <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 group pointer-events-none">
               {/* Destination Beacon Ping */}
               <div className="absolute w-11 h-11 rounded-full bg-primary/30 animate-ping pointer-events-none" />
@@ -231,7 +506,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             onClick={() => {
               setIsExploreMode(false)
               mapRef.current?.flyTo({
-                center: activeTechnicianCoords,
+                center: technicianCoordsState,
                 zoom: 14.5,
                 duration: 800,
               })
@@ -261,9 +536,9 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         </div>
       </div>
 
-      {/* 3. BOTTOM CARDS SECTION - Sits directly beneath the expanded map */}
+      {/* 3. BOTTOM CARDS SECTION */}
       <div className="bg-surface-subtle px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 shrink-0 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
-        {/* Live Distance & ETA Status Bar (Shifted below the map) */}
+        {/* Live Distance & ETA Status Bar */}
         <div className="bg-white rounded-2xl px-4 py-2.5 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
@@ -271,11 +546,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active" />
             </span>
             <span className="text-xs sm:text-sm font-bold text-gray-900 tracking-tight">
-              {activeTechName} is ~{activeMins} mins away
+              {activeTechName} is ~{liveEstimatedMins} mins away
             </span>
           </div>
           <span className="text-xs font-semibold text-gray-500 font-mono bg-surface-alt px-2.5 py-0.5 rounded-full">
-            {activeKm} km
+            {liveDistanceKm} km
           </span>
         </div>
 
@@ -306,7 +581,6 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
           {/* Action Buttons: Chat & Call */}
           <div className="flex items-center gap-2">
-            {/* Chat Button */}
             <button
               onClick={() => setIsChatOpen(true)}
               className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
@@ -315,7 +589,6 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <span className="material-symbols-outlined text-[20px]">chat</span>
             </button>
 
-            {/* Call Button */}
             <button
               onClick={() => setIsCallOpen(true)}
               className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
@@ -378,7 +651,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
                   {activeTechAvatar ? (
                     <img
                       src={activeTechAvatar}
-                      alt={technicianName}
+                      alt={activeTechName}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -386,7 +659,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-900">{technicianName}</span>
+                  <span className="text-sm font-bold text-gray-900">{activeTechName}</span>
                   <span className="text-[10px] text-emerald-600 font-medium">● Online</span>
                 </div>
               </div>
@@ -445,7 +718,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Type a message to James..."
+                placeholder={`Type a message to ${activeTechName}...`}
                 className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary"
               />
               <button
@@ -467,17 +740,21 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               {activeTechAvatar ? (
                 <img
                   src={activeTechAvatar}
-                  alt={technicianName}
+                  alt={activeTechName}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <User className="w-12 h-12 text-white/70" />
               )}
             </div>
-            <h2 className="text-xl font-bold">{technicianName}</h2>
+            <h2 className="text-xl font-bold">{activeTechName}</h2>
             <span className="text-xs text-gray-400 mt-1">Bentley Mobile Service Lead</span>
             <span className="text-xs font-mono text-emerald-400 mt-2 font-semibold">
-              00:{callDuration < 10 ? `0${callDuration}` : callDuration}
+              {Math.floor(callDuration / 60)
+                .toString()
+                .padStart(2, '0')}
+              :
+              {(callDuration % 60).toString().padStart(2, '0')}
             </span>
           </div>
 

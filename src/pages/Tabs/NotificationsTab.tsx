@@ -19,7 +19,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
     if (b.status === 'en_route') {
       icon = Navigation
       title = `Technician En Route!`
-      desc = `${b.technicianName || 'Alex Rivera'} is on the way to ${b.address} with the mobile detailing unit.`
+      desc = `${b.driverName || b.technicianName || 'Your technician'} is on the way to ${b.address} with the mobile detailing unit.`
       time = 'Live now'
     } else if (b.status === 'in_progress') {
       icon = Sparkles

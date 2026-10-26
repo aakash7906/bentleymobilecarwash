@@ -118,15 +118,13 @@ export const Login: React.FC<LoginProps> = ({
       // Success Toast Notification
       showToast('Login successful! Welcome back.', 'success')
 
-      // Notify parent on successful login with real Firebase User data & role after brief pause
-      setTimeout(() => {
-        onLoginSuccess({
-          name: user.displayName || user.email?.split('@')[0] || (resolvedRole === 'driver' ? 'Driver Partner' : 'Member'),
-          email: user.email || loginEmail,
-          uid: user.uid,
-          role: resolvedRole,
-        })
-      }, 600)
+      // Notify parent immediately on successful login with real Firebase User data & role
+      onLoginSuccess({
+        name: user.displayName || user.email?.split('@')[0] || (resolvedRole === 'driver' ? 'Driver Partner' : 'Member'),
+        email: user.email || loginEmail,
+        uid: user.uid,
+        role: resolvedRole,
+      })
     } catch (err: any) {
       console.error('Firebase Login Error:', err)
       // User-friendly error message mapping with Toaster AND inline input warning
@@ -189,14 +187,12 @@ export const Login: React.FC<LoginProps> = ({
       }
 
       showToast('Google sign-in successful!', 'success')
-      setTimeout(() => {
-        onLoginSuccess({
-          name: user.displayName || 'Google User',
-          email: user.email || '',
-          uid: user.uid,
-          role: resolvedRole,
-        })
-      }, 600)
+      onLoginSuccess({
+        name: user.displayName || 'Google User',
+        email: user.email || '',
+        uid: user.uid,
+        role: resolvedRole,
+      })
     } catch (err: any) {
       console.error('Firebase Google Sign-In Error:', err)
       if (err.code !== 'auth/popup-closed-by-user') {
