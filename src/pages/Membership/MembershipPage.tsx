@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ChevronLeft, Check, Phone, Mail, X, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
+import { Dialog } from '@/components/ui/dialog'
 
 export interface MembershipPlan {
   id: string
@@ -221,9 +222,15 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       </div>
 
       {/* Plan Details & Purchase Inquiry Modal */}
-      {selectedPlan && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh] overflow-y-auto">
+      <Dialog
+        isOpen={!!selectedPlan}
+        onClose={() => setSelectedPlan(null)}
+        position="bottom-sheet"
+        maxWidth="md"
+        contentClassName="p-6 max-h-[90vh] overflow-y-auto flex flex-col"
+      >
+        {selectedPlan && (
+          <>
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
@@ -310,9 +317,9 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                 )}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Dialog>
     </div>
   )
 }

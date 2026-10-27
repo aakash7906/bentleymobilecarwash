@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, Navigation, User } from 'lucide-react'
+import { ChevronLeft, Navigation, User, Layers, Car, Calendar, Clock, Phone, Sparkles } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { BookingStatus, BookingRecord } from '@/types'
+import { Dialog } from '@/components/ui/dialog'
+import { Select } from '@/components/ui/select'
 
 const mapStyles = {
   default: undefined,
@@ -11,41 +13,11 @@ const mapStyles = {
 
 type StyleKey = keyof typeof mapStyles
 
-// Known city anchors for instantaneous 0ms rendering before Nominatim geocoder finishes
-const KNOWN_CITIES: Record<string, [number, number]> = {
-  noida: [77.3910, 28.5355],
-  'greater noida': [77.5030, 28.4744],
-  delhi: [77.2090, 28.6139],
-  'new delhi': [77.2090, 28.6139],
-  gurugram: [77.0266, 28.4595],
-  gurgaon: [77.0266, 28.4595],
-  ghaziabad: [77.4538, 28.6692],
-  mumbai: [72.8777, 19.0760],
-  bangalore: [77.5946, 12.9716],
-  bengaluru: [77.5946, 12.9716],
-  hyderabad: [78.4867, 17.3850],
-  pune: [73.8567, 18.5204],
-  chennai: [80.2707, 13.0827],
-  kolkata: [88.3639, 22.5726],
-  toronto: [-79.3832, 43.6532],
-  ontario: [-79.3832, 43.6532],
-  vancouver: [-123.1207, 49.2827],
-  calgary: [-114.0719, 51.0447],
-  montreal: [-73.5673, 45.5017],
-  'new york': [-74.0060, 40.7128],
-  london: [-0.1276, 51.5074],
-  dubai: [55.2708, 25.2048],
-}
-
-function getKnownCoordsForAddress(addr: string): [number, number] | null {
-  const lower = addr.toLowerCase()
-  for (const [key, coords] of Object.entries(KNOWN_CITIES)) {
-    if (lower.includes(key)) {
-      return coords
-    }
-  }
-  return null
-}
+const mapStyleOptions = [
+  { label: 'Default (Carto)', value: 'default' },
+  { label: 'OpenStreetMap', value: 'openstreetmap' },
+  { label: 'OpenStreetMap 3D', value: 'openstreetmap3d' },
+]
 
 // Haversine formula to compute distance in km
 function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
@@ -99,6 +71,7 @@ interface OrderTrackingMapPageProps {
 export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   onBack,
   serviceTitle,
+  serviceCategory,
   customerName,
   customerPhone,
   customerAddress,
@@ -110,38 +83,101 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   bookingStatus,
   booking,
 }) => {
-  // 1. Dynamic Text & Profile Information
-  const activeTitle = booking?.title || serviceTitle || 'Car Wash Service'
-  const activeTechName =
-    booking?.driverName || technicianName || booking?.technicianName || ''
-  const activeTechPhone = booking?.driverPhone || driverPhone || ''
-  const activeTechAvatar = booking?.driverAvatar || ''
-  const activeVan =
-    booking?.driverVanNumber ||
-    driverVanNumber ||
-    booking?.licensePlate ||
-    'Service Unit'
-  const activeCustomer = booking?.customerName || customerName || 'Customer'
-  const activePhone = booking?.customerPhone || customerPhone || ''
-  const activeAddress = booking?.address || customerAddress || 'Address on file'
-  const activeStatus = booking?.status || bookingStatus || 'scheduled'
+  // 1. Dynamic Stored Profiles & State
+  const dynamicDriverProfile = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('bentley_driver_profile')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return null
+  }, [])
 
-  // Only allow live tracking if a technician has accepted the order
+  const dynamicUserProfile = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('bentley_user_profile')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return null
+  }, [])
+
+  // Dynamic Driver / Technician information (Strictly real driver - reject static placeholder 'Alex Rivera')
+  const realDriverName = useMemo(() => {
+    const rawName = (booking?.driverName || technicianName || booking?.technicianName || dynamicDriverProfile?.name || '').trim()
+    if (rawName && rawName.toLowerCase() !== 'alex rivera') {
+      return rawName
+    }
+    return ''
+  }, [booking?.driverName, technicianName, booking?.technicianName, dynamicDriverProfile?.name])
+
+  const hasRealDriver = Boolean(realDriverName)
+  const displayTechName = hasRealDriver ? realDriverName : 'Certified Technician'
+
+  const activeTechAvatar = useMemo(() => {
+    if (booking?.driverAvatar && !booking.driverAvatar.includes('unsplash.com')) {
+      return booking.driverAvatar
+    }
+    if (dynamicDriverProfile?.avatar && !dynamicDriverProfile.avatar.includes('unsplash.com')) {
+      return dynamicDriverProfile.avatar
+    }
+    return ''
+  }, [booking?.driverAvatar, dynamicDriverProfile?.avatar])
+
+  const activeDriverPhone = useMemo(() => {
+    const rawPhone = (booking?.driverPhone || driverPhone || dynamicDriverProfile?.phone || '').trim()
+    if (rawPhone && !rawPhone.includes('555-9274')) {
+      return rawPhone
+    }
+    return ''
+  }, [booking?.driverPhone, driverPhone, dynamicDriverProfile?.phone])
+
+  const activeVan = useMemo(() => {
+    let van = (booking?.driverVanNumber || driverVanNumber || booking?.driverVehicle || '').trim()
+    if (!van && dynamicDriverProfile?.vanModel) {
+      van = `${dynamicDriverProfile.vanModel}${dynamicDriverProfile.licensePlate ? ` (${dynamicDriverProfile.licensePlate})` : ''}`.trim()
+    }
+    if (!van || van === 'BC-8492' || van.includes('BC-8492')) {
+      return 'Mobile Detailing Unit'
+    }
+    return van
+  }, [booking?.driverVanNumber, driverVanNumber, booking?.driverVehicle, dynamicDriverProfile])
+
+  // Dynamic Customer & Service Details
+  const activeTitle = booking?.title || serviceTitle || 'Car Wash Service'
+  const activeCategory = booking?.category || serviceCategory || 'Detailing Tier'
+  const activeCustomer =
+    booking?.customerName || customerName || dynamicUserProfile?.name || 'Customer'
+  const activePhone =
+    booking?.customerPhone || customerPhone || dynamicUserProfile?.phone || ''
+  const activeAddress =
+    booking?.address || customerAddress || dynamicUserProfile?.address || 'Address on file'
+  const activeStatus = booking?.status || bookingStatus || 'en_route'
+
+  // Dynamic Customer Vehicle Details (Distinct from technician's service unit)
+  const activeVehicle = booking?.vehicle || dynamicUserProfile?.preferredVehicle || ''
+  const activeVehiclePlate = booking?.licensePlate || ''
+  const activeVehicleType = booking?.vehicleType || ''
+
+  // Dynamic Pricing & Payment Summary
+  const activePrice = booking?.price || (booking?.totalNumeric ? `$${booking.totalNumeric.toFixed(2)}` : '')
+  const activePaymentMethod = booking?.paymentMethod || (booking?.paymentStatus === 'paid' ? 'Paid & Confirmed' : 'Pay on Completion')
+  const activeDate = booking?.date || 'Today'
+  const activeTime = booking?.time || ''
+
+  // Only allow live tracking if an active order is in flight
   const isDriverAccepted = Boolean(
-    activeTechName &&
-      (activeStatus === 'accepted' ||
-        activeStatus === 'en_route' ||
-        activeStatus === 'in_progress' ||
-        activeStatus === 'completed')
+    activeStatus === 'accepted' ||
+      activeStatus === 'en_route' ||
+      activeStatus === 'in_progress' ||
+      activeStatus === 'completed' ||
+      hasRealDriver
   )
 
   // 2. Dynamic Customer Coordinates (Geocoded from real address)
   const initialCustomerCoords = useMemo<[number, number]>(() => {
     if (booking?.customerCoords) return booking.customerCoords
     if (customerCoords) return customerCoords
-    const known = getKnownCoordsForAddress(activeAddress)
-    return known || [77.391, 28.5355] // Default to Noida region if none recognized
-  }, [booking?.customerCoords, customerCoords, activeAddress])
+    return [77.391, 28.5355]
+  }, [booking?.customerCoords, customerCoords])
 
   const [customerCoordsState, setCustomerCoordsState] = useState<[number, number]>(
     initialCustomerCoords
@@ -156,11 +192,6 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
     if (customerCoords) {
       setCustomerCoordsState(customerCoords)
       return
-    }
-
-    const known = getKnownCoordsForAddress(activeAddress)
-    if (known) {
-      setCustomerCoordsState(known)
     }
 
     let active = true
@@ -381,24 +412,23 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
   if (!isDriverAccepted) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 text-center shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-[32px] animate-pulse">hourglass_top</span>
-          </div>
-          <h3 className="text-base font-bold text-gray-900 mb-1.5">Waiting for Driver to Accept</h3>
-          <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-            Your booking {booking?.id ? `#${booking.id}` : ''} has been scheduled. Live map tracking and technician details will unlock here as soon as a certified technician accepts your booking.
-          </p>
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-full py-3.5 rounded-2xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
-          >
-            Return to Bookings
-          </button>
-        </div>
-      </div>
+      <Dialog
+        isOpen={true}
+        onClose={onBack}
+        maxWidth="md"
+        icon={<span className="material-symbols-outlined text-[32px] animate-pulse">hourglass_top</span>}
+        iconVariant="warning"
+        title="Waiting for Driver to Accept"
+        description={`Your booking ${booking?.id ? `#${booking.id}` : ''} has been scheduled. Live map tracking and technician details will unlock here as soon as a certified technician accepts your booking.`}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full py-3.5 rounded-2xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+        >
+          Return to Bookings
+        </button>
+      </Dialog>
     )
   }
 
@@ -418,15 +448,19 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         {/* Center Title with Category Pill */}
         <div className="flex flex-col items-center">
           <span className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-medium tracking-tight mb-0.5">
-            {activeTitle}
+            {activeTitle} • {activeCategory}
           </span>
           <h1 className="text-base sm:text-lg font-bold text-status-active tracking-tight leading-tight">
             {activeStatus === 'in_progress'
               ? 'Detailing in Progress'
               : activeStatus === 'en_route'
-              ? 'Technician is Arriving'
+              ? hasRealDriver
+                ? `${realDriverName} is Arriving`
+                : 'Technician is Arriving'
               : activeStatus === 'completed'
               ? 'Wash Completed'
+              : hasRealDriver
+              ? `${realDriverName} Assigned`
               : 'Technician Assigned'}
           </h1>
         </div>
@@ -474,7 +508,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               </div>
               {/* Van Tooltip Pill */}
               <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-secondary text-white text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
-                {activeTechName} • {activeVan}
+                {hasRealDriver ? `${realDriverName} • ${activeVan}` : `Technician • ${activeVan}`}
               </div>
             </div>
           </MapMarker>
@@ -490,7 +524,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               </div>
               {/* Destination Tooltip Pill */}
               <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[9px] font-bold shadow-md whitespace-nowrap pointer-events-none">
-                Your Vehicle Location
+                {activeVehicle ? `${activeVehicle} Location` : 'Your Vehicle Location'}
               </div>
             </div>
           </MapMarker>
@@ -519,20 +553,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         )}
 
         {/* Map Style Switcher (Default Carto, OpenStreetMap, OpenStreetMap 3D) */}
-        <div className="absolute top-3 right-3 z-10">
-          <div className="flex items-center bg-white/95 backdrop-blur-md rounded-xl border border-gray-200/80 shadow-md px-2.5 py-1.5 gap-1.5 transition-all hover:bg-white">
-            <span className="material-symbols-outlined text-[15px] text-gray-600">layers</span>
-            <select
-              value={style}
-              onChange={(e) => setStyle(e.target.value as StyleKey)}
-              className="bg-transparent text-gray-800 text-[11px] font-semibold focus:outline-none cursor-pointer pr-0.5"
-              aria-label="Select Map Style"
-            >
-              <option value="default">Default (Carto)</option>
-              <option value="openstreetmap">OpenStreetMap</option>
-              <option value="openstreetmap3d">OpenStreetMap 3D</option>
-            </select>
-          </div>
+        <div className="absolute top-3 right-3 z-10 w-44 sm:w-48">
+          <Select
+            value={style}
+            onValueChange={(val) => setStyle(val as StyleKey)}
+            options={mapStyleOptions}
+            icon={<Layers className="w-3.5 h-3.5 text-gray-600" />}
+            triggerClassName="h-9 py-1.5 pl-9 pr-2.5 bg-white/95 backdrop-blur-md border border-gray-200/90 shadow-md rounded-xl text-xs font-bold text-gray-800 hover:bg-white"
+            contentClassName="right-0 left-auto min-w-[190px] rounded-xl border border-gray-200/90 shadow-xl"
+          />
         </div>
       </div>
 
@@ -546,7 +575,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active" />
             </span>
             <span className="text-xs sm:text-sm font-bold text-gray-900 tracking-tight">
-              {activeTechName} is ~{liveEstimatedMins} mins away
+              {hasRealDriver ? `${realDriverName} is ~${liveEstimatedMins} mins away` : `Technician is ~${liveEstimatedMins} mins away`}
             </span>
           </div>
           <span className="text-xs font-semibold text-gray-500 font-mono bg-surface-alt px-2.5 py-0.5 rounded-full">
@@ -557,25 +586,34 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
         {/* Card 1: Technician Info */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Technician Avatar */}
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 shadow-xs bg-gray-100 flex items-center justify-center shrink-0">
+            {/* Technician Avatar or Initials or Icon */}
+            <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 shadow-xs bg-primary/10 flex items-center justify-center shrink-0">
               {activeTechAvatar ? (
                 <img
                   src={activeTechAvatar}
-                  alt={activeTechName}
+                  alt={displayTechName}
                   className="w-full h-full object-cover"
                 />
+              ) : hasRealDriver ? (
+                <span className="font-black text-sm text-primary">
+                  {realDriverName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                </span>
               ) : (
-                <User className="w-6 h-6 text-gray-400" />
+                <User className="w-6 h-6 text-primary" />
               )}
             </div>
             <div className="flex flex-col">
               <h3 className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
-                {activeTechName}
+                {displayTechName}
               </h3>
               <span className="text-xs font-semibold text-status-active mt-0.5">
                 Verified Technician • {activeVan}
               </span>
+              {activeDriverPhone && (
+                <span className="text-[11px] text-gray-500 font-mono mt-0.5">
+                  Direct: {activeDriverPhone}
+                </span>
+              )}
             </div>
           </div>
 
@@ -589,20 +627,75 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               <span className="material-symbols-outlined text-[20px]">chat</span>
             </button>
 
-            <button
-              onClick={() => setIsCallOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
-              title="Call Technician"
-            >
-              <span className="material-symbols-outlined text-[20px]">call</span>
-            </button>
+            {activeDriverPhone ? (
+              <a
+                href={`tel:${activeDriverPhone.replace(/[^0-9+]/g, '')}`}
+                className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
+                title={`Call ${displayTechName}`}
+              >
+                <span className="material-symbols-outlined text-[20px]">call</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => setIsCallOpen(true)}
+                className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary hover:bg-primary-light/60 active:scale-95 transition-all shadow-xs cursor-pointer"
+                title="Call Technician"
+              >
+                <span className="material-symbols-outlined text-[20px]">call</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Card 2: Address Information */}
+        {/* Card 2: Registered Target Vehicle & Service Breakdown */}
+        {activeVehicle && (
+          <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/80 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200/70 flex items-center justify-center text-primary shrink-0 shadow-2xs">
+                <Car className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Target Service Vehicle
+                </span>
+                <span className="font-bold text-xs sm:text-sm text-gray-900 mt-0.5">
+                  {activeVehicle}
+                </span>
+                <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500">
+                  {activeVehiclePlate && (
+                    <span className="font-mono font-bold bg-gray-100 px-1.5 py-0.5 rounded text-[10px] text-gray-700">
+                      Plate: {activeVehiclePlate}
+                    </span>
+                  )}
+                  {activeVehicleType && (
+                    <span className="text-[10px] bg-primary/5 text-primary font-semibold px-1.5 py-0.5 rounded">
+                      {activeVehicleType}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {activePrice && (
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Total
+                </span>
+                <span className="font-mono font-black text-sm sm:text-base text-gray-900 mt-0.5">
+                  {activePrice}
+                </span>
+                <span className="text-[10px] text-emerald-600 font-bold">
+                  {activePaymentMethod}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Card 3: Address & Appointment Schedule */}
         <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs flex flex-col items-center">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
-            ADDRESS
+            SERVICE ADDRESS
           </span>
           <div className="w-full border-b border-dashed border-gray-300 mt-2 mb-2.5" />
           <div className="w-full text-left flex flex-col gap-0.5">
@@ -612,6 +705,20 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">
               {activeAddress}
             </p>
+            {(activeDate || activeTime) && (
+              <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-gray-100 text-[11px] text-gray-600 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>{activeDate}</span>
+                </span>
+                {activeTime && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span>{activeTime}</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -641,96 +748,99 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       </div>
 
       {/* 4. MODAL: IN-APP CHAT WITH TECHNICIAN */}
-      {isChatOpen && (
-        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center p-0 animate-in fade-in duration-200">
-          <div className="w-full max-w-md md:max-w-xl bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col h-[65vh] animate-in slide-in-from-bottom duration-250">
-            {/* Chat Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
-                  {activeTechAvatar ? (
-                    <img
-                      src={activeTechAvatar}
-                      alt={activeTechName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-900">{activeTechName}</span>
-                  <span className="text-[10px] text-emerald-600 font-medium">● Online</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsChatOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 min-h-[220px]">
-              {chatMessages.map((m, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col ${
-                    m.sender === 'user' ? 'items-end' : 'items-start'
-                  }`}
-                >
-                  <div
-                    className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-xs ${
-                      m.sender === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-br-xs'
-                        : 'bg-gray-100 text-gray-800 rounded-bl-xs'
-                    }`}
-                  >
-                    {m.text}
-                  </div>
-                  <span className="text-[9px] text-gray-400 mt-1 px-1">{m.time}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Replies */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
-              {['Park in driveway', 'Gate code is #1234', 'I will meet you outside'].map(
-                (quick, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setInputMsg(quick)
-                    }}
-                    className="shrink-0 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-[11px] hover:bg-gray-200 active:scale-95 cursor-pointer"
-                  >
-                    {quick}
-                  </button>
-                )
+      <Dialog
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        position="bottom-sheet"
+        zIndex="z-60"
+        maxWidth="xl"
+        contentClassName="h-[65vh] p-5 shadow-2xl flex flex-col"
+      >
+        {/* Chat Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+              {activeTechAvatar ? (
+                <img
+                  src={activeTechAvatar}
+                  alt={displayTechName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-5 h-5 text-gray-400" />
               )}
             </div>
-
-            {/* Input Bar */}
-            <div className="pt-2 flex items-center gap-2 border-t border-gray-100">
-              <input
-                type="text"
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder={`Type a message to ${activeTechName}...`}
-                className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary"
-              />
-              <button
-                onClick={handleSendMessage}
-                className="px-3.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-              >
-                Send
-              </button>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-gray-900">{displayTechName}</span>
+              <span className="text-[10px] text-emerald-600 font-medium">● Online</span>
             </div>
           </div>
+          <button
+            onClick={() => setIsChatOpen(false)}
+            className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
-      )}
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 min-h-[220px]">
+          {chatMessages.map((m, idx) => (
+            <div
+              key={idx}
+              className={`flex flex-col ${
+                m.sender === 'user' ? 'items-end' : 'items-start'
+              }`}
+            >
+              <div
+                className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-xs ${
+                  m.sender === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-xs'
+                    : 'bg-gray-100 text-gray-800 rounded-bl-xs'
+                }`}
+              >
+                {m.text}
+              </div>
+              <span className="text-[9px] text-gray-400 mt-1 px-1">{m.time}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Replies */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+          {['Park in driveway', 'Gate code is #1234', 'I will meet you outside'].map(
+            (quick, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setInputMsg(quick)
+                }}
+                className="shrink-0 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-[11px] hover:bg-gray-200 active:scale-95 cursor-pointer"
+              >
+                {quick}
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Input Bar */}
+        <div className="pt-2 flex items-center gap-2 border-t border-gray-100">
+          <input
+            type="text"
+            value={inputMsg}
+            onChange={(e) => setInputMsg(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder={`Type a message to ${displayTechName}...`}
+            className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary"
+          />
+          <button
+            onClick={handleSendMessage}
+            className="px-3.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-[#b91c1c] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+          >
+            Send
+          </button>
+        </div>
+      </Dialog>
 
       {/* 5. MODAL: CALL SIMULATION */}
       {isCallOpen && (
@@ -740,15 +850,24 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
               {activeTechAvatar ? (
                 <img
                   src={activeTechAvatar}
-                  alt={activeTechName}
+                  alt={displayTechName}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <User className="w-12 h-12 text-white/70" />
               )}
             </div>
-            <h2 className="text-xl font-bold">{activeTechName}</h2>
-            <span className="text-xs text-gray-400 mt-1">Bentley Mobile Service Lead</span>
+            <h2 className="text-xl font-bold">{displayTechName}</h2>
+            <span className="text-xs text-gray-300 mt-1">{activeVan}</span>
+            {activeDriverPhone && (
+              <a
+                href={`tel:${activeDriverPhone.replace(/[^0-9+]/g, '')}`}
+                className="mt-3 px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Direct Dial: {activeDriverPhone}</span>
+              </a>
+            )}
             <span className="text-xs font-mono text-emerald-400 mt-2 font-semibold">
               {Math.floor(callDuration / 60)
                 .toString()
@@ -787,49 +906,52 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       )}
 
       {/* 6. MODAL: CUSTOMER SUPPORT */}
-      {isSupportOpen && (
-        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center p-0 animate-in fade-in duration-200">
-          <div className="w-full max-w-md md:max-w-xl bg-white rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-in slide-in-from-bottom duration-250">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[22px]">
-                  support_agent
-                </span>
-                <span className="text-sm font-bold text-gray-900">Bentley Concierge Help</span>
-              </div>
-              <button
-                onClick={() => setIsSupportOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              Need assistance with your booking or want to update special instructions? Our team is available 7 days a week.
-            </p>
-
-            <a
-              href="tel:+12503519155"
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-98 transition-all shadow-sm"
-            >
-              <span className="material-symbols-outlined text-[18px]">call</span>
-              <span>Call Support Hotline: (250) 351-9155</span>
-            </a>
-
-            <button
-              onClick={() => {
-                setIsSupportOpen(false)
-                setIsChatOpen(true)
-              }}
-              className="w-full py-3 rounded-xl bg-gray-100 text-gray-800 text-xs font-semibold hover:bg-gray-200 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">chat</span>
-              <span>Message Technician Directly</span>
-            </button>
+      <Dialog
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        position="bottom-sheet"
+        zIndex="z-60"
+        maxWidth="xl"
+        contentClassName="p-5 shadow-2xl flex flex-col gap-3.5"
+      >
+        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-[22px]">
+              support_agent
+            </span>
+            <span className="text-sm font-bold text-gray-900">Bentley Concierge Help</span>
           </div>
+          <button
+            onClick={() => setIsSupportOpen(false)}
+            className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
-      )}
+
+        <p className="text-xs text-gray-500">
+          Need assistance with your booking or want to update special instructions? Our team is available 7 days a week.
+        </p>
+
+        <a
+          href="tel:+12503519155"
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-98 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">call</span>
+          <span>Call Support Hotline: (250) 351-9155</span>
+        </a>
+
+        <button
+          onClick={() => {
+            setIsSupportOpen(false)
+            setIsChatOpen(true)
+          }}
+          className="w-full py-3 rounded-xl bg-gray-100 text-gray-800 text-xs font-semibold hover:bg-gray-200 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+        >
+          <span className="material-symbols-outlined text-[18px]">chat</span>
+          <span>Message Technician Directly</span>
+        </button>
+      </Dialog>
     </div>
   )
 }

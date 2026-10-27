@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile, CartItem } from '@/types'
-import { INITIAL_BOOKINGS } from '@/data/mockData'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
 // Direct Page Imports
@@ -116,26 +115,35 @@ export const App: React.FC = () => {
       const stored = localStorage.getItem('bentley_driver_profile')
       if (stored) {
         const parsed = JSON.parse(stored)
-        if (parsed.avatar && parsed.avatar.includes('unsplash.com/photo-1534528741775-53994a69daeb')) {
+        if (parsed.avatar && parsed.avatar.includes('unsplash.com')) {
           parsed.avatar = ''
+        }
+        if (parsed.name === 'Alex Rivera') {
+          parsed.name = ''
+        }
+        if (parsed.phone === '+1 (800) 555-9274') {
+          parsed.phone = ''
+        }
+        if (parsed.licensePlate === 'BC-8492') {
+          parsed.licensePlate = ''
         }
         return parsed
       }
     } catch { }
     return {
-      name: 'Alex Rivera',
-      email: 'driver@bentleycarwash.com',
-      phone: '+1 (800) 555-9274',
-      vanModel: 'Mercedes-Benz Sprinter 2500',
-      licensePlate: 'BC-8492',
+      name: '',
+      email: '',
+      phone: '',
+      vanModel: 'Mobile Detailing Unit',
+      licensePlate: '',
       serviceArea: 'Ontario & Greater Toronto Area',
-      driverLicenseNumber: 'DL-ON-992014-B',
-      bio: 'Certified IDA Mobile Detailing Specialist with 6+ years experience.',
-      emergencyContact: '+1 (998) 555-0199',
+      driverLicenseNumber: '',
+      bio: '',
+      emergencyContact: '',
       avatar: '',
       isAvailable: true,
-      rating: 4.95,
-      totalJobs: 142,
+      rating: 5.0,
+      totalJobs: 0,
     }
   })
 
@@ -153,13 +161,40 @@ export const App: React.FC = () => {
     return []
   })
 
-  // Persistent Bookings State (Synced with localStorage)
+  // Persistent Bookings State (Synced with localStorage & Firestore - only real user bookings)
   const [bookings, setBookings] = useState<BookingRecord[]>(() => {
     try {
       const stored = localStorage.getItem('bentley_bookings')
-      if (stored) return JSON.parse(stored)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          // Filter out obsolete seeded mock bookings and purge static placeholder technician names
+          const sanitized = parsed
+            .filter(
+              (b) => b && !['bkg-101', 'bkg-102', 'bkg-103', 'bkg-104', 'bkg-105'].includes(b.id)
+            )
+            .map((b) => {
+              let updated = { ...b }
+              if (updated.driverName && updated.driverName.toLowerCase() === 'alex rivera') {
+                updated.driverName = ''
+              }
+              if (updated.technicianName && updated.technicianName.toLowerCase() === 'alex rivera') {
+                updated.technicianName = ''
+              }
+              if (updated.driverPhone && updated.driverPhone.includes('555-9274')) {
+                updated.driverPhone = ''
+              }
+              if (updated.driverVanNumber && updated.driverVanNumber.includes('BC-8492')) {
+                updated.driverVanNumber = ''
+              }
+              return updated
+            })
+          localStorage.setItem('bentley_bookings', JSON.stringify(sanitized))
+          return sanitized
+        }
+      }
     } catch { }
-    return INITIAL_BOOKINGS
+    return []
   })
 
   // Active Vehicle State (Dynamic)
@@ -290,9 +325,10 @@ export const App: React.FC = () => {
               licensePlate: data.driverPlate || data.driverDetails?.licensePlate || prev.licensePlate,
               serviceArea: data.serviceArea || prev.serviceArea,
               driverLicenseNumber: data.driverLicenseNumber || prev.driverLicenseNumber,
-              bio: data.bio || prev.bio,
-              avatar: data.avatar !== undefined ? data.avatar : (data.photoURL || prev.avatar || ''),
-              isAvailable: data.isAvailable !== undefined ? data.isAvailable : prev.isAvailable,
+              avatar: (() => {
+                const raw = data.avatar !== undefined ? data.avatar : (data.photoURL || prev.avatar || '')
+                return raw && !raw.includes('unsplash.com') ? raw : ''
+              })(),
             }))
           } else if (data.role === 'customer') {
             setCurrentRole('customer')
@@ -1040,7 +1076,7 @@ export const App: React.FC = () => {
       setUserProfileData(null)
       setDetectedAddress('')
       setSavedVehicles([])
-      setBookings(INITIAL_BOOKINGS)
+      setBookings([])
       setCartItems([])
       setCurrentVehicle('')
       setCurrentRole('customer')
@@ -1318,6 +1354,7 @@ export const App: React.FC = () => {
                 }}
                 currentVehicle={currentVehicle}
                 bookings={bookings}
+                driverProfile={driverProfile}
                 onCancelBooking={handleCancelBooking}
                 onRescheduleBooking={handleRescheduleBooking}
                 onRateBooking={handleRateBooking}
@@ -1357,10 +1394,10 @@ export const App: React.FC = () => {
                       address: userProfileData?.address || detectedAddress || '',
                       city: userProfileData?.city || '',
                       postalCode: userProfileData?.postalCode || '',
-                      avatar:
-                        userProfileData?.avatar ||
-                        currentUser.photoURL ||
-                        '',
+                      avatar: (() => {
+                        const raw = userProfileData?.avatar || currentUser.photoURL || ''
+                        return raw && !raw.includes('unsplash.com') ? raw : ''
+                      })(),
                       preferredVehicle:
                         (userProfileData?.preferredVehicle && userProfileData.preferredVehicle !== 'Audi A4 (5th Gen Facelift)'
                           ? userProfileData.preferredVehicle

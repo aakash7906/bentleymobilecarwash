@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
+import { User, Trash2, AlertTriangle, Loader2, LogOut } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'
 import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
@@ -7,6 +7,7 @@ import { ContactUsPage } from '@/pages/Contact/ContactUsPage'
 import { AboutUsPage } from '@/pages/About/AboutUsPage'
 import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 
 interface ProfileTabProps {
   onBack: () => void
@@ -50,16 +51,36 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   // Global Toast Hook
   const { showToast } = useToast()
 
+  // State for Logout confirmation modal
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
   // State for Delete Account confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Dynamic user profile state with local persistence
+  // Dynamic user profile state with local persistence (only dynamic photos or default User icon)
+  const sanitizeAvatar = (url?: string) => {
+    if (!url) return ''
+    if (url.includes('unsplash.com')) return ''
+    return url
+  }
+
   const [profile, setProfile] = useState<UserProfile>(() => {
-    if (externalProfile) return externalProfile
+    if (externalProfile) {
+      return {
+        ...externalProfile,
+        avatar: sanitizeAvatar(externalProfile.avatar),
+      }
+    }
     try {
       const saved = localStorage.getItem('bentley_user_profile')
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return {
+          ...parsed,
+          avatar: sanitizeAvatar(parsed.avatar),
+        }
+      }
     } catch {
       // fallback
     }
@@ -87,19 +108,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   useEffect(() => {
     if (externalProfile) {
-      setProfile(externalProfile)
+      setProfile({
+        ...externalProfile,
+        avatar: sanitizeAvatar(externalProfile.avatar),
+      })
     }
   }, [externalProfile])
 
   const handleSaveProfile = (updated: UserProfile) => {
-    setProfile(updated)
+    const cleaned = {
+      ...updated,
+      avatar: sanitizeAvatar(updated.avatar),
+    }
+    setProfile(cleaned)
     try {
-      localStorage.setItem('bentley_user_profile', JSON.stringify(updated))
+      localStorage.setItem('bentley_user_profile', JSON.stringify(cleaned))
     } catch {
       // ignore
     }
     if (onUpdateProfile) {
-      onUpdateProfile(updated)
+      onUpdateProfile(cleaned)
     }
   }
 
@@ -265,7 +293,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           type="button"
           variant="outline"
           size="sm"
-          onClick={onLogout || (() => alert('Logged out successfully.'))}
+          onClick={() => setShowLogoutModal(true)}
           className="w-full sm:w-auto px-6 rounded-sm bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
@@ -284,73 +312,103 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         </Button>
       </div>
 
-      {/* Confirmation Modal for Delete Account */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150 border border-gray-100">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
-            </div>
+      {/* Confirmation Modal for User Logout */}
+      <Dialog
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        icon={<LogOut className="w-6 h-6 stroke-[2.2]" />}
+        iconVariant="primary"
+        title="Log Out?"
+        description="Are you sure you want to log out of your account? You will need to sign back in to view your bookings and garage."
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowLogoutModal(false)}
+            className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer"
+          >
+            Cancel
+          </Button>
 
-            <div className="text-center flex flex-col gap-1.5">
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900">
-                Delete Account?
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                This will permanently remove your profile, garage vehicles, and cloud bookings from Firebase. This action cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isDeleting}
-                onClick={() => setShowDeleteModal(false)}
-                className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={isDeleting}
-                onClick={async () => {
-                  setIsDeleting(true)
-                  try {
-                    if (onDeleteAccount) {
-                      await onDeleteAccount()
-                    } else {
-                      showToast('Account deleted successfully.', 'info')
-                    }
-                  } catch (err: any) {
-                    showToast(err?.message || 'Failed to delete account.', 'error')
-                  } finally {
-                    setIsDeleting(false)
-                    setShowDeleteModal(false)
-                  }
-                }}
-                className="w-full rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Yes, Delete</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => {
+              setShowLogoutModal(false)
+              if (onLogout) {
+                onLogout()
+              } else {
+                showToast('Logged out successfully.', 'info')
+              }
+            }}
+            className="w-full rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Yes, Logout</span>
+          </Button>
         </div>
-      )}
+      </Dialog>
+
+      {/* Confirmation Modal for Delete Account */}
+      <Dialog
+        isOpen={showDeleteModal}
+        onClose={() => !isDeleting && setShowDeleteModal(false)}
+        icon={<AlertTriangle className="w-6 h-6 stroke-[2.2]" />}
+        iconVariant="danger"
+        title="Delete Account?"
+        description="This will permanently remove your profile, garage vehicles, and cloud bookings from Firebase. This action cannot be undone."
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isDeleting}
+            onClick={() => setShowDeleteModal(false)}
+            className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            disabled={isDeleting}
+            onClick={async () => {
+              setIsDeleting(true)
+              try {
+                if (onDeleteAccount) {
+                  await onDeleteAccount()
+                } else {
+                  showToast('Account deleted successfully.', 'info')
+                }
+              } catch (err: any) {
+                showToast(err?.message || 'Failed to delete account.', 'error')
+              } finally {
+                setIsDeleting(false)
+                setShowDeleteModal(false)
+              }
+            }}
+            className="w-full rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Deleting...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </Dialog>
 
       {/* Dedicated Edit Profile Full Page Modal */}
       <EditProfilePage

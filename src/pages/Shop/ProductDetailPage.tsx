@@ -22,6 +22,7 @@ import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 
 interface ProductDetailPageProps {
   product: ProductItem | null
@@ -528,10 +529,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       </div>
 
       {/* 6. INSTANT BUY NOW / CHECKOUT MODAL */}
-      {showBuyModal && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
-            {!orderComplete ? (
+      <Dialog
+        isOpen={showBuyModal}
+        onClose={() => setShowBuyModal(false)}
+        zIndex="z-60"
+        position="bottom-sheet"
+        maxWidth="md"
+        contentClassName="p-5 sm:p-6 max-h-[90vh] overflow-y-auto"
+      >
+        {!orderComplete ? (
               <div className="flex flex-col gap-4">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-gray-100">
@@ -777,9 +783,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
+      </Dialog>
       {/* Address Selection Modal */}
       <DeliveryAddressModal
         isOpen={isAddressModalOpen}

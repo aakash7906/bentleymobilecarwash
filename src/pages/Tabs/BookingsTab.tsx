@@ -11,11 +11,12 @@ import {
   Ban,
   CheckCircle,
 } from 'lucide-react'
-import { ServiceItem, BookingRecord, BookingStatus } from '@/types'
-import { SERVICES_CATALOG, INITIAL_BOOKINGS } from '@/data/mockData'
+import { ServiceItem, BookingRecord, BookingStatus, DriverProfile } from '@/types'
+import { SERVICES_CATALOG } from '@/data/mockData'
 import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 
 interface BookingsTabProps {
   onBack: () => void
@@ -23,6 +24,7 @@ interface BookingsTabProps {
   onViewServiceDetail: (service: ServiceItem) => void
   currentVehicle: string
   bookings?: BookingRecord[]
+  driverProfile?: DriverProfile
   onCancelBooking?: (bookingId: string) => void
   onRescheduleBooking?: (bookingId: string, newDate: string, newTime: string) => void
   onRateBooking?: (bookingId: string, rating: number, review: string) => void
@@ -57,7 +59,8 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
   onBookAgain,
   onViewServiceDetail,
   currentVehicle,
-  bookings = INITIAL_BOOKINGS,
+  bookings = [],
+  driverProfile,
   onCancelBooking,
   onRescheduleBooking,
   onRateBooking,
@@ -92,12 +95,33 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
     (b) => b.status === 'completed' || b.status === 'cancelled'
   )
 
+  const getDynamicDriverName = (booking: BookingRecord) => {
+    const raw = (booking.driverName || booking.technicianName || '').trim()
+    if (raw && raw.toLowerCase() !== 'alex rivera') {
+      return raw
+    }
+    if (
+      (booking.status === 'accepted' || booking.status === 'en_route' || booking.status === 'in_progress') &&
+      driverProfile?.name &&
+      driverProfile.name.trim().toLowerCase() !== 'alex rivera'
+    ) {
+      return driverProfile.name.trim()
+    }
+    return ''
+  }
+
   const handleTrackOrder = (booking: BookingRecord) => {
-    if (!booking.driverName && booking.status !== 'accepted' && booking.status !== 'en_route' && booking.status !== 'in_progress') {
+    if (booking.status !== 'accepted' && booking.status !== 'en_route' && booking.status !== 'in_progress') {
       alert('This booking has not been accepted by a driver yet. Live tracking unlocks once a driver accepts your booking.')
       return
     }
-    setActiveTrackingBooking(booking)
+    const resolvedName = getDynamicDriverName(booking)
+    const enrichedBooking: BookingRecord = {
+      ...booking,
+      driverName: resolvedName || (booking.driverName && booking.driverName.toLowerCase() !== 'alex rivera' ? booking.driverName : ''),
+      technicianName: resolvedName || (booking.technicianName && booking.technicianName.toLowerCase() !== 'alex rivera' ? booking.technicianName : ''),
+    }
+    setActiveTrackingBooking(enrichedBooking)
     setTrackingModalOpen(true)
   }
 
@@ -259,8 +283,8 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                   </div>
                 </div>
 
-                {/* Primary Button: Track Order (Only if driver has accepted) */}
-                {Boolean(booking.driverName && (booking.status === 'accepted' || booking.status === 'en_route' || booking.status === 'in_progress')) ? (
+                {/* Primary Button: Track Order (Only if booking has been accepted by driver) */}
+                {booking.status === 'accepted' || booking.status === 'en_route' || booking.status === 'in_progress' ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -268,7 +292,11 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     onClick={() => handleTrackOrder(booking)}
                     className="w-full rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center flex items-center justify-center gap-1.5"
                   >
-                    <span>Track Technician ({booking.driverName}) &gt;</span>
+                    <span>
+                      {getDynamicDriverName(booking)
+                        ? `Track Technician (${getDynamicDriverName(booking)}) >`
+                        : 'Track Technician >'}
+                    </span>
                   </Button>
                 ) : (
                   <div className="w-full py-2 px-3 rounded-sm bg-amber-50/70 border border-amber-200/60 text-amber-800 text-[11px] font-medium text-center flex items-center justify-center gap-1.5">
@@ -464,7 +492,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
           customerName={activeTrackingBooking.customerName}
           customerPhone={activeTrackingBooking.customerPhone}
           customerAddress={activeTrackingBooking.address}
-          technicianName={activeTrackingBooking.driverName || activeTrackingBooking.technicianName}
+          technicianName={getDynamicDriverName(activeTrackingBooking) || undefined}
           driverCoords={activeTrackingBooking.driverCoords}
           customerCoords={activeTrackingBooking.customerCoords}
           driverVanNumber={activeTrackingBooking.driverVanNumber}
@@ -482,222 +510,207 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
       )}
 
       {/* 6. Reschedule Modal Dialog */}
-      {rescheduleTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reschedule-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-        >
-          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 flex flex-col gap-4 border border-neutral-100">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-primary" />
-                <h3 id="reschedule-modal-title" className="text-sm font-bold text-neutral-900">
-                  Reschedule Appointment
-                </h3>
-              </div>
+      <Dialog
+        isOpen={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        maxWidth="sm"
+        aria-labelledby="reschedule-modal-title"
+      >
+        <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+          <div className="flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-primary" />
+            <h3 id="reschedule-modal-title" className="text-sm font-bold text-neutral-900">
+              Reschedule Appointment
+            </h3>
+          </div>
+          <button
+            onClick={() => setRescheduleTarget(null)}
+            className="p-1 rounded-full text-neutral-400 hover:text-neutral-600 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div>
+          <p className="text-xs text-neutral-500 mb-2 font-medium">
+            Select new appointment date:
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {RESCHEDULE_DATES.map((date) => (
               <button
-                onClick={() => setRescheduleTarget(null)}
-                className="p-1 rounded-full text-neutral-400 hover:text-neutral-600"
+                key={date}
+                onClick={() => setNewSelectedDate(date)}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold text-left transition ${newSelectedDate === date
+                    ? 'bg-primary-light/40 border-primary text-primary'
+                    : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                  }`}
               >
-                <X className="w-4 h-4" />
+                {date}
               </button>
-            </div>
-
-            <div>
-              <p className="text-xs text-neutral-500 mb-2 font-medium">
-                Select new appointment date:
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {RESCHEDULE_DATES.map((date) => (
-                  <button
-                    key={date}
-                    onClick={() => setNewSelectedDate(date)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-semibold text-left transition ${newSelectedDate === date
-                        ? 'bg-primary-light/40 border-primary text-primary'
-                        : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                      }`}
-                  >
-                    {date}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-neutral-500 mb-2 font-medium">
-                Select preferred arrival time:
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {RESCHEDULE_TIME_SLOTS.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setNewSelectedTime(time)}
-                    className={`py-2 px-2.5 rounded-xl border text-xs font-semibold text-center transition ${newSelectedTime === time
-                        ? 'bg-primary-light/40 border-primary text-primary'
-                        : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                      }`}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setRescheduleTarget(null)}
-                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
-              >
-                Nevermind
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={handleConfirmReschedule}
-                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
-              >
-                Confirm New Slot
-              </Button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+
+        <div>
+          <p className="text-xs text-neutral-500 mb-2 font-medium">
+            Select preferred arrival time:
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {RESCHEDULE_TIME_SLOTS.map((time) => (
+              <button
+                key={time}
+                onClick={() => setNewSelectedTime(time)}
+                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold text-center transition ${newSelectedTime === time
+                    ? 'bg-primary-light/40 border-primary text-primary'
+                    : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                  }`}
+              >
+                {time}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setRescheduleTarget(null)}
+            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+          >
+            Nevermind
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleConfirmReschedule}
+            className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
+          >
+            Confirm New Slot
+          </Button>
+        </div>
+      </Dialog>
 
       {/* 7. Cancel Confirmation Modal */}
-      {cancelTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cancel-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-        >
-          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 flex flex-col gap-4 border border-neutral-100 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
-              <Ban className="w-6 h-6 stroke-[2]" />
-            </div>
-
-            <div>
-              <h3 id="cancel-modal-title" className="text-base font-bold text-neutral-900">
-                Cancel Appointment?
-              </h3>
-              <p className="text-xs text-neutral-500 mt-1">
-                Are you sure you want to cancel your{' '}
-                <strong className="text-neutral-800">{cancelTarget.title}</strong>{' '}
-                slot on {cancelTarget.date}?
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setCancelTarget(null)}
-                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                Keep Booking
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleConfirmCancel}
-                className="flex-1 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs"
-              >
-                Yes, Cancel
-              </Button>
-            </div>
-          </div>
+      <Dialog
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        maxWidth="sm"
+        icon={<Ban className="w-6 h-6 stroke-[2]" />}
+        iconVariant="danger"
+        title="Cancel Appointment?"
+        aria-labelledby="cancel-modal-title"
+        description={
+          cancelTarget ? (
+            <>
+              Are you sure you want to cancel your{' '}
+              <strong className="text-neutral-800">{cancelTarget.title}</strong>{' '}
+              slot on {cancelTarget.date}?
+            </>
+          ) : undefined
+        }
+      >
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setCancelTarget(null)}
+            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+          >
+            Keep Booking
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={handleConfirmCancel}
+            className="flex-1 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs"
+          >
+            Yes, Cancel
+          </Button>
         </div>
-      )}
+      </Dialog>
 
       {/* 8. Rating & Review Modal */}
-      {ratingTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="rating-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-        >
-          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 flex flex-col gap-4 border border-neutral-100">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 id="rating-modal-title" className="text-sm font-bold text-neutral-900">
-                Rate & Review Detail
-              </h3>
+      <Dialog
+        isOpen={!!ratingTarget}
+        onClose={() => setRatingTarget(null)}
+        maxWidth="sm"
+        aria-labelledby="rating-modal-title"
+      >
+        <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+          <h3 id="rating-modal-title" className="text-sm font-bold text-neutral-900">
+            Rate & Review Detail
+          </h3>
+          <button
+            onClick={() => setRatingTarget(null)}
+            className="p-1 rounded-full text-neutral-400 hover:text-neutral-600 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="text-center py-1">
+          <span className="text-xs text-neutral-500 block mb-1">
+            How was your {ratingTarget?.title} on {ratingTarget?.vehicle}?
+          </span>
+          <div className="flex items-center justify-center gap-2 py-2">
+            {[1, 2, 3, 4, 5].map((star) => (
               <button
-                onClick={() => setRatingTarget(null)}
-                className="p-1 rounded-full text-neutral-400 hover:text-neutral-600"
+                key={star}
+                type="button"
+                onClick={() => setRatingStars(star)}
+                className="p-1 transition transform hover:scale-110 cursor-pointer"
+                aria-label={`${star} star`}
               >
-                <X className="w-4 h-4" />
+                <Star
+                  className={`w-7 h-7 ${star <= ratingStars
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-neutral-300'
+                    }`}
+                />
               </button>
-            </div>
-
-            <div className="text-center py-1">
-              <span className="text-xs text-neutral-500 block mb-1">
-                How was your {ratingTarget.title} on {ratingTarget.vehicle}?
-              </span>
-              <div className="flex items-center justify-center gap-2 py-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRatingStars(star)}
-                    className="p-1 transition transform hover:scale-110"
-                    aria-label={`${star} star`}
-                  >
-                    <Star
-                      className={`w-7 h-7 ${star <= ratingStars
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-neutral-300'
-                        }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                Your Feedback (optional)
-              </label>
-              <textarea
-                value={ratingComment}
-                onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="The technician did a fantastic job..."
-                rows={3}
-                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 focus:outline-none focus:border-primary resize-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setRatingTarget(null)}
-                className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
-              >
-                Skip
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={handleConfirmRating}
-                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
-              >
-                Submit Review
-              </Button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+
+        <div>
+          <label className="text-xs font-semibold text-neutral-700 block mb-1">
+            Your Feedback (optional)
+          </label>
+          <textarea
+            value={ratingComment}
+            onChange={(e) => setRatingComment(e.target.value)}
+            placeholder="The technician did a fantastic job..."
+            rows={3}
+            className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 focus:outline-none focus:border-primary resize-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setRatingTarget(null)}
+            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+          >
+            Skip
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleConfirmRating}
+            className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
+          >
+            Submit Review
+          </Button>
+        </div>
+      </Dialog>
     </div>
   )
 }

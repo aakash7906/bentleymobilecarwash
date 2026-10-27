@@ -197,13 +197,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
         {/* Mode 1: Quick Add Form */}
         {mode === 'quick' ? (
-          <div className="p-5 flex flex-col gap-4">
-            <div className="bg-primary-light/50 border border-primary-border/40 rounded-2xl p-3.5 flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-primary text-[20px]">info</span>
-              <span className="text-xs text-gray-700">
-                Quickly register your vehicle details for eco-friendly mobile detailing.
-              </span>
-            </div>
+          <div className="p-6 flex flex-col gap-4">
 
             <div className="flex flex-col gap-3.5">
               {/* Brand & Model */}

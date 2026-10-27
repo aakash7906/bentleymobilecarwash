@@ -1,12 +1,26 @@
 import React from 'react'
 import { BookingRecord } from '@/types'
-import { NOTIFICATIONS_DATA } from '@/data/mockData'
-import { Bell, Calendar, CheckCircle2, Navigation, Sparkles } from 'lucide-react'
+import { Bell, Calendar, CheckCircle2, Navigation, Sparkles, Shield, Droplets } from 'lucide-react'
 
 interface NotificationsTabProps {
   onBack: () => void
   bookings?: BookingRecord[]
 }
+
+const SERVICE_ANNOUNCEMENTS = [
+  {
+    id: 'ann-1',
+    title: 'On-Site Mobile Detailing Live',
+    description: 'Bentley Mobile Car Wash arrives fully equipped with spot-free deionized water and power generators.',
+    time: 'Bentley Care',
+  },
+  {
+    id: 'ann-2',
+    title: 'Safe 100% Biodegradable Shampoos',
+    description: 'All foam washes, ceramic coats, and tire treatments are environmentally friendly and clear-coat safe.',
+    time: 'Quality Guarantee',
+  },
+]
 
 export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [] }) => {
   // Generate dynamic live notifications based on user bookings
@@ -52,7 +66,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
           <h2 className="text-sm font-bold text-gray-900">Activity &amp; Updates</h2>
         </div>
         <span className="text-[11px] text-gray-400">
-          {liveBookingNotifications.length + NOTIFICATIONS_DATA.length} alerts
+          {liveBookingNotifications.length + SERVICE_ANNOUNCEMENTS.length} alerts
         </span>
       </div>
 
@@ -97,7 +111,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
           System &amp; Care Announcements
         </span>
 
-        {NOTIFICATIONS_DATA.map((item) => (
+        {SERVICE_ANNOUNCEMENTS.map((item) => (
           <div
             key={item.id}
             className="p-3.5 rounded-2xl bg-surface-alt border border-gray-200/60 flex flex-col gap-1 shadow-xs"

@@ -343,7 +343,7 @@ export const Signup: React.FC<SignupProps> = ({
                       setErrors((prev) => ({ ...prev, fullName: undefined }))
                     }
                   }}
-                  placeholder={selectedRole === 'driver' ? 'e.g. Alex Rivera' : 'Enter full name'}
+                  placeholder={selectedRole === 'driver' ? 'e.g. John Smith' : 'Enter full name'}
                   className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.fullName && errors.fullName
                     ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                     : 'border-[var(--border-light)] focus:border-[var(--primary)]'

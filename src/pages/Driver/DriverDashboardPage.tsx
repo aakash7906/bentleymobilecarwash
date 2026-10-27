@@ -8,7 +8,6 @@ import {
   Navigation,
   Eye,
   X,
-  LogOut,
   ExternalLink,
   MessageSquare,
   User,
@@ -19,6 +18,7 @@ import { BookingRecord, BookingStatus, DriverProfile } from '@/types'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
+import { Dialog } from '@/components/ui/dialog'
 
 interface DriverDashboardProps {
   bookings: BookingRecord[]
@@ -33,11 +33,11 @@ interface DriverDashboardProps {
 }
 
 const DEFAULT_DRIVER_PROFILE: DriverProfile = {
-  name: 'Alex Rivera',
-  email: 'driver@bentleycarwash.com',
-  phone: '+1 (800) 555-9274',
-  vanModel: 'Mercedes-Benz Sprinter 2500',
-  licensePlate: 'BC-8492',
+  name: '',
+  email: '',
+  phone: '',
+  vanModel: 'Mobile Detailing Unit',
+  licensePlate: '',
   serviceArea: 'Ontario, Canada',
   driverLicenseNumber: '',
   emergencyContact: '',
@@ -52,8 +52,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   onAcceptOrder,
   onUpdateStatus,
   onLogout,
-  driverName = 'Alex Rivera',
-  driverEmail = 'driver@bentleycarwash.com',
+  driverName = '',
+  driverEmail = '',
   driverProfile: externalProfile,
   onUpdateDriverProfile,
   onDeleteAccount,
@@ -64,12 +64,29 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   const [selectedDetailBooking, setSelectedDetailBooking] = useState<BookingRecord | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
-  // Driver profile state with external prop syncing & fallback
+  const sanitizeAvatar = (url?: string) => {
+    if (!url) return ''
+    if (url.includes('unsplash.com')) return ''
+    return url
+  }
+
+  // Driver profile state with external prop syncing & fallback (only dynamic photos or default User icon)
   const [profile, setProfile] = useState<DriverProfile>(() => {
-    if (externalProfile) return externalProfile
+    if (externalProfile) {
+      return {
+        ...externalProfile,
+        avatar: sanitizeAvatar(externalProfile.avatar),
+      }
+    }
     try {
       const stored = localStorage.getItem('bentley_driver_profile')
-      if (stored) return JSON.parse(stored)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return {
+          ...parsed,
+          avatar: sanitizeAvatar(parsed.avatar),
+        }
+      }
     } catch {}
     return {
       ...DEFAULT_DRIVER_PROFILE,
@@ -81,7 +98,10 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   // Synchronize if externalProfile changes
   React.useEffect(() => {
     if (externalProfile) {
-      setProfile(externalProfile)
+      setProfile({
+        ...externalProfile,
+        avatar: sanitizeAvatar(externalProfile.avatar),
+      })
     }
   }, [externalProfile])
 
@@ -128,13 +148,17 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
   // Handle saving driver profile updates
   const handleSaveProfile = (updated: DriverProfile) => {
-    setProfile(updated)
+    const cleaned = {
+      ...updated,
+      avatar: sanitizeAvatar(updated.avatar),
+    }
+    setProfile(cleaned)
     try {
-      localStorage.setItem('bentley_driver_profile', JSON.stringify(updated))
+      localStorage.setItem('bentley_driver_profile', JSON.stringify(cleaned))
     } catch {}
 
     if (onUpdateDriverProfile) {
-      onUpdateDriverProfile(updated)
+      onUpdateDriverProfile(cleaned)
     }
   }
 
@@ -180,13 +204,18 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               showToast('Wash completed! Order recorded in history.', 'success')
             }
           }}
+          driverProfile={profile}
         />
       )}
 
       {/* 3. ORDER DETAILS MODAL */}
-      {selectedDetailBooking && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+      <Dialog
+        isOpen={!!selectedDetailBooking}
+        onClose={() => setSelectedDetailBooking(null)}
+        maxWidth="lg"
+      >
+        {selectedDetailBooking && (
+          <>
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-primary" />
@@ -310,9 +339,9 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 </button>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Dialog>
 
       {/* 4. MAIN RESPONSIVE DASHBOARD LAYOUT */}
       <main className="w-full max-w-full min-h-screen bg-canvas flex flex-col pb-32">

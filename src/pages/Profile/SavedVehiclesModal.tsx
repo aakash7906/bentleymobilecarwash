@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { SavedVehicle } from '@/types'
 import { ChevronLeft, Plus, Trash2, CheckCircle2, ShieldCheck, Car } from 'lucide-react'
+import { Dialog } from '@/components/ui/dialog'
 
 interface SavedVehiclesModalProps {
   isOpen: boolean
@@ -213,39 +214,39 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
         </div>
 
         {/* 3. DELETE CONFIRMATION MODAL */}
-        {vehicleToDelete && (
-          <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-5 animate-in fade-in duration-150">
-            <div className="bg-white rounded-2xl max-w-xs w-full p-5 shadow-2xl border border-gray-200 flex flex-col gap-4 text-center">
-              <div className="w-12 h-12 rounded-full bg-primary-light text-primary flex items-center justify-center mx-auto">
-                <Trash2 className="w-6 h-6" />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <h3 className="text-base font-bold text-gray-900">Remove Vehicle?</h3>
-                <p className="text-xs text-gray-500">
-                  Are you sure you want to delete <span className="font-semibold text-gray-800">"{vehicleToDelete.name}"</span> from your saved vehicles?
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setVehicleToDelete(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-sm cursor-pointer"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+        <Dialog
+          isOpen={!!vehicleToDelete}
+          onClose={() => setVehicleToDelete(null)}
+          zIndex="z-60"
+          maxWidth="xs"
+          icon={<Trash2 className="w-6 h-6" />}
+          iconVariant="primary"
+          title="Remove Vehicle?"
+          description={
+            vehicleToDelete ? (
+              <>
+                Are you sure you want to delete <span className="font-semibold text-gray-800">"{vehicleToDelete.name}"</span> from your saved vehicles?
+              </>
+            ) : undefined
+          }
+        >
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setVehicleToDelete(null)}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-sm cursor-pointer"
+            >
+              Delete
+            </button>
           </div>
-        )}
+        </Dialog>
       </div>
     </div>
   )

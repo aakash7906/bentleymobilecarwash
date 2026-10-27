@@ -13,13 +13,13 @@ import {
   LogOut,
   Upload,
   Trash2,
-  Lock,
   AlertTriangle,
   Loader2,
   AlertCircle,
 } from 'lucide-react'
 import { DriverProfile } from '@/types'
 import { useToast } from '@/context/ToastContext'
+import { Dialog } from '@/components/ui/dialog'
 
 interface DriverProfilePageProps {
   isOpen: boolean
@@ -91,12 +91,17 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   const [emergencyContact, setEmergencyContact] = useState(profile.emergencyContact || '')
   const [emergencyError, setEmergencyError] = useState<string | null>(null)
 
-  const [avatar, setAvatar] = useState(profile.avatar || '')
+  const [avatar, setAvatar] = useState(
+    profile.avatar && !profile.avatar.includes('unsplash.com') ? profile.avatar : ''
+  )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+
+  // State for Logout confirmation modal
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   // State for Delete Driver Profile confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -120,7 +125,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       setDriverLicenseNumber(profile.driverLicenseNumber || '')
       setEmergencyContact(profile.emergencyContact || '')
       setEmergencyError(null)
-      setAvatar(profile.avatar || '')
+      setAvatar(profile.avatar && !profile.avatar.includes('unsplash.com') ? profile.avatar : '')
       setUploadError(null)
       setShowDeleteModal(false)
     }
@@ -274,7 +279,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
             {onLogout && (
               <button
                 type="button"
-                onClick={onLogout}
+                onClick={() => setShowLogoutModal(true)}
                 className="px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center gap-1.5 border border-rose-200/60 transition-all cursor-pointer font-bold text-xs shadow-2xs active:scale-95"
                 title="Log out from Driver account"
               >
@@ -364,7 +369,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
               <div className="flex-1 text-center md:text-left flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                   <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                    {name || 'Alex Rivera'}
+                    {name || 'Service Specialist'}
                   </h2>
                 </div>
 
@@ -432,7 +437,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Alex Rivera"
+                      placeholder="e.g. John Smith"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-900 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-hidden transition-all"
                     />
                   </div>
@@ -442,9 +447,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-700">Account Email</label>
-                    <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1 select-none">
-                      <Lock className="w-2.5 h-2.5" /> Non-editable
-                    </span>
                   </div>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -471,9 +473,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
 
                   <div className="relative">
                     <Phone
-                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
-                        phoneError ? 'text-rose-500' : 'text-gray-400'
-                      }`}
+                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${phoneError ? 'text-rose-500' : 'text-gray-400'
+                        }`}
                     />
                     <input
                       type="tel"
@@ -482,11 +483,10 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                       onChange={handlePhoneChange}
                       onBlur={handlePhoneBlur}
                       placeholder="+1 (800) 555-9274"
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${
-                        phoneError
-                          ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20 focus:border-rose-500'
-                          : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
-                      }`}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${phoneError
+                        ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20 focus:border-rose-500'
+                        : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
+                        }`}
                     />
                   </div>
 
@@ -509,20 +509,18 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                   </label>
                   <div className="relative">
                     <Phone
-                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${
-                        emergencyError ? 'text-rose-500' : 'text-gray-400'
-                      }`}
+                      className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${emergencyError ? 'text-rose-500' : 'text-gray-400'
+                        }`}
                     />
                     <input
                       type="tel"
                       value={emergencyContact}
                       onChange={handleEmergencyChange}
                       placeholder="+1 (998) 555-0199"
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${
-                        emergencyError
-                          ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20'
-                          : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
-                      }`}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 text-xs sm:text-sm text-gray-900 outline-hidden transition-all ${emergencyError
+                        ? 'border border-rose-300 ring-2 ring-rose-100 bg-rose-50/20'
+                        : 'border border-gray-200 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20'
+                        }`}
                     />
                   </div>
                   {emergencyError && (
@@ -629,9 +627,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-red-900">Delete Driver Profile</h3>
-                  <p className="text-xs text-red-700/80 mt-0.5">
-                    Permanently delete your driver profile, vehicle specifications, and partner registration from Firebase. This action cannot be undone.
-                  </p>
                 </div>
               </div>
 
@@ -682,73 +677,97 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
         </main>
       </div>
 
-      {/* CONFIRMATION MODAL FOR DELETE DRIVER PROFILE (IDENTICAL PATTERN TO USER PROFILE) */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150 border border-gray-100">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
-            </div>
+      {/* CONFIRMATION MODAL FOR DRIVER LOGOUT */}
+      <Dialog
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        zIndex="z-60"
+        icon={<LogOut className="w-6 h-6 stroke-[2.2]" />}
+        iconVariant="primary"
+        title="Log Out of Driver Portal?"
+        description="Are you sure you want to log out? You will stop receiving job notifications and customer bookings until you sign back in."
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowLogoutModal(false)}
+            className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
 
-            <div className="text-center flex flex-col gap-1.5">
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900">
-                Delete Driver Profile?
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                This will permanently delete your driver profile, vehicle registration, and cloud driver account from Firebase. This action cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setShowDeleteModal(false)}
-                className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={async () => {
-                  setIsDeleting(true)
-                  try {
-                    if (onDeleteAccount) {
-                      await onDeleteAccount()
-                    } else {
-                      try {
-                        localStorage.removeItem('bentley_driver_profile')
-                      } catch {}
-                      showToast('Driver profile deleted successfully.', 'info')
-                      onLogout?.()
-                    }
-                  } catch (err: any) {
-                    showToast(err?.message || 'Failed to delete driver profile.', 'error')
-                  } finally {
-                    setIsDeleting(false)
-                    setShowDeleteModal(false)
-                  }
-                }}
-                className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Yes, Delete</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowLogoutModal(false)
+              onLogout?.()
+            }}
+            className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Yes, Logout</span>
+          </button>
         </div>
-      )}
+      </Dialog>
+
+      {/* CONFIRMATION MODAL FOR DELETE DRIVER PROFILE */}
+      <Dialog
+        isOpen={showDeleteModal}
+        onClose={() => !isDeleting && setShowDeleteModal(false)}
+        zIndex="z-60"
+        icon={<AlertTriangle className="w-6 h-6 stroke-[2.2]" />}
+        iconVariant="danger"
+        title="Delete Driver Profile?"
+        description="This will permanently delete your driver profile, vehicle registration, and cloud driver account from Firebase. This action cannot be undone."
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => setShowDeleteModal(false)}
+            className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={async () => {
+              setIsDeleting(true)
+              try {
+                if (onDeleteAccount) {
+                  await onDeleteAccount()
+                } else {
+                  try {
+                    localStorage.removeItem('bentley_driver_profile')
+                  } catch { }
+                  showToast('Driver profile deleted successfully.', 'info')
+                  onLogout?.()
+                }
+              } catch (err: any) {
+                showToast(err?.message || 'Failed to delete driver profile.', 'error')
+              } finally {
+                setIsDeleting(false)
+                setShowDeleteModal(false)
+              }
+            }}
+            className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Deleting...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete</span>
+              </>
+            )}
+          </button>
+        </div>
+      </Dialog>
     </div>
   )
 }

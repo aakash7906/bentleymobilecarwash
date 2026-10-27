@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { DeliveryAddress } from '@/types'
+import { Dialog } from '@/components/ui/dialog'
 
 interface DeliveryAddressModalProps {
   isOpen: boolean
@@ -143,9 +144,15 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-70 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 animate-in slide-in-from-bottom duration-200 max-h-[90vh] flex flex-col">
-        {/* Header */}
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-70"
+      position="bottom-sheet"
+      maxWidth="lg"
+      contentClassName="p-5 sm:p-6 max-h-[90vh] flex flex-col"
+    >
+      {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -394,8 +401,7 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
             <ArrowRight className="w-4 h-4 text-primary-foreground" />
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }
 export default DeliveryAddressModal

@@ -46,6 +46,20 @@ interface HomeTabProps {
   onUpdateLocation?: (address: string) => void
 }
 
+function calculateDistanceKm(c1: [number, number], c2: [number, number]): number {
+  const R = 6371
+  const dLat = ((c2[1] - c1[1]) * Math.PI) / 180
+  const dLon = ((c2[0] - c1[0]) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((c1[1] * Math.PI) / 180) *
+      Math.cos((c2[1] * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return parseFloat((R * c).toFixed(1))
+}
+
 export const HomeTab: React.FC<HomeTabProps> = ({
   onSelectService,
   onBookNow,
@@ -75,6 +89,48 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     userProfile?.lastLocation || userProfile?.address || ''
   )
   const [isLocating, setIsLocating] = useState(false)
+  // Dynamic driving ETA state for en_route booking
+  const [dynamicDrivingEtaMins, setDynamicDrivingEtaMins] = useState<number | null>(null)
+
+  // Calculate live dynamic ETA when driver accepts and starts driving (en_route)
+  React.useEffect(() => {
+    const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
+    if (!enRouteBooking) {
+      setDynamicDrivingEtaMins(null)
+      return
+    }
+
+    if (typeof enRouteBooking.estimatedMins === 'number' && enRouteBooking.estimatedMins > 0) {
+      setDynamicDrivingEtaMins(enRouteBooking.estimatedMins)
+      return
+    }
+
+    const driverCoords = enRouteBooking.driverCoords || [-79.4035, 43.6635]
+    const customerCoords = enRouteBooking.customerCoords || [-79.3832, 43.6532]
+
+    let isSubscribed = true
+    const fetchLiveRouteEta = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${driverCoords[0]},${driverCoords[1]};${customerCoords[0]},${customerCoords[1]}?overview=false`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (isSubscribed && data.code === 'Ok' && data.routes?.[0]?.duration) {
+          const mins = Math.max(1, Math.round(data.routes[0].duration / 60))
+          setDynamicDrivingEtaMins(mins)
+          return
+        }
+      } catch {}
+      if (isSubscribed) {
+        const distKm = calculateDistanceKm(driverCoords, customerCoords)
+        setDynamicDrivingEtaMins(Math.max(1, Math.round(distKm * 2.2)))
+      }
+    }
+
+    fetchLiveRouteEta()
+    return () => {
+      isSubscribed = false
+    }
+  }, [activeBookings])
 
   // Sync user address if profile updates (e.g., when user logs in and Firestore data loads)
   React.useEffect(() => {
@@ -707,33 +763,50 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status */}
+      {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status & Real-time ETA */}
       {(() => {
-        // DYNAMIC STATUS PILL LOGIC:
-        // ONLY show when a driver accepts that request and has started arriving
-        // (statuses: 'en_route', 'in_progress', or 'accepted' with driver assigned).
-        // Never show for 'scheduled' or 'pending' where no driver has accepted yet.
-        const liveBooking = activeBookings.find(
-          (b) =>
-            b.status === 'en_route' ||
-            b.status === 'in_progress' ||
-            b.status === 'accepted'
-        )
+        // Resolve active booking with priority to en_route -> in_progress -> accepted -> scheduled -> pending
+        const liveBooking =
+          activeBookings.find((b) => b.status === 'en_route') ||
+          activeBookings.find((b) => b.status === 'in_progress') ||
+          activeBookings.find((b) => b.status === 'accepted') ||
+          activeBookings.find((b) => b.status === 'scheduled') ||
+          activeBookings.find((b) => b.status === 'pending')
 
         if (!liveBooking) return null
 
-        const statusLabel =
-          liveBooking.status === 'en_route'
-            ? 'Technician is Arriving'
-            : liveBooking.status === 'in_progress'
-              ? 'Detailing in Progress'
-              : liveBooking.status === 'accepted'
-                ? 'Technician Assigned'
-                : 'Appointment Scheduled'
+        // ONLY show time when driver accepted the booking and started driving (en_route)
+        const isDriving = liveBooking.status === 'en_route'
+        const rawDriver = (liveBooking.driverName || liveBooking.technicianName || '').trim()
+        const hasRealDriver = Boolean(rawDriver && rawDriver.toLowerCase() !== 'alex rivera')
+        const driverName = hasRealDriver ? rawDriver : ''
 
-        const mins =
-          liveBooking.estimatedMins ||
-          (liveBooking.status === 'en_route' ? 7 : liveBooking.status === 'in_progress' ? 15 : 25)
+        let statusLabel = 'Appointment Scheduled'
+        if (liveBooking.status === 'en_route') {
+          statusLabel = hasRealDriver ? `${driverName} is Arriving` : 'Technician is Arriving'
+        } else if (liveBooking.status === 'in_progress') {
+          statusLabel = 'Detailing in Progress'
+        } else if (liveBooking.status === 'accepted') {
+          statusLabel = hasRealDriver ? `${driverName} Assigned` : 'Technician Assigned'
+        } else if (liveBooking.status === 'pending') {
+          statusLabel = 'Awaiting Driver Acceptance'
+        }
+
+        // Dynamic time (strictly when driver has accepted & started driving, no static numbers)
+        const dynamicMins = isDriving
+          ? (typeof liveBooking.estimatedMins === 'number' && liveBooking.estimatedMins > 0
+              ? liveBooking.estimatedMins
+              : dynamicDrivingEtaMins) || 1
+          : null
+
+        const statusBadgeText =
+          liveBooking.status === 'accepted'
+            ? 'Accepted'
+            : liveBooking.status === 'in_progress'
+              ? 'In Progress'
+              : liveBooking.status === 'scheduled'
+                ? 'Scheduled'
+                : 'Pending'
 
         return (
           <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
@@ -759,15 +832,23 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   </span>
                 </div>
 
-                {/* Right Mins Countdown Card (Compact) */}
-                <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
-                  <span className="text-status-active text-sm sm:text-base font-extrabold leading-none">
-                    {mins}
-                  </span>
-                  <span className="text-status-active text-[9px] font-bold leading-tight">
-                    mins
-                  </span>
-                </div>
+                {/* Right Content: Dynamic Countdown ONLY when driving, otherwise Booking Status */}
+                {isDriving && dynamicMins ? (
+                  <div className="w-11 sm:w-12 h-9.5 sm:h-10 bg-white rounded-xl flex flex-col items-center justify-center shadow-xs shrink-0 ml-2">
+                    <span className="text-status-active text-sm sm:text-base font-extrabold leading-none">
+                      {dynamicMins}
+                    </span>
+                    <span className="text-status-active text-[9px] font-bold leading-tight">
+                      mins
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-9.5 sm:h-10 px-3 bg-white rounded-xl flex items-center justify-center shadow-xs shrink-0 ml-2">
+                    <span className="text-status-active text-[11px] sm:text-xs font-black tracking-wide uppercase leading-none">
+                      {statusBadgeText}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -775,33 +856,43 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       })()}
 
       {/* 10. Direct Order Tracking Map Modal from Floating Button */}
-      {isTrackingMapOpen && (
-        <OrderTrackingMapPage
-          onBack={() => {
-            setIsTrackingMapOpen(false)
-            setSelectedTrackingBooking(null)
-          }}
-          booking={
-            selectedTrackingBooking ||
-            activeBookings.find(
-              (b) =>
-                (b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') &&
-                Boolean(b.driverName || b.technicianName)
-            )
-          }
-          serviceTitle={selectedTrackingBooking?.title}
-          serviceCategory={selectedTrackingBooking?.category}
-          customerName={userProfile?.name || selectedTrackingBooking?.customerName}
-          customerPhone={userProfile?.phone || selectedTrackingBooking?.customerPhone}
-          customerAddress={userProfile?.address || selectedTrackingBooking?.address || currentAddress}
-          technicianName={selectedTrackingBooking?.technicianName || selectedTrackingBooking?.driverName}
-          driverCoords={selectedTrackingBooking?.driverCoords}
-          customerCoords={selectedTrackingBooking?.customerCoords}
-          driverVanNumber={selectedTrackingBooking?.driverVanNumber}
-          driverPhone={selectedTrackingBooking?.driverPhone}
-          bookingStatus={selectedTrackingBooking?.status}
-        />
-      )}
+      {isTrackingMapOpen && (() => {
+        const currentTrackingBooking =
+          selectedTrackingBooking ||
+          activeBookings.find(
+            (b) =>
+              (b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') &&
+              Boolean(b.driverName || b.technicianName)
+          ) ||
+          activeBookings[0]
+
+        return (
+          <OrderTrackingMapPage
+            onBack={() => {
+              setIsTrackingMapOpen(false)
+              setSelectedTrackingBooking(null)
+            }}
+            booking={currentTrackingBooking}
+            serviceTitle={currentTrackingBooking?.title}
+            serviceCategory={currentTrackingBooking?.category}
+            customerName={currentTrackingBooking?.customerName || userProfile?.name}
+            customerPhone={currentTrackingBooking?.customerPhone || userProfile?.phone}
+            customerAddress={currentTrackingBooking?.address || userProfile?.address || currentAddress}
+            technicianName={
+              currentTrackingBooking?.driverName && currentTrackingBooking.driverName.toLowerCase() !== 'alex rivera'
+                ? currentTrackingBooking.driverName
+                : currentTrackingBooking?.technicianName && currentTrackingBooking.technicianName.toLowerCase() !== 'alex rivera'
+                  ? currentTrackingBooking.technicianName
+                  : undefined
+            }
+            driverCoords={currentTrackingBooking?.driverCoords}
+            customerCoords={currentTrackingBooking?.customerCoords}
+            driverVanNumber={currentTrackingBooking?.driverVanNumber}
+            driverPhone={currentTrackingBooking?.driverPhone}
+            bookingStatus={currentTrackingBooking?.status}
+          />
+        )
+      })()}
 
       {/* 11. Dedicated Product Detail Page Modal */}
       {selectedProduct && (

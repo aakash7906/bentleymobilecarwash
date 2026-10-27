@@ -41,7 +41,9 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   const [address, setAddress] = useState(userProfile.address || '')
   const [city, setCity] = useState(userProfile.city || '')
   const [postalCode, setPostalCode] = useState(userProfile.postalCode || '')
-  const [avatar, setAvatar] = useState(userProfile.avatar || '')
+  const [avatar, setAvatar] = useState(
+    userProfile.avatar && !userProfile.avatar.includes('unsplash.com') ? userProfile.avatar : ''
+  )
   const [preferredVehicle, setPreferredVehicle] = useState(
     userProfile.preferredVehicle || (savedVehicles[0] || '')
   )
