@@ -70,6 +70,20 @@ export const App: React.FC = () => {
       return ''
     }
   })
+  const [detectedCity, setDetectedCity] = useState<string>(() => {
+    try {
+      return localStorage.getItem('bentley_detected_city') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [detectedPostalCode, setDetectedPostalCode] = useState<string>(() => {
+    try {
+      return localStorage.getItem('bentley_detected_postal') || ''
+    } catch {
+      return ''
+    }
+  })
 
   // Driver vs Customer active portal state
   const [currentRole, setCurrentRole] = useState<'customer' | 'driver'>(() => {
@@ -539,6 +553,51 @@ export const App: React.FC = () => {
     setBookingService(service)
     setSelectedService(null)
     setIsBookingOpen(true)
+  }
+
+  // Unified global location updater (keeps HomeTab, BookingPage, localStorage & Firestore in sync)
+  const handleUpdateGlobalLocation = async (
+    addr: string,
+    cityVal?: string,
+    postalVal?: string,
+    streetVal?: string
+  ) => {
+    setDetectedAddress(addr)
+    if (cityVal) setDetectedCity(cityVal)
+    if (postalVal) setDetectedPostalCode(postalVal)
+
+    try {
+      localStorage.setItem('bentley_detected_address', addr)
+      if (cityVal) localStorage.setItem('bentley_detected_city', cityVal)
+      if (postalVal) localStorage.setItem('bentley_detected_postal', postalVal)
+    } catch { }
+
+    setUserProfileData((prev: any) => ({
+      ...prev,
+      lastLocation: addr,
+      address: streetVal || addr,
+      city: cityVal || prev?.city || '',
+      postalCode: postalVal || prev?.postalCode || '',
+    }))
+
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid)
+        await setDoc(
+          userDocRef,
+          {
+            lastLocation: addr,
+            address: streetVal || addr,
+            city: cityVal || '',
+            postalCode: postalVal || '',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      } catch (err) {
+        console.error('Failed to sync location to Firestore in App:', err)
+      }
+    }
   }
 
   // STEP 3 INTEGRATION: Save vehicle to Firestore as key-value pair (object/map) in user document
@@ -1294,13 +1353,14 @@ export const App: React.FC = () => {
                         '',
                       email: userProfileData?.email || currentUser.email || '',
                       phone: userProfileData?.phone || currentUser.phoneNumber || '',
-                      address: userProfileData?.lastLocation || userProfileData?.address || '',
-                      lastLocation: userProfileData?.lastLocation || userProfileData?.address || '',
-                      city: userProfileData?.city || '',
-                      postalCode: userProfileData?.postalCode || '',
+                      address: userProfileData?.address || detectedAddress || userProfileData?.lastLocation || '',
+                      lastLocation: userProfileData?.lastLocation || detectedAddress || userProfileData?.address || '',
+                      city: userProfileData?.city || detectedCity || '',
+                      postalCode: userProfileData?.postalCode || detectedPostalCode || '',
                     }
                     : undefined
                 }
+                detectedAddress={detectedAddress || userProfileData?.lastLocation || userProfileData?.address || ''}
                 cartItems={cartItems}
                 onAddToCart={handleAddToCart}
                 onUpdateCartQuantity={handleUpdateCartQuantity}
@@ -1308,27 +1368,7 @@ export const App: React.FC = () => {
                 onClearCart={handleClearCart}
                 onCheckoutOrder={handleCheckoutOrder}
                 onOpenTracking={() => navigateToTab('bookings')}
-                onUpdateLocation={async (addr) => {
-                  setDetectedAddress(addr)
-                  try {
-                    localStorage.setItem('bentley_detected_address', addr)
-                  } catch { }
-                  if (currentUser) {
-                    try {
-                      const userDocRef = doc(db, 'users', currentUser.uid)
-                      await setDoc(
-                        userDocRef,
-                        {
-                          lastLocation: addr,
-                          updatedAt: serverTimestamp(),
-                        },
-                        { merge: true }
-                      )
-                    } catch (err) {
-                      console.error('Failed to save lastLocation to Firestore in App:', err)
-                    }
-                  }
-                }}
+                onUpdateLocation={handleUpdateGlobalLocation}
               />
             )}
 
@@ -1421,11 +1461,14 @@ export const App: React.FC = () => {
           <BottomNav currentTab={currentTab} onTabChange={navigateToTab} />
 
           {/* Full Service Detail & Order Summary Modal */}
-          <ServiceDetailModal
-            service={selectedService}
-            onClose={() => setSelectedService(null)}
-            onBookNow={handleBookNow}
-          />
+          {selectedService && (
+            <ServiceDetailModal
+              key={`${selectedService.id}-${selectedService.selectedTier || selectedService.priceNumeric}`}
+              service={selectedService}
+              onClose={() => setSelectedService(null)}
+              onBookNow={handleBookNow}
+            />
+          )}
 
           {/* Dedicated Full Booking Page Flow */}
           {isBookingOpen && (
@@ -1443,10 +1486,12 @@ export const App: React.FC = () => {
                   '',
                 email: userProfileData?.email || currentUser?.email || '',
                 phone: userProfileData?.phone || currentUser?.phoneNumber || '',
-                address: userProfileData?.lastLocation || userProfileData?.address || detectedAddress || '',
-                city: userProfileData?.city || '',
-                postalCode: userProfileData?.postalCode || '',
+                address: userProfileData?.address || detectedAddress || userProfileData?.lastLocation || '',
+                lastLocation: userProfileData?.lastLocation || detectedAddress || userProfileData?.address || '',
+                city: userProfileData?.city || detectedCity || '',
+                postalCode: userProfileData?.postalCode || detectedPostalCode || '',
               }}
+              onUpdateLocation={handleUpdateGlobalLocation}
               onSelectVehicle={handleSelectVehicle}
               onBack={() => setIsBookingOpen(false)}
               onBookingComplete={(newBooking) => {

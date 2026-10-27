@@ -17,6 +17,7 @@ export interface ServiceItem {
     suv: number
     truck: number
   }
+  selectedTier?: 'car' | 'suv' | 'truck'
   isSpecialty?: boolean
 }
 

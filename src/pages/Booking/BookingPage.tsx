@@ -13,6 +13,8 @@ import {
   Building2,
   Receipt,
   RefreshCw,
+  LocateFixed,
+  Loader2,
 } from 'lucide-react'
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG } from '@/data/mockData'
@@ -20,9 +22,10 @@ import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
 import { StripeCardForm } from '@/components/StripeCardForm'
 import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { useToast } from '@/context/ToastContext'
-import { db } from '@/firebase'
-import { collection, doc } from 'firebase/firestore'
+import { auth, db } from '@/firebase'
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { Select, SelectOption } from '@/components/ui/select'
+import { getLiveGPSLocation } from '@/services/locationService'
 
 interface BookingPageProps {
   initialService?: ServiceItem | null
@@ -32,11 +35,13 @@ interface BookingPageProps {
   onTrackOrder?: () => void
   savedVehicles?: SavedVehicle[]
   onSelectVehicle?: (vehicleName: string) => void
+  onUpdateLocation?: (address: string, city?: string, postalCode?: string, street?: string) => void
   userProfile?: {
     name?: string
     email?: string
     phone?: string
     address?: string
+    lastLocation?: string
     city?: string
     postalCode?: string
   }
@@ -167,6 +172,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onTrackOrder,
   savedVehicles = [],
   onSelectVehicle,
+  onUpdateLocation,
   userProfile,
 }) => {
   // Service selection (Dynamic sync with incoming service)
@@ -192,7 +198,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             list = parsed
           }
         }
-      } catch {}
+      } catch { }
     }
     return list
   }, [savedVehicles])
@@ -254,12 +260,50 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
+  // Helper to parse address, city & postal code from raw address string if missing
+  const parseAddressFallback = (rawAddr: string, existingCity?: string, existingPostal?: string) => {
+    let parsedPostal = existingPostal || ''
+    let cleaned = (rawAddr || '').trim()
+
+    // Match 6-digit PIN (India) or 5-digit ZIP / Canadian alphanumeric postal code
+    const pinMatch = cleaned.match(/\b(\d{6}|\d{5}(-\d{4})?|[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d)\b/)
+    if (pinMatch && !parsedPostal) {
+      parsedPostal = pinMatch[1]
+      cleaned = cleaned.replace(pinMatch[0], '').trim()
+    }
+
+    let parsedCity = existingCity || ''
+    if (!parsedCity && cleaned) {
+      const parts = cleaned.split(',').map((p) => p.trim()).filter(Boolean)
+      if (parts.length >= 3) {
+        parsedCity = parts[parts.length - 2]
+      } else if (parts.length === 2) {
+        parsedCity = parts[0]
+      } else if (parts.length === 1) {
+        parsedCity = parts[0]
+      }
+    }
+
+    return {
+      street: rawAddr || '',
+      city: parsedCity || '',
+      postalCode: parsedPostal || '',
+    }
+  }
+
+  const initialAddressData = React.useMemo(
+    () => parseAddressFallback(userProfile?.address || '', userProfile?.city, userProfile?.postalCode),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
   // Booking location (Autofilled dynamically from Firestore profile & address detection)
   const [locationType, setLocationType] = useState<'mobile' | 'shop'>('mobile')
-  const [address, setAddress] = useState(userProfile?.address || '')
-  const [city, setCity] = useState(userProfile?.city || '')
-  const [postalCode, setPostalCode] = useState(userProfile?.postalCode || '')
+  const [address, setAddress] = useState(initialAddressData.street)
+  const [city, setCity] = useState(initialAddressData.city)
+  const [postalCode, setPostalCode] = useState(initialAddressData.postalCode)
   const [addressNotes, setAddressNotes] = useState('')
+  const [isLocating, setIsLocating] = useState(false)
 
   // Date & Time
   const dateSlots = generateDateSlots()
@@ -282,19 +326,61 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       setCustomerName((prev) => prev || userProfile.name || '')
       setCustomerEmail((prev) => prev || userProfile.email || '')
       setCustomerPhone((prev) => prev || userProfile.phone || '')
-      setAddress((prev) => prev || userProfile.address || '')
 
-      if (userProfile.city) {
-        setCity((prev) => prev || userProfile.city || '')
-      } else if (userProfile.address) {
-        const parts = userProfile.address.split(',').map((p) => p.trim()).filter(Boolean)
-        if (parts.length >= 2) {
-          setCity((prev) => prev || parts[parts.length - 2])
-        }
+      if (userProfile.address) {
+        const parsed = parseAddressFallback(userProfile.address, userProfile.city, userProfile.postalCode)
+        setAddress((prev) => prev || parsed.street)
+        setCity((prev) => prev || parsed.city)
+        setPostalCode((prev) => prev || parsed.postalCode)
+      } else {
+        if (userProfile.city) setCity((prev) => prev || userProfile.city || '')
+        if (userProfile.postalCode) setPostalCode((prev) => prev || userProfile.postalCode || '')
       }
-      setPostalCode((prev) => prev || userProfile.postalCode || '')
     }
   }, [userProfile])
+
+  // Live GPS Geolocation & reverse geocoding to Street, City, and Postal Code (100% unified with HomeTab)
+  const handleFetchLiveLocation = async () => {
+    setIsLocating(true)
+    showToast('Detecting your live GPS location...', 'info', 2000)
+
+    try {
+      const result = await getLiveGPSLocation()
+      setAddress(result.street)
+      if (result.city) setCity(result.city)
+      if (result.postalCode) setPostalCode(result.postalCode)
+
+      const summary = [result.street, result.city, result.postalCode].filter(Boolean).join(', ')
+      showToast(`Location detected: ${summary}`, 'success')
+
+      if (onUpdateLocation) {
+        onUpdateLocation(result.fullAddress, result.city, result.postalCode, result.street)
+      }
+
+      if (auth.currentUser) {
+        try {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid)
+          await setDoc(
+            userDocRef,
+            {
+              lastLocation: result.fullAddress,
+              address: result.street,
+              city: result.city,
+              postalCode: result.postalCode,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          )
+        } catch (err) {
+          console.warn('Failed to sync location to Firestore:', err)
+        }
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Unable to fetch your location', 'error')
+    } finally {
+      setIsLocating(false)
+    }
+  }
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
@@ -343,11 +429,19 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     selectedService.category === 'Specialty'
 
   // Pricing calculations
+  const effectiveTier =
+    selectedService.selectedTier ||
+    (vehicleType === 'SUV'
+      ? 'suv'
+      : vehicleType === 'Truck' || vehicleType === 'Van'
+        ? 'truck'
+        : 'car')
+
   const basePrice = isPackage
     ? isTieredService && selectedService.tieredPricing
-      ? vehicleType === 'SUV'
+      ? effectiveTier === 'suv'
         ? selectedService.tieredPricing.suv
-        : vehicleType === 'Truck' || vehicleType === 'Van'
+        : effectiveTier === 'truck'
           ? selectedService.tieredPricing.truck
           : selectedService.tieredPricing.car
       : selectedService.priceNumeric || 0
@@ -725,16 +819,44 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             {/* Address input if Mobile */}
             {locationType === 'mobile' && (
-              <div className="p-3.5 rounded-xl bg-white border border-gray-200 shadow-sm flex flex-col gap-2.5 mt-1 animate-in fade-in duration-150">
+              <div className="p-3.5 rounded-xl bg-white border border-gray-200 shadow-sm flex flex-col gap-3 mt-1 animate-in fade-in duration-150">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Street Address</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter driveway or parking address"
-                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
-                  />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-primary" />
+                      <span>Street Address</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleFetchLiveLocation}
+                      disabled={isLocating}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-extrabold tracking-tight transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                      title="Auto-detect full Street, City & Postal code via GPS"
+                    >
+                      {isLocating ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          <span>Locating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <LocateFixed className="w-3.5 h-3.5 text-primary" />
+
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Enter driveway, road or parking address"
+                      className="w-full text-xs font-semibold text-gray-800 border-b border-gray-200 py-2 pr-9 focus:outline-none focus:border-primary placeholder:text-gray-400 placeholder:font-normal"
+                    />
+
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -744,7 +866,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
+                      placeholder="City (e.g. Ghaziabad)"
+                      className="w-full text-xs font-semibold text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary placeholder:text-gray-400 placeholder:font-normal"
                     />
                   </div>
                   <div>
@@ -753,7 +876,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
+                      placeholder="Postal Code / PIN"
+                      className="w-full text-xs font-semibold text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary placeholder:text-gray-400 placeholder:font-normal"
                     />
                   </div>
                 </div>
@@ -765,7 +889,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                     value={addressNotes}
                     onChange={(e) => setAddressNotes(e.target.value)}
                     placeholder="e.g. Park in underground visitor bay #12"
-                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary"
+                    className="w-full text-xs font-medium text-gray-800 border-b border-gray-200 py-1.5 focus:outline-none focus:border-primary placeholder:text-gray-400"
                   />
                 </div>
               </div>

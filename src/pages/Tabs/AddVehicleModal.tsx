@@ -486,7 +486,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   variant="default"
                   size="default"
                   onClick={() => setStep(6)}
-                  className="w-full mt-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md cursor-pointer"
+                  className="w-full mt-3 bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md cursor-pointer"
                 >
                   Continue to Review
                 </Button>
@@ -544,7 +544,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   variant="default"
                   size="default"
                   onClick={handleFinalAdd}
-                  className="w-full mt-2 rounded-sm bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer h-11"
+                  className="w-full mt-2 bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer h-11"
                 >
                   Save Vehicle to Garage
                 </Button>

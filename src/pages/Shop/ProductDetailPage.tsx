@@ -507,7 +507,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleAddToCartClick}
-                className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-secondary text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-gray-300 h-10"
+                className="flex-1 bg-surface-alt hover:bg-gray-200 text-secondary text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-gray-300 h-10"
               >
                 <ShoppingCart className="w-4 h-4 text-secondary" />
                 <span>Add to Cart</span>
@@ -518,7 +518,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 variant="default"
                 size="sm"
                 onClick={handleBuyNowClick}
-                className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md h-10"
+                className="flex-1 bg-primary hover:bg-primary-hover text-primary-foreground text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md h-10"
               >
                 <span>Buy Now</span>
                 <ArrowRight className="w-4 h-4 text-primary-foreground" />

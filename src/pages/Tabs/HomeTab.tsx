@@ -18,6 +18,7 @@ import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
 import { auth, db } from '@/firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { getLiveGPSLocation } from '@/services/locationService'
 
 interface HomeTabProps {
   onSelectService: (service: ServiceItem) => void
@@ -43,7 +44,8 @@ interface HomeTabProps {
   onRemoveCartItem: (productId: string) => void
   onClearCart: () => void
   onCheckoutOrder?: (orderData: any) => Promise<string>
-  onUpdateLocation?: (address: string) => void
+  detectedAddress?: string
+  onUpdateLocation?: (address: string, city?: string, postalCode?: string, street?: string) => void
 }
 
 function calculateDistanceKm(c1: [number, number], c2: [number, number]): number {
@@ -76,6 +78,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onRemoveCartItem,
   onClearCart,
   onCheckoutOrder,
+  detectedAddress,
   onUpdateLocation,
 }) => {
   // Global Toast Hook
@@ -86,7 +89,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [currentAddress, setCurrentAddress] = useState(
-    userProfile?.lastLocation || userProfile?.address || ''
+    detectedAddress || userProfile?.lastLocation || userProfile?.address || ''
   )
   const [isLocating, setIsLocating] = useState(false)
   // Dynamic driving ETA state for en_route booking
@@ -132,103 +135,48 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     }
   }, [activeBookings])
 
-  // Sync user address if profile updates (e.g., when user logs in and Firestore data loads)
+  // Sync user address if detectedAddress or userProfile updates
   React.useEffect(() => {
-    const savedLoc = userProfile?.lastLocation || userProfile?.address || ''
-    setCurrentAddress(savedLoc)
-  }, [userProfile?.lastLocation, userProfile?.address])
-
-  // Helper to persist location to state, parent, and Firestore
-  const persistDetectedLocation = async (addrStr: string) => {
-    setCurrentAddress(addrStr)
-    showToast(`Location detected: ${addrStr}`, 'success')
-    onUpdateLocation?.(addrStr)
-
-    // Store last fetched location in Firebase in user's collection
-    if (auth.currentUser) {
-      try {
-        const userDocRef = doc(db, 'users', auth.currentUser.uid)
-        await setDoc(
-          userDocRef,
-          {
-            lastLocation: addrStr,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        )
-      } catch (err) {
-        console.error('Failed to save lastLocation to Firestore in HomeTab:', err)
-      }
+    const savedLoc = detectedAddress || userProfile?.lastLocation || userProfile?.address || ''
+    if (savedLoc) {
+      setCurrentAddress(savedLoc)
     }
-  }
+  }, [detectedAddress, userProfile?.lastLocation, userProfile?.address])
 
-  // Fetch live user GPS location & reverse geocode to address
-  const handleFetchLiveLocation = () => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      showToast('Geolocation is not supported by your browser', 'warning')
-      return
-    }
-
+  // Fetch live user GPS location & reverse geocode to address (100% matched with BookingPage)
+  const handleFetchLiveLocation = async () => {
     setIsLocating(true)
     showToast('Detecting your live location...', 'info', 2000)
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords
+    try {
+      const result = await getLiveGPSLocation()
+      setCurrentAddress(result.fullAddress)
+      showToast(`Location detected: ${result.fullAddress}`, 'success')
+      onUpdateLocation?.(result.fullAddress, result.city, result.postalCode, result.street)
+
+      if (auth.currentUser) {
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+          const userDocRef = doc(db, 'users', auth.currentUser.uid)
+          await setDoc(
+            userDocRef,
             {
-              headers: {
-                'Accept-Language': 'en',
-              },
-            }
+              lastLocation: result.fullAddress,
+              address: result.street,
+              city: result.city,
+              postalCode: result.postalCode,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
           )
-          if (res.ok) {
-            const data = await res.json()
-            const addr = data.address || {}
-            const street = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || ''
-            const city = addr.city || addr.town || addr.village || addr.county || ''
-            const state = addr.state || addr.country || ''
-            const formatted = [street, city, state].filter(Boolean).join(', ')
-            let resolvedAddress = ''
-            if (formatted) {
-              resolvedAddress = formatted
-            } else if (data.display_name) {
-              resolvedAddress = data.display_name.split(',').slice(0, 3).join(', ')
-            } else {
-              resolvedAddress = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
-            }
-            await persistDetectedLocation(resolvedAddress)
-          } else {
-            const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
-            await persistDetectedLocation(fallback)
-          }
-        } catch {
-          const fallback = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`
-          await persistDetectedLocation(fallback)
-        } finally {
-          setIsLocating(false)
+        } catch (err) {
+          console.error('Failed to save location to Firestore in HomeTab:', err)
         }
-      },
-      (err) => {
-        setIsLocating(false)
-        let msg = 'Unable to fetch your location'
-        if (err.code === 1) {
-          msg = 'Location permission denied. Please allow GPS access.'
-        } else if (err.code === 2) {
-          msg = 'Location unavailable. Please check your GPS/network.'
-        } else if (err.code === 3) {
-          msg = 'Location request timed out. Please try again.'
-        }
-        showToast(msg, 'error')
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000,
       }
-    )
+    } catch (err: any) {
+      showToast(err?.message || 'Unable to fetch your location', 'error')
+    } finally {
+      setIsLocating(false)
+    }
   }
 
   const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0)
@@ -252,7 +200,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const deluxeItem = SERVICES_CATALOG.find((s) => s.id === 'deluxe-package') || SERVICES_CATALOG[0]
   const premiumItem = SERVICES_CATALOG.find((s) => s.id === 'premium-detail') || SERVICES_CATALOG[2]
 
-  const recommendedCards = [
+  const recommendedCards: {
+    id: string
+    title: string
+    category: string
+    price: string
+    image: string
+    badge: string
+    serviceItem: ServiceItem
+  }[] = [
     {
       id: supremeItem.id,
       title: supremeItem.title,
@@ -274,9 +230,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       badge: `${activeVehicleType} Rate`,
       serviceItem: {
         ...premiumItem,
+        selectedTier: (activeVehicleType === 'SUV'
+          ? 'suv'
+          : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
+            ? 'truck'
+            : 'car') as 'car' | 'suv' | 'truck',
         price: `$${premiumPriceNumeric}.00`,
         priceNumeric: premiumPriceNumeric,
-        vehicleModel: `${activeVehicleType} (${currentVehicle})`,
+        vehicleModel: `${activeVehicleType}${currentVehicle ? ` (${currentVehicle})` : ''}`,
       },
     },
     {
@@ -385,7 +346,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             onClick={onAddCar}
             variant="default"
             size="sm"
-            className="shrink-0 px-3.5 sm:px-4 rounded-sm bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold shadow-md hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="shrink-0 px-3.5 sm:px-4 bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold shadow-md hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
             <span>+</span>
             <span>Add Car</span>
@@ -640,7 +601,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => onSelectService(card.serviceItem)}
-                  className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-primary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
+                  className="flex-1 bg-surface-alt hover:bg-gray-200 text-primary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
                 >
                   View Detail &gt;
                 </Button>
@@ -651,7 +612,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   onClick={() =>
                     onBookNow ? onBookNow(card.serviceItem) : onSelectService(card.serviceItem)
                   }
-                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
+                  className="flex-1 bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
                 >
                   Book Now &gt;
                 </Button>
@@ -741,7 +702,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     e.stopPropagation()
                     setSelectedProduct(prod)
                   }}
-                  className="flex-1 rounded-sm bg-surface-alt hover:bg-gray-200 text-secondary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
+                  className="flex-1 bg-surface-alt hover:bg-gray-200 text-secondary border border-gray-200/80 text-[11px] font-semibold cursor-pointer"
                 >
                   Details &gt;
                 </Button>
@@ -753,7 +714,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     e.stopPropagation()
                     handleAddToCart(prod, 1)
                   }}
-                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
+                  className="flex-1 bg-primary hover:bg-primary-hover text-primary-foreground text-[11px] font-bold shadow-xs cursor-pointer"
                 >
                   Add to Cart
                 </Button>

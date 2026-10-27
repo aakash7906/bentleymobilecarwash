@@ -294,7 +294,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           variant="outline"
           size="sm"
           onClick={() => setShowLogoutModal(true)}
-          className="w-full sm:w-auto px-6 rounded-sm bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto px-6 bg-surface-alt hover:bg-gray-200 text-gray-700 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
           <span>Logout</span>
@@ -305,7 +305,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           variant="destructive"
           size="sm"
           onClick={() => setShowDeleteModal(true)}
-          className="w-full sm:w-auto px-5 rounded-sm border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full sm:w-auto px-5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span>Delete Account</span>
@@ -327,7 +327,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setShowLogoutModal(false)}
-            className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer"
+            className="w-full border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer"
           >
             Cancel
           </Button>
@@ -344,7 +344,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 showToast('Logged out successfully.', 'info')
               }
             }}
-            className="w-full rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Yes, Logout</span>
@@ -368,7 +368,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             size="sm"
             disabled={isDeleting}
             onClick={() => setShowDeleteModal(false)}
-            className="w-full rounded-sm border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            className="w-full border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
           >
             Cancel
           </Button>
@@ -393,7 +393,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 setShowDeleteModal(false)
               }
             }}
-            className="w-full rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+            className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
           >
             {isDeleting ? (
               <>

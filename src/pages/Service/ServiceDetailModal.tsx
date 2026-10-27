@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronLeft, Check, ArrowRight } from 'lucide-react'
 import { ServiceItem } from '@/types'
 
@@ -8,6 +8,20 @@ interface ServiceDetailModalProps {
   onBookNow: (service: ServiceItem) => void
 }
 
+const resolveInitialTier = (srv: ServiceItem | null): 'car' | 'suv' | 'truck' => {
+  if (!srv) return 'car'
+  if (srv.selectedTier) return srv.selectedTier
+  if (srv.tieredPricing && srv.priceNumeric) {
+    if (srv.priceNumeric === srv.tieredPricing.suv) return 'suv'
+    if (srv.priceNumeric === srv.tieredPricing.truck) return 'truck'
+    if (srv.priceNumeric === srv.tieredPricing.car) return 'car'
+  }
+  const vm = (srv.vehicleModel || '').toLowerCase()
+  if (vm.startsWith('suv') || vm.includes('suv')) return 'suv'
+  if (vm.startsWith('truck') || vm.includes('truck') || vm.includes('van')) return 'truck'
+  return 'car'
+}
+
 export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
   service,
   onClose,
@@ -15,15 +29,17 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 }) => {
   const [isOrderSummary, setIsOrderSummary] = useState(false)
   const [booked, setBooked] = useState(false)
-  const [selectedTier, setSelectedTier] = useState<'car' | 'suv' | 'truck'>(() => {
-    if (service?.vehicleModel?.toLowerCase().includes('suv')) return 'suv'
-    if (
-      service?.vehicleModel?.toLowerCase().includes('truck') ||
-      service?.vehicleModel?.toLowerCase().includes('van')
-    )
-      return 'truck'
-    return 'car'
-  })
+  const [selectedTier, setSelectedTier] = useState<'car' | 'suv' | 'truck'>(() =>
+    resolveInitialTier(service)
+  )
+
+  useEffect(() => {
+    if (service) {
+      setSelectedTier(resolveInitialTier(service))
+      setIsOrderSummary(false)
+      setBooked(false)
+    }
+  }, [service?.id, service?.selectedTier, service?.priceNumeric, service?.vehicleModel])
 
   if (!service) return null
 
@@ -43,6 +59,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
   const handleAction = () => {
     const preparedService: ServiceItem = {
       ...service,
+      selectedTier,
       price: isPackage ? activePrice : 'Included in Packages',
       priceNumeric: isPackage ? activeNumeric : 0,
       vehicleModel: service.tieredPricing

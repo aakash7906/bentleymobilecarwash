@@ -290,7 +290,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => handleTrackOrder(booking)}
-                    className="w-full rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center flex items-center justify-center gap-1.5"
+                    className="w-full bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center flex items-center justify-center gap-1.5"
                   >
                     <span>
                       {getDynamicDriverName(booking)
@@ -316,7 +316,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                       setNewSelectedDate(RESCHEDULE_DATES[0])
                       setNewSelectedTime(booking.time || RESCHEDULE_TIME_SLOTS[1])
                     }}
-                    className="flex-1 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    className="flex-1 h-8 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3 text-neutral-500" />
                     <span>Reschedule</span>
@@ -327,7 +327,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => setCancelTarget(booking)}
-                    className="group flex-1 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 shadow-none font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    className="group flex-1 h-8 border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 shadow-none font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Ban className="w-3 h-3 text-neutral-400 group-hover:text-red-500" />
                     <span>Cancel</span>
@@ -338,7 +338,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     variant="outline"
                     size="icon-sm"
                     onClick={() => setSelectedInvoiceBooking(booking)}
-                    className="h-8 w-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0"
+                    className="h-8 w-8 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0"
                     title="View Receipt"
                     aria-label="View Receipt"
                   >
@@ -444,7 +444,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                       SERVICES_CATALOG[0]
                     onViewServiceDetail(s)
                   }}
-                  className="flex-1 rounded-sm bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center"
+                  className="flex-1 bg-surface-alt hover:bg-[#e5e7eb] text-primary text-xs font-semibold cursor-pointer text-center"
                 >
                   View Detail &gt;
                 </Button>
@@ -460,7 +460,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                       SERVICES_CATALOG[0]
                     onBookAgain(s)
                   }}
-                  className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-xs cursor-pointer text-center"
+                  className="flex-1 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold shadow-xs cursor-pointer text-center"
                 >
                   Book Again &gt;
                 </Button>
@@ -470,7 +470,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                   variant="outline"
                   size="icon-sm"
                   onClick={() => setSelectedInvoiceBooking(booking)}
-                  className="h-8 w-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0 shadow-xs"
+                  className="h-8 w-8 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center cursor-pointer shrink-0 shadow-xs"
                   title="View Invoice"
                   aria-label="View Invoice"
                 >
@@ -577,7 +577,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setRescheduleTarget(null)}
-            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+            className="flex-1 border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
           >
             Nevermind
           </Button>
@@ -586,7 +586,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="default"
             size="sm"
             onClick={handleConfirmReschedule}
-            className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
+            className="flex-1 bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
           >
             Confirm New Slot
           </Button>
@@ -618,7 +618,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setCancelTarget(null)}
-            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+            className="flex-1 border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
           >
             Keep Booking
           </Button>
@@ -627,7 +627,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="destructive"
             size="sm"
             onClick={handleConfirmCancel}
-            className="flex-1 rounded-sm bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs"
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs"
           >
             Yes, Cancel
           </Button>
@@ -696,7 +696,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setRatingTarget(null)}
-            className="flex-1 rounded-sm border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
+            className="flex-1 border border-neutral-200 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
           >
             Skip
           </Button>
@@ -705,7 +705,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
             variant="default"
             size="sm"
             onClick={handleConfirmRating}
-            className="flex-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
+            className="flex-1 bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs"
           >
             Submit Review
           </Button>

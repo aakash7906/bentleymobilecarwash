@@ -203,7 +203,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => setActiveCategory(cat.id)}
-              className={`px-4 rounded-sm text-xs font-semibold whitespace-nowrap cursor-pointer ${isActive
+              className={`px-4 text-xs font-semibold whitespace-nowrap cursor-pointer ${isActive
                 ? 'bg-primary text-primary-foreground shadow-xs'
                 : 'bg-white border-primary text-primary hover:bg-primary-light'
                 }`}
@@ -261,10 +261,11 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                   const handleCardClick = () => {
                     const preparedService: ServiceItem = {
                       ...service,
+                      selectedTier: (activeTier as 'car' | 'suv' | 'truck') || undefined,
                       price: displayedPrice,
                       priceNumeric: displayedNumeric,
                       vehicleModel: activeTier
-                        ? `${activeTier === 'car' ? 'Car (Sedan/Coupe)' : activeTier === 'suv' ? 'SUV' : 'Truck'} (${currentVehicle})`
+                        ? `${activeTier === 'car' ? 'Car (Sedan/Coupe)' : activeTier === 'suv' ? 'SUV' : 'Truck / Van'}${currentVehicle ? ` (${currentVehicle})` : ''}`
                         : service.vehicleModel,
                     }
                     onSelectService(preparedService)
@@ -377,7 +378,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                             e.stopPropagation()
                             handleCardClick()
                           }}
-                          className="w-full mt-1 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold cursor-pointer text-center shadow-xs"
+                          className="w-full mt-1 bg-primary hover:bg-primary-hover text-white text-xs font-bold cursor-pointer text-center shadow-xs"
                         >
                           Book Package &gt;
                         </Button>
@@ -456,7 +457,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                             e.stopPropagation()
                             handleSelectIndividual()
                           }}
-                          className="w-full mt-1 rounded-sm bg-surface-alt hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold cursor-pointer text-center"
+                          className="w-full mt-1 bg-surface-alt hover:bg-[#e4e7eb] text-gray-700 text-xs font-semibold cursor-pointer text-center"
                         >
                           View detail &gt;
                         </Button>
