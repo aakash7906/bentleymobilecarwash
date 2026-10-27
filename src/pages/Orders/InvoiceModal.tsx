@@ -330,7 +330,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                   {isPaid ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 bg-emerald-50 text-emerald-800 rounded-full font-bold text-[11px] sm:text-xs border border-emerald-200">
                       <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Paid &amp; Confirmed</span>
+                      <span>{booking.paymentCollectedMethod ? `Paid (${booking.paymentCollectedMethod})` : 'Paid & Confirmed'}</span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 bg-amber-50 text-amber-800 rounded-full font-bold text-[11px] sm:text-xs border border-amber-200">

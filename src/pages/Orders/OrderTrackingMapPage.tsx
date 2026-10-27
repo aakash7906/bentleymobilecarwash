@@ -255,8 +255,8 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   })
 
   const [liveEstimatedMins, setLiveEstimatedMins] = useState<number>(() => {
-    if (booking?.estimatedMins) return booking.estimatedMins
-    return Math.max(3, Math.round(liveDistanceKm * 2.8)) || 8
+    if (booking?.estimatedMins && booking.estimatedMins > 0 && booking.estimatedMins <= 45) return booking.estimatedMins
+    return Math.min(30, Math.max(3, Math.round(liveDistanceKm * 2.8))) || 8
   })
 
   // Fetch real-world turn-by-turn road route from OSRM
@@ -277,15 +277,16 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             setRouteCoordinates(route.geometry.coordinates)
           }
           const km = parseFloat((route.distance / 1000).toFixed(1))
-          const mins = Math.max(1, Math.round(route.duration / 60))
+          const mins = Math.min(30, Math.max(1, Math.round(route.duration / 60)))
           setLiveDistanceKm(km)
           setLiveEstimatedMins(mins)
         } else if (isSubscribed) {
           // Smooth curved fallback
           setRouteCoordinates(generateCurvedRoute(technicianCoordsState, customerCoordsState))
           const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
-          setLiveDistanceKm(dist)
-          setLiveEstimatedMins(Math.max(2, Math.round(dist * 2.5)))
+          const realisticDist = dist > 35 ? 3.2 : dist
+          setLiveDistanceKm(parseFloat(realisticDist.toFixed(1)))
+          setLiveEstimatedMins(Math.min(30, Math.max(2, Math.round(realisticDist * 2.5))))
         }
       } catch {
         if (isSubscribed) {

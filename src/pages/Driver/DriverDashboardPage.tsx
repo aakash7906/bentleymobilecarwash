@@ -14,16 +14,22 @@ import {
   Radio,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
-import { BookingRecord, BookingStatus, DriverProfile } from '@/types'
+import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
+import { CodPaymentModal } from '@/components/CodPaymentModal'
 
 interface DriverDashboardProps {
   bookings: BookingRecord[]
   onAcceptOrder: (bookingId: string) => void
-  onUpdateStatus: (bookingId: string, newStatus: BookingStatus, coords?: [number, number]) => void
+  onUpdateStatus: (
+    bookingId: string,
+    newStatus: BookingStatus,
+    coords?: [number, number],
+    paymentData?: PaymentCollectionData
+  ) => void
   onLogout: () => void
   driverName?: string
   driverEmail?: string
@@ -59,10 +65,85 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   onDeleteAccount,
 }) => {
   const { showToast } = useToast()
-  const [activeTab, setActiveTab] = useState<'available' | 'active' | 'completed'>('available')
-  const [selectedBookingForMap, setSelectedBookingForMap] = useState<BookingRecord | null>(null)
+  const [activeTab, setActiveTab] = useState<'available' | 'active' | 'completed'>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_driver_tab')
+      if (stored === 'available' || stored === 'active' || stored === 'completed') {
+        return stored
+      }
+    } catch {}
+    return 'available'
+  })
+
+  const [selectedBookingForMap, setSelectedBookingForMap] = useState<BookingRecord | null>(() => {
+    try {
+      const savedId = localStorage.getItem('bentley_driver_map_booking_id')
+      if (savedId && Array.isArray(bookings)) {
+        const found = bookings.find((b) => b.id === savedId)
+        if (found && found.status !== 'completed' && found.status !== 'cancelled') {
+          return found
+        }
+      }
+    } catch {}
+    return null
+  })
+
   const [selectedDetailBooking, setSelectedDetailBooking] = useState<BookingRecord | null>(null)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
+
+  const [isProfileOpen, setIsProfileOpen] = useState(() => {
+    try {
+      return localStorage.getItem('bentley_driver_profile_open') === 'true'
+    } catch {}
+    return false
+  })
+
+  const [codPaymentBooking, setCodPaymentBooking] = useState<BookingRecord | null>(null)
+
+  // Persist driver activeTab
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('bentley_driver_tab', activeTab)
+    } catch {}
+  }, [activeTab])
+
+  // Persist driver map view state
+  React.useEffect(() => {
+    try {
+      if (selectedBookingForMap) {
+        localStorage.setItem('bentley_driver_map_booking_id', selectedBookingForMap.id)
+      } else {
+        localStorage.removeItem('bentley_driver_map_booking_id')
+      }
+    } catch {}
+  }, [selectedBookingForMap])
+
+  // Restore driver map view if bookings load asynchronously after reload
+  React.useEffect(() => {
+    if (!selectedBookingForMap && bookings.length > 0) {
+      try {
+        const savedId = localStorage.getItem('bentley_driver_map_booking_id')
+        if (savedId) {
+          const found = bookings.find((b) => b.id === savedId)
+          if (found && found.status !== 'completed' && found.status !== 'cancelled') {
+            setSelectedBookingForMap(found)
+          } else if (found && (found.status === 'completed' || found.status === 'cancelled')) {
+            localStorage.removeItem('bentley_driver_map_booking_id')
+          }
+        }
+      } catch {}
+    }
+  }, [bookings, selectedBookingForMap])
+
+  // Persist driver profile modal state
+  React.useEffect(() => {
+    try {
+      if (isProfileOpen) {
+        localStorage.setItem('bentley_driver_profile_open', 'true')
+      } else {
+        localStorage.removeItem('bentley_driver_profile_open')
+      }
+    } catch {}
+  }, [isProfileOpen])
 
   const sanitizeAvatar = (url?: string) => {
     if (!url) return ''
@@ -197,8 +278,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
           }
           onBack={() => setSelectedBookingForMap(null)}
-          onUpdateStatus={(id, status, coords) => {
-            onUpdateStatus(id, status, coords)
+          onUpdateStatus={(id, status, coords, paymentData) => {
+            onUpdateStatus(id, status, coords, paymentData)
             if (status === 'completed') {
               setSelectedBookingForMap(null)
               showToast('Wash completed! Order recorded in history.', 'success')
@@ -579,8 +660,15 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              onUpdateStatus(booking.id, 'completed')
-                              showToast('Service marked as Completed!', 'success')
+                              const isCodPending =
+                                booking.paymentStatus !== 'paid' ||
+                                Boolean(booking.paymentMethod?.toLowerCase().includes('completion'))
+                              if (isCodPending) {
+                                setCodPaymentBooking(booking)
+                              } else {
+                                onUpdateStatus(booking.id, 'completed')
+                                showToast('Service marked as Completed!', 'success')
+                              }
                             }}
                             className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold active:scale-98 transition-all cursor-pointer"
                             title="Complete Wash Job"
@@ -637,7 +725,18 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
                         <span className="text-gray-400">Completed: {booking.date}</span>
-                        <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
+                        <div className="flex items-center gap-1.5">
+                          {booking.paymentStatus === 'paid' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Paid ({booking.paymentCollectedMethod || 'Confirmed'}) ✓
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              Payment Pending
+                            </span>
+                          )}
+                          <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -741,6 +840,26 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       </main>
 
       {/* Bottom spacer */}
+
+      {/* COD Payment Confirmation Modal */}
+      {codPaymentBooking && (
+        <CodPaymentModal
+          isOpen={!!codPaymentBooking}
+          onClose={() => setCodPaymentBooking(null)}
+          booking={codPaymentBooking}
+          driverName={profile.name}
+          onConfirmPayment={(paymentData) => {
+            onUpdateStatus(codPaymentBooking.id, 'completed', undefined, paymentData)
+            setCodPaymentBooking(null)
+            showToast(
+              paymentData.paymentStatus === 'paid'
+                ? `Payment recorded via ${paymentData.paymentCollectedMethod || 'Cash'} & order completed!`
+                : 'Order marked as completed (Payment Pending).',
+              'success'
+            )
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -19,6 +19,9 @@ import {
 } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { Select } from '@/components/ui/select'
+import { Dialog } from '@/components/ui/dialog'
+import { useToast } from '@/context/ToastContext'
+import { getLiveGPSLocation } from '@/services/locationService'
 
 interface EditProfilePageProps {
   isOpen: boolean
@@ -49,9 +52,29 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
   )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const { showToast } = useToast()
+  const [isLocating, setIsLocating] = useState(false)
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+
+  const handleDetectLocation = async () => {
+    setIsLocating(true)
+    showToast('Detecting your live location...', 'info', 2000)
+    try {
+      const result = await getLiveGPSLocation()
+      setAddress(result.street || result.fullAddress)
+      if (result.city) setCity(result.city)
+      if (result.postalCode) setPostalCode(result.postalCode)
+      showToast('Address detected successfully!', 'success')
+    } catch (err: any) {
+      showToast(err?.message || 'Unable to detect your location', 'error')
+    } finally {
+      setIsLocating(false)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -88,6 +111,9 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
     setUploadError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
     }
   }
 
@@ -163,6 +189,7 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
         <form onSubmit={handleSave} className="p-4 sm:p-5 flex flex-col gap-5">
           {/* Avatar Section */}
           <div className="flex flex-col items-center gap-3 py-2">
+            {/* Gallery input (Device library / file picker) */}
             <input
               ref={fileInputRef}
               type="file"
@@ -171,11 +198,27 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
               onChange={handleImageFileChange}
             />
 
+            {/* Camera input (Live device camera capture) */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleImageFileChange}
+            />
+
             <div className="relative group">
               <div
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (avatar) {
+                    setShowPhotoOptions(true)
+                  } else {
+                    fileInputRef.current?.click()
+                  }
+                }}
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100 ring-2 ring-primary/20 flex items-center justify-center cursor-pointer group hover:ring-primary transition-all"
-                title="Click to upload profile photo"
+                title={avatar ? 'Click to change or delete photo' : 'Click to select photo from gallery'}
               >
                 {avatar ? (
                   <img
@@ -186,46 +229,24 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
                 ) : (
                   <User className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400 group-hover:text-primary transition-colors" />
                 )}
+                
               </div>
 
-              {/* Edit / Camera Icon Overlay */}
+              {/* Edit / Camera Icon Button: Directly opens Camera to take photo */}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground border-2 border-white flex items-center justify-center shadow-md hover:bg-primary-hover active:scale-95 transition-all cursor-pointer"
-                title="Upload Photo"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  cameraInputRef.current?.click()
+                }}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground border-2 border-white flex items-center justify-center shadow-md hover:bg-primary-hover active:scale-95 transition-all cursor-pointer ring-2 ring-white"
+                title="Take Photo with Camera"
               >
                 <Camera className="w-4 h-4 text-primary-foreground" />
               </button>
             </div>
 
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{avatar ? 'Change Photo' : 'Upload Photo'}</span>
-                </button>
-                {avatar && (
-                  <>
-                    <span className="text-gray-300">•</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveAvatar}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Remove</span>
-                    </button>
-                  </>
-                )}
-              </div>
-              <span className="text-[11px] text-gray-400 font-normal">
-                Supports JPG, PNG or WEBP (Max 5MB)
-              </span>
+            <div className="flex flex-col items-center gap-1.5 text-center">         
               {uploadError && (
                 <span className="text-xs text-rose-500 font-medium mt-0.5">
                   {uploadError}
@@ -336,9 +357,21 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
 
           {/* Location & Address Card */}
           <div className="bg-white rounded-3xl border border-gray-200 p-4 sm:p-5 shadow-xs flex flex-col gap-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Service Delivery Address
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Service Delivery Address
+              </h2>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={isLocating}
+                className="text-[11px] font-bold text-primary hover:text-primary-hover flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full transition-all cursor-pointer disabled:opacity-50"
+                title="Detect my current location"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>{isLocating ? 'Detecting...' : 'Detect Location'}</span>
+              </button>
+            </div>
 
             {/* Street Address */}
             <div>
@@ -428,6 +461,63 @@ export const EditProfilePage: React.FC<EditProfilePageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* PHOTO OPTIONS MODAL (Update from Gallery or Delete Photo) */}
+      <Dialog
+        isOpen={showPhotoOptions}
+        onClose={() => setShowPhotoOptions(false)}
+        maxWidth="xs"
+        title="Profile Photo"
+        zIndex="z-60"
+      >
+        <div className="flex flex-col gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setShowPhotoOptions(false)
+              fileInputRef.current?.click()
+            }}
+            className="w-full py-3 px-4 rounded-2xl border border-gray-200 hover:bg-gray-50 flex items-center gap-3 text-xs sm:text-sm font-bold text-gray-800 transition-all cursor-pointer text-left active:scale-98"
+          >
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Upload className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="block font-bold">Choose from Gallery</span>
+              <span className="text-[10px] text-gray-400 font-normal">Select an image from device library</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowPhotoOptions(false)
+              handleRemoveAvatar()
+            }}
+            className="w-full py-3 px-4 rounded-2xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/60 flex items-center gap-3 text-xs sm:text-sm font-bold text-rose-600 transition-all cursor-pointer text-left active:scale-98"
+          >
+            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="block font-bold">Remove Photo</span>
+              <span className="text-[10px] text-rose-400 font-normal">Delete photo and revert to default</span>
+            </div>
+            
+          </button>
+
+ <span className="text-[11px] text-gray-400 font-normal">
+                Supports JPG, PNG or WEBP (Max 5MB)
+              </span>
+          <button
+            type="button"
+            onClick={() => setShowPhotoOptions(false)}
+            className="w-full py-2.5 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors cursor-pointer text-center"
+          >
+            Cancel
+          </button>
+        </div>
+      </Dialog>
     </div>
   )
 }

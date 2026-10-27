@@ -65,9 +65,51 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
   onRescheduleBooking,
   onRateBooking,
 }) => {
-  const [trackingModalOpen, setTrackingModalOpen] = useState(false)
-  const [activeTrackingBooking, setActiveTrackingBooking] = useState<BookingRecord | null>(null)
+  const [trackingModalOpen, setTrackingModalOpen] = useState(() => {
+    try {
+      return localStorage.getItem('bentley_customer_tracking_open') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [activeTrackingBooking, setActiveTrackingBooking] = useState<BookingRecord | null>(() => {
+    try {
+      const savedId = localStorage.getItem('bentley_customer_tracking_id')
+      if (savedId && Array.isArray(bookings)) {
+        return bookings.find((b) => b.id === savedId) || null
+      }
+    } catch { }
+    return null
+  })
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<BookingRecord | null>(null)
+
+  // Persist tracking modal state across refreshes
+  React.useEffect(() => {
+    try {
+      if (trackingModalOpen && activeTrackingBooking) {
+        localStorage.setItem('bentley_customer_tracking_open', 'true')
+        localStorage.setItem('bentley_customer_tracking_id', activeTrackingBooking.id)
+      } else {
+        localStorage.removeItem('bentley_customer_tracking_open')
+        localStorage.removeItem('bentley_customer_tracking_id')
+      }
+    } catch { }
+  }, [trackingModalOpen, activeTrackingBooking])
+
+  // Restore active tracking booking if bookings array is loaded asynchronously
+  React.useEffect(() => {
+    if (!activeTrackingBooking && trackingModalOpen && bookings.length > 0) {
+      try {
+        const savedId = localStorage.getItem('bentley_customer_tracking_id')
+        if (savedId) {
+          const found = bookings.find((b) => b.id === savedId)
+          if (found) {
+            setActiveTrackingBooking(found)
+          }
+        }
+      } catch { }
+    }
+  }, [bookings, trackingModalOpen, activeTrackingBooking])
 
   // Reschedule Modal State
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingRecord | null>(null)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile, CartItem } from '@/types'
+import { TabType, ServiceItem, SavedVehicle, BookingRecord, BookingStatus, UserProfile, DriverProfile, CartItem, PaymentCollectionData } from '@/types'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
 // Direct Page Imports
@@ -44,7 +44,15 @@ export const App: React.FC = () => {
   // Global Toast Hook for cross-application user notifications
   const { showToast } = useToast()
 
-  const [currentTab, setCurrentTab] = useState<TabType>('home')
+  const [currentTab, setCurrentTab] = useState<TabType>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_current_tab')
+      if (stored && ['home', 'services', 'notifications', 'bookings', 'profile'].includes(stored)) {
+        return stored as TabType
+      }
+    } catch { }
+    return 'home'
+  })
   const [previousTab, setPreviousTab] = useState<TabType>('home')
   const [showSplash, setShowSplash] = useState(() => {
     try {
@@ -232,8 +240,21 @@ export const App: React.FC = () => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
   const [isAddCarOpen, setIsAddCarOpen] = useState(false)
   const [isSavedVehiclesOpen, setIsSavedVehiclesOpen] = useState(false)
-  const [isBookingOpen, setIsBookingOpen] = useState(false)
-  const [bookingService, setBookingService] = useState<ServiceItem | null>(null)
+  const [isBookingOpen, setIsBookingOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('bentley_booking_open') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [bookingService, setBookingService] = useState<ServiceItem | null>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_booking_service')
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
+  })
   const [_isMembershipOpen, setIsMembershipOpen] = useState(false)
   const [isContactUsOpen, setIsContactUsOpen] = useState(false)
   const [isAboutUsOpen, setIsAboutUsOpen] = useState(false)
@@ -286,12 +307,41 @@ export const App: React.FC = () => {
     } catch { }
   }, [currentRole])
 
+  // Sync currentTab with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('bentley_current_tab', currentTab)
+    } catch { }
+  }, [currentTab])
+
+  // Sync isBookingOpen with localStorage
+  useEffect(() => {
+    try {
+      if (isBookingOpen) {
+        localStorage.setItem('bentley_booking_open', 'true')
+      } else {
+        localStorage.removeItem('bentley_booking_open')
+      }
+    } catch { }
+  }, [isBookingOpen])
+
+  // Sync bookingService with localStorage
+  useEffect(() => {
+    try {
+      if (bookingService) {
+        localStorage.setItem('bentley_booking_service', JSON.stringify(bookingService))
+      } else {
+        localStorage.removeItem('bentley_booking_service')
+      }
+    } catch { }
+  }, [bookingService])
+
   // STEP 1 INTEGRATION: Persistent Firebase Auth session listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user)
-        setCurrentTab('home')
+        // Keep active tab on refresh; do not forcefully reset to 'home'
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
@@ -303,6 +353,16 @@ export const App: React.FC = () => {
           localStorage.removeItem('bentley_detected_address')
           localStorage.removeItem('bentley_saved_vehicles')
           localStorage.removeItem('bentley_active_vehicle')
+          localStorage.removeItem('bentley_current_tab')
+          localStorage.removeItem('bentley_booking_open')
+          localStorage.removeItem('bentley_booking_service')
+          localStorage.removeItem('bentley_driver_tab')
+          localStorage.removeItem('bentley_driver_map_booking_id')
+          localStorage.removeItem('bentley_driver_profile_open')
+          localStorage.removeItem('bentley_edit_profile_open')
+          localStorage.removeItem('bentley_home_cart_open')
+          localStorage.removeItem('bentley_customer_tracking_open')
+          localStorage.removeItem('bentley_customer_tracking_id')
         } catch { }
         syncedUserCartRef.current = null
       }
@@ -953,11 +1013,12 @@ export const App: React.FC = () => {
     }
   }
 
-  // Driver update booking status (en_route, in_progress, completed) and live GPS coordinates
+  // Driver update booking status (en_route, in_progress, completed), live GPS coordinates & COD payment collection
   const handleUpdateBookingStatus = async (
     bookingId: string,
     newStatus: BookingStatus,
-    coords?: [number, number]
+    coords?: [number, number],
+    paymentData?: PaymentCollectionData
   ) => {
     setBookings((prev) =>
       prev.map((b) =>
@@ -966,6 +1027,20 @@ export const App: React.FC = () => {
             ...b,
             status: newStatus,
             ...(coords ? { driverCoords: coords } : {}),
+            ...(paymentData
+              ? {
+                paymentStatus: paymentData.paymentStatus || b.paymentStatus,
+                paymentCollectedBy: paymentData.paymentCollectedBy,
+                paymentCollectedAt: paymentData.paymentCollectedAt,
+                paymentCollectedMethod: paymentData.paymentCollectedMethod,
+                paymentNotes: paymentData.paymentNotes,
+                paymentMethod:
+                  paymentData.paymentStatus === 'paid' &&
+                  (!b.paymentMethod || b.paymentMethod.toLowerCase().includes('completion'))
+                    ? `Pay on Completion (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
+                    : b.paymentMethod,
+              }
+              : {}),
           }
           : b
       )
@@ -983,6 +1058,20 @@ export const App: React.FC = () => {
         }
         if (newStatus === 'completed') {
           updatePayload.completedAt = serverTimestamp()
+        }
+        if (paymentData) {
+          if (paymentData.paymentStatus) updatePayload.paymentStatus = paymentData.paymentStatus
+          if (paymentData.paymentCollectedBy) updatePayload.paymentCollectedBy = paymentData.paymentCollectedBy
+          if (paymentData.paymentCollectedAt) updatePayload.paymentCollectedAt = paymentData.paymentCollectedAt
+          if (paymentData.paymentCollectedMethod) updatePayload.paymentCollectedMethod = paymentData.paymentCollectedMethod
+          if (paymentData.paymentNotes) updatePayload.paymentNotes = paymentData.paymentNotes
+          const existing = bookings.find((b) => b.id === bookingId)
+          if (
+            paymentData.paymentStatus === 'paid' &&
+            (!existing?.paymentMethod || existing.paymentMethod.toLowerCase().includes('completion'))
+          ) {
+            updatePayload.paymentMethod = `Pay on Completion (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
+          }
         }
         await updateDoc(bookingDocRef, updatePayload)
       } catch (err) {
@@ -1008,6 +1097,16 @@ export const App: React.FC = () => {
       localStorage.removeItem('bentley_detected_address')
       localStorage.removeItem('bentley_saved_vehicles')
       localStorage.removeItem('bentley_active_vehicle')
+      localStorage.removeItem('bentley_current_tab')
+      localStorage.removeItem('bentley_booking_open')
+      localStorage.removeItem('bentley_booking_service')
+      localStorage.removeItem('bentley_driver_tab')
+      localStorage.removeItem('bentley_driver_map_booking_id')
+      localStorage.removeItem('bentley_driver_profile_open')
+      localStorage.removeItem('bentley_edit_profile_open')
+      localStorage.removeItem('bentley_home_cart_open')
+      localStorage.removeItem('bentley_customer_tracking_open')
+      localStorage.removeItem('bentley_customer_tracking_id')
     } catch { }
     setCurrentRole('customer')
     setCurrentTab('home')

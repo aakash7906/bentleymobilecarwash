@@ -20,6 +20,7 @@ import {
 import { DriverProfile } from '@/types'
 import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
+import { getLiveGPSLocation } from '@/services/locationService'
 
 interface DriverProfilePageProps {
   isOpen: boolean
@@ -96,9 +97,32 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [isLocating, setIsLocating] = useState(false)
+
+  const handleDetectServiceArea = async () => {
+    setIsLocating(true)
+    showToast('Detecting your operating city/area...', 'info', 2000)
+    try {
+      const result = await getLiveGPSLocation()
+      const area = [result.city, result.state].filter(Boolean).join(', ')
+      if (area) {
+        setServiceArea(area)
+        showToast(`Coverage area updated to ${area}!`, 'success')
+      } else if (result.fullAddress) {
+        setServiceArea(result.fullAddress)
+        showToast('Location detected successfully!', 'success')
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Unable to detect your location', 'error')
+    } finally {
+      setIsLocating(false)
+    }
+  }
 
   // State for Logout confirmation modal
   const [showLogoutModal, setShowLogoutModal] = useState(false)
@@ -127,6 +151,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       setEmergencyError(null)
       setAvatar(profile.avatar && !profile.avatar.includes('unsplash.com') ? profile.avatar : '')
       setUploadError(null)
+      setShowPhotoOptions(false)
       setShowDeleteModal(false)
     }
   }, [isOpen, profile])
@@ -195,6 +220,9 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
     setUploadError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
     }
     showToast('Photo removed', 'info')
   }
@@ -297,6 +325,7 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
             <div className="w-full bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-200/80 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-72 h-72 bg-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
 
+              {/* Gallery Input (Device library / file picker) */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -305,13 +334,29 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                 onChange={handleImageFileChange}
               />
 
+              {/* Camera Input (Live camera capture) */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                className="hidden"
+                onChange={handleImageFileChange}
+              />
+
               {/* Avatar + Change Photo */}
               <div className="flex flex-col items-center gap-2 shrink-0">
                 <div className="relative group">
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (avatar) {
+                        setShowPhotoOptions(true)
+                      } else {
+                        fileInputRef.current?.click()
+                      }
+                    }}
                     className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100 ring-4 ring-primary/20 flex items-center justify-center cursor-pointer group hover:ring-primary transition-all"
-                    title="Click to upload profile photo"
+                    title={avatar ? 'Click to change or delete photo' : 'Click to select photo from gallery'}
                   >
                     {avatar ? (
                       <img
@@ -324,45 +369,19 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
                     )}
                   </div>
 
+                  {/* Camera Icon Button: Directly opens Camera to take photo */}
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      cameraInputRef.current?.click()
+                    }}
                     className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary hover:bg-neutral-900 text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer ring-2 ring-white"
-                    title="Upload / Change Photo"
+                    title="Take Photo with Camera"
                   >
                     <Camera className="w-4 h-4" />
                   </button>
                 </div>
-
-                {/* Photo Actions: Upload & Remove */}
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3" />
-                    <span>{avatar ? 'Change' : 'Upload'}</span>
-                  </button>
-                  {avatar && (
-                    <>
-                      <span className="text-gray-300">•</span>
-                      <button
-                        type="button"
-                        onClick={handleRemoveAvatar}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Remove</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-                {uploadError && (
-                  <span className="text-[10px] text-rose-500 font-medium">
-                    {uploadError}
-                  </span>
-                )}
               </div>
 
               {/* Dynamic Driver Details & Badges */}
@@ -584,9 +603,21 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
 
                 {/* Service Area / Territory */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">
-                    Operating City / Coverage Area
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700">
+                      Operating City / Coverage Area
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleDetectServiceArea}
+                      disabled={isLocating}
+                      className="text-[11px] font-bold text-primary hover:text-primary-hover flex items-center gap-1 bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition-all cursor-pointer disabled:opacity-50"
+                      title="Auto-detect operating city/territory"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      <span>{isLocating ? 'Detecting...' : 'Detect City'}</span>
+                    </button>
+                  </div>
                   <div className="relative">
                     <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -619,17 +650,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
               </div>
             </div>
 
-            {/* SECTION C: DANGER ZONE - DELETE DRIVER PROFILE (JUST LIKE USER PROFILE) */}
+            {/* SECTION C: DANGER ZONE - DELETE DRIVER PROFILE  */}
             <div className="bg-red-50/50 rounded-3xl p-5 sm:p-6 border border-red-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <Trash2 className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-red-900">Delete Driver Profile</h3>
-                </div>
-              </div>
-
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
@@ -642,13 +664,6 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
 
             {/* 3. ACTIONS FOOTER BAR */}
             <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-xs sm:text-sm font-bold text-gray-700 transition-all cursor-pointer text-center shadow-2xs"
-              >
-                Cancel & Close
-              </button>
 
               <button
                 type="submit"
@@ -677,15 +692,68 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
         </main>
       </div>
 
+      {/* PHOTO OPTIONS MODAL (Update from Gallery or Delete Photo) */}
+      <Dialog
+        isOpen={showPhotoOptions}
+        onClose={() => setShowPhotoOptions(false)}
+        maxWidth="xs"
+        title="Profile Photo"
+        zIndex="z-60"
+      >
+        <div className="flex flex-col gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setShowPhotoOptions(false)
+              fileInputRef.current?.click()
+            }}
+            className="w-full py-3 px-4 rounded-2xl border border-gray-200 hover:bg-gray-50 flex items-center gap-3 text-xs sm:text-sm font-bold text-gray-800 transition-all cursor-pointer text-left active:scale-98"
+          >
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Upload className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="block font-bold">Choose from Gallery</span>
+              <span className="text-[10px] text-gray-400 font-normal">Select an image from device library</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowPhotoOptions(false)
+              handleRemoveAvatar()
+            }}
+            className="w-full py-3 px-4 rounded-2xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/60 flex items-center gap-3 text-xs sm:text-sm font-bold text-rose-600 transition-all cursor-pointer text-left active:scale-98"
+          >
+            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="block font-bold">Remove Photo</span>
+              <span className="text-[10px] text-rose-400 font-normal">Delete photo and revert to default</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowPhotoOptions(false)}
+            className="w-full py-2.5 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors cursor-pointer text-center"
+          >
+            Cancel
+          </button>
+        </div>
+      </Dialog>
+
       {/* CONFIRMATION MODAL FOR DRIVER LOGOUT */}
       <Dialog
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
         zIndex="z-60"
-        icon={<LogOut className="w-6 h-6 stroke-[2.2]" />}
+        // icon={<LogOut className="w-6 h-6 stroke-[2.2]" />}
         iconVariant="primary"
-        title="Log Out of Driver Portal?"
-        description="Are you sure you want to log out? You will stop receiving job notifications and customer bookings until you sign back in."
+        title="Logout"
+        description="Are you sure you want to log out of your account?"
       >
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
           <button

@@ -97,9 +97,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   })
 
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(() => {
+    try {
+      return localStorage.getItem('bentley_edit_profile_open') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [isContactUsOpen, setIsContactUsOpen] = useState(false)
   const [isAboutUsOpen, setIsAboutUsOpen] = useState(false)
+
+  // Persist edit profile modal open state across refresh
+  useEffect(() => {
+    try {
+      if (isEditProfileOpen) {
+        localStorage.setItem('bentley_edit_profile_open', 'true')
+      } else {
+        localStorage.removeItem('bentley_edit_profile_open')
+      }
+    } catch { }
+  }, [isEditProfileOpen])
 
   useEffect(() => {
     // Preload membership images in background as soon as profile is open
@@ -236,9 +253,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               directions_car
             </span>
             <span
-              className={`font-semibold truncate max-w-[140px] ${
-                profile.preferredVehicle ? 'text-gray-900' : 'text-gray-400 font-normal'
-              }`}
+              className={`font-semibold truncate max-w-[140px] ${profile.preferredVehicle ? 'text-gray-900' : 'text-gray-400 font-normal'
+                }`}
             >
               {profile.preferredVehicle || 'Add your vehicle'}
             </span>
@@ -316,10 +332,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       <Dialog
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        icon={<LogOut className="w-6 h-6 stroke-[2.2]" />}
         iconVariant="primary"
-        title="Log Out?"
-        description="Are you sure you want to log out of your account? You will need to sign back in to view your bookings and garage."
+        title="Logout"
+        description="Are you sure you want to log out of your account?"
       >
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
           <Button

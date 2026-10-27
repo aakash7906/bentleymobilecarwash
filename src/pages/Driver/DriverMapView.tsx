@@ -16,9 +16,10 @@ import {
   Truck,
   Loader2,
 } from 'lucide-react'
-import { BookingRecord, BookingStatus, DriverProfile } from '@/types'
+import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { Dialog } from '@/components/ui/dialog'
+import { CodPaymentModal } from '@/components/CodPaymentModal'
 
 // Haversine formula to compute distance in km
 function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
@@ -56,7 +57,12 @@ function generateCurvedRoute(start: [number, number], end: [number, number]): [n
 export interface DriverMapViewProps {
   booking: BookingRecord
   onBack: () => void
-  onUpdateStatus: (bookingId: string, newStatus: BookingStatus, coords?: [number, number]) => void
+  onUpdateStatus: (
+    bookingId: string,
+    newStatus: BookingStatus,
+    coords?: [number, number],
+    paymentData?: PaymentCollectionData
+  ) => void
   driverProfile?: DriverProfile
 }
 
@@ -67,6 +73,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   driverProfile,
 }) => {
   const mapRef = useRef<MapRef>(null)
+  const [isCodModalOpen, setIsCodModalOpen] = useState(false)
 
   // 1. Dynamic Driver Details (No static fallback strings)
   const driverName =
@@ -306,7 +313,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             if (currentStatus === 'in_progress' || currentStatus === 'completed') {
               setEtaMins(0)
             } else {
-              const mins = Math.max(1, Math.round(route.duration / 60))
+              const mins = Math.min(30, Math.max(1, Math.round(route.duration / 60)))
               setEtaMins(mins)
             }
             return
@@ -319,11 +326,12 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
       // Dynamic Fallback
       if (isSubscribed) {
         const fallbackDist = calculateDistanceKm(driverPos, customerCoords)
-        setDistanceKm(fallbackDist)
+        const realisticDist = fallbackDist > 35 ? 3.2 : fallbackDist
+        setDistanceKm(parseFloat(realisticDist.toFixed(1)))
         setEtaMins(
           currentStatus === 'in_progress' || currentStatus === 'completed'
             ? 0
-            : Math.max(1, Math.round(fallbackDist * 2.2))
+            : Math.min(30, Math.max(2, Math.round(realisticDist * 2.2)))
         )
         setRouteWaypoints(generateCurvedRoute(driverPos, customerCoords))
       }
@@ -376,8 +384,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     return () => clearInterval(timer)
   }, [isSimulating, routeWaypoints, booking.id, onUpdateStatus, customerCoords, driverPos])
 
-  const handleStepStatus = (newStatus: BookingStatus) => {
-    onUpdateStatus(booking.id, newStatus, driverPos)
+  const handleStepStatus = (newStatus: BookingStatus, paymentData?: PaymentCollectionData) => {
+    onUpdateStatus(booking.id, newStatus, driverPos, paymentData)
   }
 
   // Manual GPS trigger
@@ -477,8 +485,15 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           <button
             type="button"
             onClick={() => {
-              handleStepStatus('completed')
-              onBack()
+              const isCodPending =
+                booking.paymentStatus !== 'paid' ||
+                Boolean(booking.paymentMethod?.toLowerCase().includes('completion'))
+              if (isCodPending) {
+                setIsCodModalOpen(true)
+              } else {
+                handleStepStatus('completed')
+                onBack()
+              }
             }}
             className="w-full py-3.5 px-4 rounded-2xl bg-secondary hover:bg-black active:scale-98 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -1058,9 +1073,17 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Payment:</span>
-                <span className="font-bold text-gray-900">
-                  {booking.paymentMethod || 'Pay on Completion'}{' '}
-                  {booking.paymentStatus ? `(${booking.paymentStatus.toUpperCase()})` : ''}
+                <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                  <span>{booking.paymentMethod || 'Pay on Completion'}</span>
+                  {booking.paymentStatus === 'paid' ? (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                      PAID
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800">
+                      PENDING
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -1166,6 +1189,18 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           ))}
         </div>
       </Dialog>
+
+      {/* COD Payment Confirmation Modal */}
+      <CodPaymentModal
+        isOpen={isCodModalOpen}
+        onClose={() => setIsCodModalOpen(false)}
+        booking={booking}
+        driverName={driverName}
+        onConfirmPayment={(paymentData) => {
+          handleStepStatus('completed', paymentData)
+          onBack()
+        }}
+      />
     </div>
   )
 }

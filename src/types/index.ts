@@ -169,6 +169,10 @@ export interface BookingRecord {
   paymentMethod?: string
   stripePaymentId?: string
   paymentStatus?: 'pending' | 'paid' | 'failed'
+  paymentCollectedBy?: string
+  paymentCollectedAt?: string
+  paymentCollectedMethod?: 'Cash' | 'Card POS' | 'E-Transfer' | string
+  paymentNotes?: string
   cardBrand?: string
   cardLast4?: string
   frequency?: 'one_time' | 'biweekly' | 'monthly'
@@ -178,5 +182,10 @@ export interface BookingRecord {
   review?: string
 }
 
-
-
+export interface PaymentCollectionData {
+  paymentStatus: 'paid' | 'pending'
+  paymentCollectedBy?: string
+  paymentCollectedAt?: string
+  paymentCollectedMethod?: 'Cash' | 'Card POS' | 'E-Transfer' | string
+  paymentNotes?: string
+}

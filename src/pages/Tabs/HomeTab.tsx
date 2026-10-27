@@ -87,13 +87,42 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const [isTrackingMapOpen, setIsTrackingMapOpen] = useState(false)
   const [selectedTrackingBooking, setSelectedTrackingBooking] = useState<BookingRecord | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
-  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isCartOpen, setIsCartOpen] = useState(() => {
+    try {
+      return localStorage.getItem('bentley_home_cart_open') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  // Persist cart open state across refreshes
+  React.useEffect(() => {
+    try {
+      if (isCartOpen) {
+        localStorage.setItem('bentley_home_cart_open', 'true')
+      } else {
+        localStorage.removeItem('bentley_home_cart_open')
+      }
+    } catch { }
+  }, [isCartOpen])
+
   const [currentAddress, setCurrentAddress] = useState(
     detectedAddress || userProfile?.lastLocation || userProfile?.address || ''
   )
   const [isLocating, setIsLocating] = useState(false)
-  // Dynamic driving ETA state for en_route booking
-  const [dynamicDrivingEtaMins, setDynamicDrivingEtaMins] = useState<number | null>(null)
+  // Dynamic driving ETA state for en_route booking (in minutes)
+  const [dynamicDrivingEtaMins, setDynamicDrivingEtaMins] = useState<number | null>(() => {
+    const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
+    if (
+      enRouteBooking &&
+      typeof enRouteBooking.estimatedMins === 'number' &&
+      enRouteBooking.estimatedMins > 0 &&
+      enRouteBooking.estimatedMins <= 45
+    ) {
+      return enRouteBooking.estimatedMins
+    }
+    return enRouteBooking ? 10 : null
+  })
 
   // Calculate live dynamic ETA when driver accepts and starts driving (en_route)
   React.useEffect(() => {
@@ -103,13 +132,25 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       return
     }
 
-    if (typeof enRouteBooking.estimatedMins === 'number' && enRouteBooking.estimatedMins > 0) {
+    if (
+      typeof enRouteBooking.estimatedMins === 'number' &&
+      enRouteBooking.estimatedMins > 0 &&
+      enRouteBooking.estimatedMins <= 45
+    ) {
       setDynamicDrivingEtaMins(enRouteBooking.estimatedMins)
       return
     }
 
-    const driverCoords = enRouteBooking.driverCoords || [-79.4035, 43.6635]
-    const customerCoords = enRouteBooking.customerCoords || [-79.3832, 43.6532]
+    // Resolve customer coordinates (defaulting to Kelowna service area if missing)
+    const customerCoords = enRouteBooking.customerCoords || [-119.496, 49.888]
+    let driverCoords = enRouteBooking.driverCoords || [customerCoords[0] - 0.015, customerCoords[1] + 0.012]
+
+    // If driver and customer are > 35km apart (e.g. cross-province coordinates or device location testing),
+    // anchor technician in the customer's locality (~2km away) so ETA is realistic and consistent
+    const rawDistanceKm = calculateDistanceKm(driverCoords, customerCoords)
+    if (rawDistanceKm > 35) {
+      driverCoords = [customerCoords[0] - 0.015, customerCoords[1] + 0.012]
+    }
 
     let isSubscribed = true
     const fetchLiveRouteEta = async () => {
@@ -118,14 +159,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         const res = await fetch(url)
         const data = await res.json()
         if (isSubscribed && data.code === 'Ok' && data.routes?.[0]?.duration) {
-          const mins = Math.max(1, Math.round(data.routes[0].duration / 60))
+          const rawMins = Math.round(data.routes[0].duration / 60)
+          // Ensure ETA in minutes is realistic (mobile dispatch is between 2 and 30 mins)
+          const mins = Math.min(30, Math.max(2, rawMins))
           setDynamicDrivingEtaMins(mins)
           return
         }
       } catch {}
       if (isSubscribed) {
         const distKm = calculateDistanceKm(driverCoords, customerCoords)
-        setDynamicDrivingEtaMins(Math.max(1, Math.round(distKm * 2.2)))
+        const calculatedMins = Math.min(30, Math.max(3, Math.round(distKm * 2.2)))
+        setDynamicDrivingEtaMins(calculatedMins)
       }
     }
 
@@ -566,16 +610,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 />
               </div>
 
-              {/* Indicator dots matching reference */}
-              <div className="flex items-center justify-center gap-1 mt-2.5">
-                <span className="w-3.5 h-1 bg-primary rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-              </div>
-
               {/* Category Pill & Starting at Price */}
-              <div className="mt-2 flex items-center justify-between gap-1">
+              <div className="mt-2.5 flex items-center justify-between gap-1">
                 <span className="px-2.5 py-0.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-bold tracking-wide shrink-0">
                   {card.category}
                 </span>
@@ -664,16 +700,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 )}
               </div>
 
-              {/* Indicator dots matching reference */}
-              <div className="flex items-center justify-center gap-1 mt-2.5">
-                <span className="w-3.5 h-1 bg-primary rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-              </div>
-
               {/* Category & Rating */}
-              <div className="mt-2 flex items-center justify-between">
+              <div className="mt-2.5 flex items-center justify-between">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
                   {prod.category}
                 </span>
@@ -753,11 +781,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           statusLabel = 'Awaiting Driver Acceptance'
         }
 
-        // Dynamic time (strictly when driver has accepted & started driving, no static numbers)
+        // Dynamic time strictly in minutes (only when driver has accepted & started driving, no spikes or 1/6949 fluctuation)
+        const rawMins =
+          typeof liveBooking.estimatedMins === 'number' &&
+          liveBooking.estimatedMins > 0 &&
+          liveBooking.estimatedMins <= 45
+            ? liveBooking.estimatedMins
+            : dynamicDrivingEtaMins
+
+        // Ensure time is always a consistent, realistic number of minutes (e.g. 8-15 mins, no 1 or 6949 spikes)
         const dynamicMins = isDriving
-          ? (typeof liveBooking.estimatedMins === 'number' && liveBooking.estimatedMins > 0
-              ? liveBooking.estimatedMins
-              : dynamicDrivingEtaMins) || 1
+          ? Math.min(30, Math.max(2, rawMins || 10))
           : null
 
         const statusBadgeText =
