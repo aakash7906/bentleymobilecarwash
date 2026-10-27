@@ -16,12 +16,14 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 export interface SignupProps {
   onSignupSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
   onSwitchToLogin?: (role?: 'customer' | 'driver') => void
+  onRoleChange?: (role: 'customer' | 'driver') => void
   initialRole?: 'customer' | 'driver'
 }
 
 export const Signup: React.FC<SignupProps> = ({
   onSignupSuccess,
   onSwitchToLogin,
+  onRoleChange,
   initialRole = 'customer',
 }) => {
   // Global Toast Hook
@@ -150,6 +152,7 @@ export const Signup: React.FC<SignupProps> = ({
 
 
     setLoading(true)
+    onRoleChange?.(selectedRole)
 
     try {
       // -------------------------------------------------------------
@@ -238,6 +241,7 @@ export const Signup: React.FC<SignupProps> = ({
   // STEP 1 INTEGRATION: Google Sign-in for Signup screen
   const _handleGoogleSignUp = async () => {
     setLoading(true)
+    onRoleChange?.(selectedRole)
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
@@ -676,7 +680,10 @@ export const Signup: React.FC<SignupProps> = ({
             {selectedRole === 'customer' ? (
               <button
                 type="button"
-                onClick={() => setSelectedRole('driver')}
+                onClick={() => {
+                  setSelectedRole('driver')
+                  onRoleChange?.('driver')
+                }}
                 className="mt-3.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
               >
                 <Truck className="w-3.5 h-3.5 text-[var(--primary)]" />
@@ -685,7 +692,10 @@ export const Signup: React.FC<SignupProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setSelectedRole('customer')}
+                onClick={() => {
+                  setSelectedRole('customer')
+                  onRoleChange?.('customer')
+                }}
                 className="mt-3.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
               >
                 ← Back to Customer Registration

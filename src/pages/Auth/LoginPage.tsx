@@ -15,12 +15,14 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 export interface LoginProps {
   onLoginSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
   onSwitchToSignup?: (role?: 'customer' | 'driver') => void
+  onRoleChange?: (role: 'customer' | 'driver') => void
   initialRole?: 'customer' | 'driver'
 }
 
 export const Login: React.FC<LoginProps> = ({
   onLoginSuccess,
   onSwitchToSignup,
+  onRoleChange,
   initialRole = 'customer',
 }) => {
   // Global Toast Hook
@@ -82,6 +84,7 @@ export const Login: React.FC<LoginProps> = ({
     }
 
     setLoading(true)
+    onRoleChange?.(selectedRole)
 
     try {
       // Authenticate with Firebase Auth
@@ -154,6 +157,7 @@ export const Login: React.FC<LoginProps> = ({
   // STEP 1 INTEGRATION: Real Firebase Google Sign-In with popup
   const handleGoogleSignIn = async () => {
     setLoading(true)
+    onRoleChange?.(selectedRole)
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
@@ -424,7 +428,10 @@ export const Login: React.FC<LoginProps> = ({
             {selectedRole === 'customer' ? (
               <button
                 type="button"
-                onClick={() => setSelectedRole('driver')}
+                onClick={() => {
+                  setSelectedRole('driver')
+                  onRoleChange?.('driver')
+                }}
                 className="mt-4 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
               >
                 <Truck className="w-3.5 h-3.5 text-[var(--primary)]" />
@@ -433,7 +440,10 @@ export const Login: React.FC<LoginProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setSelectedRole('customer')}
+                onClick={() => {
+                  setSelectedRole('customer')
+                  onRoleChange?.('customer')
+                }}
                 className="mt-4 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
               >
                 ← Back to Customer Login

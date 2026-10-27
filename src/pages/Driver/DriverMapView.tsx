@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   ChevronLeft,
   Navigation,
@@ -9,7 +9,6 @@ import {
   MapPin,
   Car,
   ExternalLink,
-  LocateFixed,
   Send,
   X,
   Check,
@@ -478,6 +477,26 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     window.open(url, '_blank')
   }
 
+  // Google Maps-grade smooth re-center and auto-follow resumption
+  const handleRecenterToDriver = useCallback(() => {
+    setIsExploreMode(false)
+    const target =
+      hasDriverLocation && (driverPos[0] !== 0 || driverPos[1] !== 0)
+        ? driverPos
+        : customerCoords || [77.209, 28.6139]
+
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: target,
+        zoom: 15.5,
+        bearing: 0,
+        pitch: 35,
+        duration: 800,
+        essential: true,
+      })
+    }
+  }, [hasDriverLocation, driverPos, customerCoords])
+
   // Dynamic Turn-by-Turn Instruction Text
   const nextInstructionText = useMemo(() => {
     if (isGeocoding && !customerCoords) {
@@ -571,8 +590,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
       {/* 1. TOP GLOBAL NAVIGATION HUD HEADER                     */}
       {/* ======================================================== */}
       <header className="bg-secondary text-secondary-foreground px-3.5 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between z-30 shrink-0 shadow-md">
-        {/* Left: Back button */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Left: Back button & Order Header */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={onBack}
@@ -581,33 +600,19 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
+          <div className="flex flex-col">
+            <h2 className="text-xs sm:text-sm font-bold text-white leading-tight">
+              Order #{booking.id.slice(-6).toUpperCase()}
+            </h2>
+            <p className="text-[10px] text-gray-300 font-medium">Live Navigation</p>
+          </div>
         </div>
 
-        {/* Right: Controls & Dynamic ETA Badge */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-
-          {/* Re-center to Device GPS button */}
-          <button
-            type="button"
-            onClick={handleUseLiveGPS}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white transition-all cursor-pointer"
-            title="Locate / Center via device GPS"
-          >
-            <LocateFixed className="w-4 h-4 text-emerald-400" />
-          </button>
-
-          {/* Dynamic ETA Badge */}
-          <div className="bg-primary px-2.5 sm:px-3 py-1.5 rounded-xl text-white flex items-center gap-1.5 shadow-sm">
-            <Navigation className="w-3.5 h-3.5 fill-white" />
-            <span className="text-xs font-mono font-bold">
-              {currentStatus === 'in_progress'
-                ? 'At Site'
-                : currentStatus === 'completed'
-                  ? 'Done'
-                  : isGeocoding && !customerCoords
-                    ? 'Locating...'
-                    : `${etaMins}m`}
-            </span>
+        {/* Right: Live GPS Connection Status Indicator */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-xs font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live GPS</span>
           </div>
         </div>
       </header>
@@ -633,13 +638,13 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
                     Geocoding address...
                   </span>
                 ) : (
-                  `${distanceKm} km remaining •  ~${etaMins} mins`
+                  `Estimated Arrival: ~${etaMins} mins`
                 )}
               </span>
             </div>
           </div>
 
-          <div className="text-[11px] font-bold font-mono text-primary shrink-0 bg-white/80 border border-primary-border/60 px-2 py-0.5 rounded-md">
+          <div className="text-[11px] font-bold font-mono text-primary shrink-0 bg-white/80 border border-primary-border/60 px-2.5 py-0.5 rounded-md">
             {isGeocoding && !customerCoords ? '...' : `${distanceKm} km`}
           </div>
         </div>
@@ -764,12 +769,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           >
             <MapControls
               position="top-right"
-              onRecenter={() => {
-                setIsExploreMode(false)
-                if (mapRef.current && hasDriverLocation) {
-                  mapRef.current.flyTo({ center: driverPos, zoom: 15, duration: 600 })
-                }
-              }}
+              onRecenter={handleRecenterToDriver}
             />
 
             {/* Dynamic Route polyline from Driver to Customer */}
@@ -818,16 +818,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           {isExploreMode && (
             <button
               type="button"
-              onClick={() => {
-                setIsExploreMode(false)
-                if (hasDriverLocation) {
-                  mapRef.current?.flyTo({
-                    center: driverPos,
-                    zoom: 15,
-                    duration: 800,
-                  })
-                }
-              }}
+              onClick={handleRecenterToDriver}
               className="absolute bottom-4 left-4 z-20 px-3.5 py-2 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/90 shadow-lg text-xs font-bold text-gray-900 flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2"
             >
               <Navigation className="w-3.5 h-3.5 text-primary fill-primary" />
@@ -908,9 +899,9 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">Dynamic ETA</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase">Est. Arrival</span>
                 <span className="font-bold text-emerald-700 font-mono text-xs">
-                  {isGeocoding && !customerCoords ? '...' : `~${etaMins}m (${distanceKm}km)`}
+                  {isGeocoding && !customerCoords ? '...' : `~${etaMins} mins`}
                 </span>
               </div>
             )}

@@ -117,14 +117,16 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     return mapStyle || MAP_STYLES.voyager
   }, [styles, mapStyle])
 
-  // Expose MapLibreMap instance to parent ref
-  useImperativeHandle(ref, () => mapRef.current as MapLibreMap, [])
+  const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)
+
+  // Expose MapLibreMap instance to parent ref with instant synchronization
+  useImperativeHandle(ref, () => (mapRef.current || mapInstance) as MapLibreMap, [isLoaded, mapInstance])
 
   // Initialize map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    let mapInstance: MapLibreMap | null = null
+    let instance: MapLibreMap | null = null
 
     try {
       const fastPanInertia = {
@@ -133,7 +135,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         deceleration: 1400,
       }
 
-      mapInstance = new MapLibreMap({
+      instance = new MapLibreMap({
         container: containerRef.current,
         style: activeStyleUrl,
         center,
@@ -147,11 +149,22 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
         boxZoom: true,
         doubleClickZoom: true,
         touchZoomRotate: true,
-        touchPitch: false,
+        touchPitch: true,
+        maxPitch: 60,
         attributionControl: false,
       })
 
-      mapRef.current = mapInstance
+      mapRef.current = instance
+      setMapInstance(instance)
+
+      // Direct assignment to ref so parent components have immediate access
+      if (ref) {
+        if (typeof ref === 'function') {
+          ref(instance)
+        } else {
+          (ref as React.MutableRefObject<MapLibreMap | null>).current = instance
+        }
+      }
 
       // Enable middle-click (scroll wheel press) drag-to-pan in addition to standard left-click
       const targetEl = wrapperRef.current || containerRef.current
@@ -168,7 +181,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
 
       const handleMouseDown = (e: MouseEvent) => {
         // e.button === 1 is scroll wheel press (middle click)
-        if (e.button === 1 && mapInstance) {
+        if (e.button === 1 && instance) {
           e.preventDefault()
           e.stopPropagation()
           isMiddleClickDragging = true
@@ -181,7 +194,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
       }
 
       const handleMouseMove = (e: MouseEvent) => {
-        if (!isMiddleClickDragging || !lastClientPos || !mapInstance) return
+        if (!isMiddleClickDragging || !lastClientPos || !instance) return
 
         // If middle mouse button is no longer held (e.buttons & 4 is 0)
         if ((e.buttons & 4) === 0 && e.button !== 1) {
@@ -200,11 +213,11 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
 
         // Accurately project screen delta onto geographic coordinates for instantaneous 1:1 panning
         try {
-          const currentCenter = mapInstance.getCenter()
-          const centerPx = mapInstance.project(currentCenter)
+          const currentCenter = instance.getCenter()
+          const centerPx = instance.project(currentCenter)
           const targetPx: [number, number] = [centerPx.x - dx, centerPx.y - dy]
-          const newCenter = mapInstance.unproject(targetPx)
-          mapInstance.jumpTo({ center: newCenter })
+          const newCenter = instance.unproject(targetPx)
+          instance.jumpTo({ center: newCenter })
         } catch (err) {
           console.warn('Map drag pan translation error:', err)
         }
@@ -230,46 +243,48 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
       window.addEventListener('mouseup', handleMouseUp, { passive: true })
       window.addEventListener('blur', handleMouseUp)
 
-      mapInstance.on('load', () => {
+      instance.on('load', () => {
         setIsLoaded(true)
-        if (mapInstance) {
+        if (instance) {
           // 1. Enable fast, fluid Google Maps-style drag panning with high fling inertia
-          mapInstance.dragPan.enable(fastPanInertia)
+          instance.dragPan.enable(fastPanInertia)
 
           // 2. Fast, responsive mouse wheel and trackpad zoom
-          mapInstance.scrollZoom.enable()
-          mapInstance.scrollZoom.setWheelZoomRate(1 / 150)
-          mapInstance.scrollZoom.setZoomRate(1 / 40)
+          instance.scrollZoom.enable()
+          instance.scrollZoom.setWheelZoomRate(1 / 150)
+          instance.scrollZoom.setZoomRate(1 / 40)
 
-          // 3. Fast, fluid two-finger pinch-to-zoom
-          mapInstance.touchZoomRotate.enable()
-          mapInstance.touchZoomRotate.disableRotation()
-          const touchZoom = (mapInstance.touchZoomRotate as any)._touchZoom
+          // 3. Fast, fluid two-finger pinch-to-zoom AND two-finger rotation (Google Maps style)
+          instance.touchZoomRotate.enable()
+          instance.touchZoomRotate.enableRotation()
+          const touchZoom = (instance.touchZoomRotate as any)._touchZoom
           if (touchZoom) {
             touchZoom.setZoomRate(1.8)
             touchZoom.setZoomThreshold(0)
           }
 
-          // 4. Disable touch pitch so vertical finger movement does not hijack pinch-to-zoom
-          mapInstance.touchPitch.disable()
-          mapInstance.resize()
-          if (onLoad) onLoad(mapInstance)
+          // 4. Two-finger tilt/pitch (3D perspective up to 60 degrees, like Google Maps)
+          instance.touchPitch.enable()
+          instance.resize()
+          if (onLoad) onLoad(instance)
         }
       })
 
-      // USER INTERACTION DETECTION: Inform parent without killing MapLibre's momentum or easing
-      const handleInteractionStart = () => {
+      // USER INTERACTION DETECTION: Only trigger on genuine human gestures, not programmatic flyTo/easeTo
+      const handleUserGestureStart = (e?: any) => {
+        // Programmatic animations do NOT contain an originalEvent
+        if (e && !e.originalEvent) return
         isUserInteractingRef.current = true
         if (onUserInteract) onUserInteract(true)
       }
 
       // Allow natural momentum and continuous gestures without stopping camera animations
-      mapInstance.on('dragstart', handleInteractionStart)
-      mapInstance.on('zoomstart', handleInteractionStart)
-      mapInstance.on('rotatestart', handleInteractionStart)
-      mapInstance.on('pitchstart', handleInteractionStart)
+      instance.on('dragstart', handleUserGestureStart)
+      instance.on('rotatestart', handleUserGestureStart)
+      instance.on('pitchstart', handleUserGestureStart)
+      instance.on('zoomstart', handleUserGestureStart)
 
-      mapInstance.on('error', (e) => {
+      instance.on('error', (e) => {
         console.warn('MapLibre event notice:', e)
       })
 
@@ -335,6 +350,13 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
     }
   }, [center, isLoaded, followUser])
 
+  // Reset user interaction flag when followUser becomes active again
+  useEffect(() => {
+    if (followUser) {
+      isUserInteractingRef.current = false
+    }
+  }, [followUser])
+
   // React to dynamic style switching
   const prevStyleUrlRef = useRef(activeStyleUrl)
   useEffect(() => {
@@ -350,7 +372,7 @@ export const Map = forwardRef<MapLibreMap, MapProps>(function Map(
   }, [activeStyleUrl, isLoaded])
 
   return (
-    <MapContext.Provider value={{ map: mapRef.current, isLoaded }}>
+    <MapContext.Provider value={{ map: mapRef.current || mapInstance, isLoaded }}>
       <div
         ref={wrapperRef}
         className={`relative overflow-hidden select-none ${className}`}
@@ -577,20 +599,35 @@ export const MapControls: React.FC<MapControlsProps> = ({
   onRecenter,
 }) => {
   const { map } = useMap()
+  const [bearing, setBearing] = useState(0)
+
+  // Listen to map rotation changes to rotate the compass needle dynamically
+  useEffect(() => {
+    if (!map) return
+    const updateBearing = () => {
+      setBearing(Math.round(map.getBearing()))
+    }
+    map.on('rotate', updateBearing)
+    map.on('rotateend', updateBearing)
+    return () => {
+      map.off('rotate', updateBearing)
+      map.off('rotateend', updateBearing)
+    }
+  }, [map])
 
   const handleZoomIn = () => {
-    if (map) map.zoomIn({ duration: 200 })
+    if (map) map.zoomIn({ duration: 250 })
   }
 
   const handleZoomOut = () => {
-    if (map) map.zoomOut({ duration: 200 })
+    if (map) map.zoomOut({ duration: 250 })
   }
 
   const handleReset = () => {
     if (onRecenter) {
       onRecenter()
     } else if (map) {
-      map.resetNorthPitch({ duration: 400 })
+      map.resetNorthPitch({ duration: 500 })
     }
   }
 
@@ -625,9 +662,12 @@ export const MapControls: React.FC<MapControlsProps> = ({
         type="button"
         onClick={handleReset}
         className="w-8 h-8 rounded-xl bg-white/95 backdrop-blur-md border border-gray-200/80 shadow-md flex items-center justify-center text-gray-700 hover:bg-white hover:text-primary active:scale-95 transition-all cursor-pointer"
-        title="Re-center"
+        title="Re-center & Reset North"
       >
-        <Navigation className="w-3.5 h-3.5" />
+        <Navigation
+          className="w-3.5 h-3.5 text-primary fill-primary transition-transform duration-150"
+          style={{ transform: `rotate(${-bearing}deg)` }}
+        />
       </button>
     </div>
   )

@@ -32,6 +32,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   onSnapshot,
   setDoc,
   deleteDoc,
@@ -105,6 +106,7 @@ export const App: React.FC = () => {
   // STEP 1 INTEGRATION: Firebase User state from Auth
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [isResolvingRole, setIsResolvingRole] = useState(false)
 
   // STEP 2 INTEGRATION: Live user profile data fetched from Firestore 'users' collection
   const [userProfileData, setUserProfileData] = useState<{
@@ -338,10 +340,33 @@ export const App: React.FC = () => {
 
   // STEP 1 INTEGRATION: Persistent Firebase Auth session listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setIsResolvingRole(true)
         setCurrentUser(user)
-        // Keep active tab on refresh; do not forcefully reset to 'home'
+        try {
+          // Immediately fetch and lock the user's registered role to prevent flash
+          const userDocSnap = await getDoc(doc(db, 'users', user.uid))
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data()
+            if (data?.role === 'driver') {
+              setCurrentRole('driver')
+              try {
+                localStorage.setItem('bentley_current_role', 'driver')
+              } catch { }
+            } else if (data?.role === 'customer') {
+              setCurrentRole('customer')
+              try {
+                localStorage.setItem('bentley_current_role', 'customer')
+              } catch { }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not prefetch user role:', err)
+        } finally {
+          setIsResolvingRole(false)
+          setIsAuthLoading(false)
+        }
       } else {
         setCurrentUser(null)
         setUserProfileData(null)
@@ -365,8 +390,9 @@ export const App: React.FC = () => {
           localStorage.removeItem('bentley_customer_tracking_id')
         } catch { }
         syncedUserCartRef.current = null
+        setIsResolvingRole(false)
+        setIsAuthLoading(false)
       }
-      setIsAuthLoading(false)
     })
     return () => unsubscribe()
   }, [])
@@ -614,8 +640,8 @@ export const App: React.FC = () => {
   }, [currentUser?.uid])
 
   const isAuthenticated = Boolean(currentUser)
-  const isAppReady = !showSplash && !showOnboarding && !isAuthLoading && isAuthenticated
-  const showAuthScreen = !showSplash && !showOnboarding && !isAuthLoading && !isAuthenticated
+  const isAppReady = !showSplash && !showOnboarding && !isAuthLoading && !isResolvingRole && isAuthenticated
+  const showAuthScreen = !showSplash && !showOnboarding && !isAuthLoading && (!isAuthenticated || isResolvingRole)
 
   const navigateToTab = (tab: TabType) => {
     setPreviousTab(currentTab)
@@ -1369,17 +1395,34 @@ export const App: React.FC = () => {
       {showAuthScreen && authMode === 'login' && (
         <Login
           initialRole={currentRole}
+          onRoleChange={(role) => {
+            setCurrentRole(role)
+            try {
+              localStorage.setItem('bentley_current_role', role)
+            } catch { }
+          }}
           onLoginSuccess={(user) => {
             if (user?.role === 'driver') {
               setCurrentRole('driver')
+              try {
+                localStorage.setItem('bentley_current_role', 'driver')
+              } catch { }
             } else {
               setCurrentRole('customer')
               setCurrentTab('home')
+              try {
+                localStorage.setItem('bentley_current_role', 'customer')
+              } catch { }
             }
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
           onSwitchToSignup={(role) => {
-            if (role) setCurrentRole(role)
+            if (role) {
+              setCurrentRole(role)
+              try {
+                localStorage.setItem('bentley_current_role', role)
+              } catch { }
+            }
             setCurrentTab('home')
             setAuthMode('signup')
           }}
@@ -1389,17 +1432,34 @@ export const App: React.FC = () => {
       {showAuthScreen && authMode === 'signup' && (
         <Signup
           initialRole={currentRole}
+          onRoleChange={(role) => {
+            setCurrentRole(role)
+            try {
+              localStorage.setItem('bentley_current_role', role)
+            } catch { }
+          }}
           onSignupSuccess={(user) => {
             if (user?.role === 'driver') {
               setCurrentRole('driver')
+              try {
+                localStorage.setItem('bentley_current_role', 'driver')
+              } catch { }
             } else {
               setCurrentRole('customer')
               setCurrentTab('home')
+              try {
+                localStorage.setItem('bentley_current_role', 'customer')
+              } catch { }
             }
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
           onSwitchToLogin={(role) => {
-            if (role) setCurrentRole(role)
+            if (role) {
+              setCurrentRole(role)
+              try {
+                localStorage.setItem('bentley_current_role', role)
+              } catch { }
+            }
             setCurrentTab('home')
             setAuthMode('login')
           }}
@@ -1675,28 +1735,6 @@ export const App: React.FC = () => {
             }}
           />
 
-          {/* Dedicated Membership Plans Page - Temporarily commented out from UI */}
-          {/*
-          {isMembershipOpen && (
-            <MembershipPage
-              onBack={() => setIsMembershipOpen(false)}
-              currentTier={userProfileData?.membershipTier || 'General Member'}
-              onSelectMembership={async (planName: string) => {
-                if (currentUser) {
-                  try {
-                    const userDocRef = doc(db, 'users', currentUser.uid)
-                    await updateDoc(userDocRef, {
-                      membershipTier: planName,
-                      updatedAt: serverTimestamp(),
-                    })
-                  } catch (e) {
-                    console.error('Failed to update membership tier in Firestore:', e)
-                  }
-                }
-              }}
-            />
-          )}
-          */}
         </main>
       )}
     </div>
