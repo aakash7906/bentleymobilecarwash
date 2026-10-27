@@ -198,6 +198,13 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   // Current booking status
   const currentStatus = booking.status
 
+  // Keep onUpdateStatus in a ref to avoid re-triggering GPS effect on parent re-renders
+  const onUpdateStatusRef = useRef(onUpdateStatus)
+  useEffect(() => {
+    onUpdateStatusRef.current = onUpdateStatus
+  })
+  const lastBroadcastCoordsRef = useRef<[number, number] | null>(null)
+
   // =========================================================================
   // 4. CONTINUOUS LIVE DEVICE GPS LOCATION FETCH (EVERY 3 SECONDS)
   // =========================================================================
@@ -220,8 +227,13 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           setGpsErrorMsg(null)
           setLastGpsSyncTime(new Date())
 
-          // Broadcast real-time location to parent and Firestore
-          onUpdateStatus(booking.id, currentStatus, newCoords)
+          // Broadcast real-time location to parent and Firestore only if moved > 10m to avoid update loops
+          const lastCoords = lastBroadcastCoordsRef.current
+          const movedEnough = !lastCoords || calculateDistanceKm(lastCoords, newCoords) > 0.01
+          if (movedEnough) {
+            lastBroadcastCoordsRef.current = newCoords
+            onUpdateStatusRef.current?.(booking.id, currentStatus, newCoords)
+          }
 
           // Smoothly pan camera if driver is not manually exploring
           if (!isExploreModeRef.current && mapRef.current) {
@@ -258,7 +270,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
       isMounted = false
       clearInterval(intervalId)
     }
-  }, [booking.id, currentStatus, onUpdateStatus])
+  }, [booking.id, currentStatus])
 
   // Trigger map resize on mount and window resize
   useEffect(() => {
@@ -275,6 +287,12 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     }
   }, [])
 
+  // Throttling & In-flight tracking for route fetching to prevent network flooding
+  const lastFetchedPosRef = useRef<[number, number] | null>(null)
+  const lastFetchTimeRef = useRef<number>(0)
+  const isFetchingRouteRef = useRef<boolean>(false)
+  const activeAbortControllerRef = useRef<AbortController | null>(null)
+
   // =========================================================================
   // 5. DYNAMIC ROUTE & DYNAMIC ETA CALCULATION (OSRM + Real Road Network)
   // =========================================================================
@@ -283,21 +301,56 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
     let isSubscribed = true
 
-    const fetchRealRoute = async () => {
-      const [dLon, dLat] = driverPos
-      const [cLon, cLat] = customerCoords
+    const [dLon, dLat] = driverPos
+    const [cLon, cLat] = customerCoords
 
-      // If at same spot or already finished
-      if (Math.abs(dLon - cLon) < 0.0002 && Math.abs(dLat - cLat) < 0.0002) {
-        setRouteWaypoints([driverPos, customerCoords])
-        setDistanceKm(0)
-        setEtaMins(0)
+    // If at same spot or already finished
+    if (Math.abs(dLon - cLon) < 0.0002 && Math.abs(dLat - cLat) < 0.0002) {
+      setRouteWaypoints([driverPos, customerCoords])
+      setDistanceKm(0)
+      setEtaMins(0)
+      return
+    }
+
+    // Always update live distance & ETA calculation based on real distance mathematically
+    const currentDist = calculateDistanceKm(driverPos, customerCoords)
+    const realisticDist = currentDist > 35 ? 3.2 : currentDist
+    const liveCalculatedMins =
+      currentStatus === 'in_progress' || currentStatus === 'completed'
+        ? 0
+        : Math.min(30, Math.max(1, Math.round(realisticDist * 2.2)))
+
+    setDistanceKm(parseFloat(realisticDist.toFixed(1)))
+    setEtaMins(liveCalculatedMins)
+
+    // Throttling check:
+    // If we already have routeWaypoints and driver hasn't moved > 40 meters, or last fetch < 15s ago:
+    const now = Date.now()
+    if (lastFetchedPosRef.current && routeWaypoints.length > 1) {
+      const movedKm = calculateDistanceKm(lastFetchedPosRef.current, driverPos)
+      if (movedKm < 0.04 || now - lastFetchTimeRef.current < 15000) {
         return
       }
+    }
+
+    // If an OSRM request is already running, don't overlap
+    if (isFetchingRouteRef.current) return
+
+    // Cancel any previous in-flight request
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    activeAbortControllerRef.current = controller
+
+    const fetchRealRoute = async () => {
+      isFetchingRouteRef.current = true
+      lastFetchTimeRef.current = Date.now()
+      lastFetchedPosRef.current = driverPos
 
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${dLon},${dLat};${cLon},${cLat}?overview=full&geometries=geojson`
-        const res = await fetch(url)
+        const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
 
         if (isSubscribed && data.code === 'Ok' && data.routes && data.routes.length > 0) {
@@ -319,20 +372,19 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             return
           }
         }
-      } catch (err) {
-        console.warn('OSRM routing fetch notice, using dynamic curved fallback:', err)
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          // If fetch fails (rate limit/offline), use smooth curved fallback without spamming console
+          if (isSubscribed && routeWaypoints.length === 0) {
+            setRouteWaypoints(generateCurvedRoute(driverPos, customerCoords))
+          }
+        }
+      } finally {
+        isFetchingRouteRef.current = false
       }
 
-      // Dynamic Fallback
-      if (isSubscribed) {
-        const fallbackDist = calculateDistanceKm(driverPos, customerCoords)
-        const realisticDist = fallbackDist > 35 ? 3.2 : fallbackDist
-        setDistanceKm(parseFloat(realisticDist.toFixed(1)))
-        setEtaMins(
-          currentStatus === 'in_progress' || currentStatus === 'completed'
-            ? 0
-            : Math.min(30, Math.max(2, Math.round(realisticDist * 2.2)))
-        )
+      // Initial Fallback if no waypoints exist yet
+      if (isSubscribed && routeWaypoints.length === 0) {
         setRouteWaypoints(generateCurvedRoute(driverPos, customerCoords))
       }
     }
@@ -340,8 +392,9 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     fetchRealRoute()
     return () => {
       isSubscribed = false
+      controller.abort()
     }
-  }, [driverPos, customerCoords, currentStatus, hasDriverLocation])
+  }, [driverPos, customerCoords, currentStatus, hasDriverLocation, routeWaypoints.length])
 
   // Elapsed wash service stopwatch when in_progress
   useEffect(() => {

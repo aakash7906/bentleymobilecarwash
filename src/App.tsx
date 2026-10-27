@@ -557,7 +557,24 @@ export const App: React.FC = () => {
           const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime()
           return timeB - timeA
         })
-        setBookings(loadedBookings)
+        setBookings((prev) => {
+          if (
+            prev.length === loadedBookings.length &&
+            prev.every((p, idx) => {
+              const n = loadedBookings[idx]
+              return (
+                p.id === n.id &&
+                p.status === n.status &&
+                p.paymentStatus === n.paymentStatus &&
+                p.driverCoords?.[0] === n.driverCoords?.[0] &&
+                p.driverCoords?.[1] === n.driverCoords?.[1]
+              )
+            })
+          ) {
+            return prev
+          }
+          return loadedBookings
+        })
       },
       (error) => {
         console.error('Error listening to bookings in Firestore:', error)

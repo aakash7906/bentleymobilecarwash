@@ -262,13 +262,15 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   // Fetch real-world turn-by-turn road route from OSRM
   useEffect(() => {
     let isSubscribed = true
+    const controller = new AbortController()
+
     const fetchRealRoute = async () => {
       const [techLon, techLat] = technicianCoordsState
       const [custLon, custLat] = customerCoordsState
 
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${techLon},${techLat};${custLon},${custLat}?overview=full&geometries=geojson`
-        const res = await fetch(url)
+        const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
 
         if (isSubscribed && data.code === 'Ok' && data.routes && data.routes.length > 0) {
@@ -288,7 +290,8 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           setLiveDistanceKm(parseFloat(realisticDist.toFixed(1)))
           setLiveEstimatedMins(Math.min(30, Math.max(2, Math.round(realisticDist * 2.5))))
         }
-      } catch {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
         if (isSubscribed) {
           setRouteCoordinates(generateCurvedRoute(technicianCoordsState, customerCoordsState))
         }
@@ -298,6 +301,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
     fetchRealRoute()
     return () => {
       isSubscribed = false
+      controller.abort()
     }
   }, [technicianCoordsState, customerCoordsState])
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import {
   Truck,
   MapPin,
@@ -272,22 +272,25 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       />
 
       {/* 2. DRIVER MAP MODAL */}
-      {selectedBookingForMap && (
-        <DriverMapView
-          booking={
-            bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
-          }
-          onBack={() => setSelectedBookingForMap(null)}
-          onUpdateStatus={(id, status, coords, paymentData) => {
-            onUpdateStatus(id, status, coords, paymentData)
-            if (status === 'completed') {
-              setSelectedBookingForMap(null)
-              showToast('Wash completed! Order recorded in history.', 'success')
-            }
-          }}
-          driverProfile={profile}
-        />
-      )}
+      {selectedBookingForMap && (() => {
+        const targetBooking =
+          bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
+
+        return (
+          <DriverMapView
+            booking={targetBooking}
+            onBack={() => setSelectedBookingForMap(null)}
+            onUpdateStatus={(id, status, coords, paymentData) => {
+              onUpdateStatus(id, status, coords, paymentData)
+              if (status === 'completed') {
+                setSelectedBookingForMap(null)
+                showToast('Wash completed! Order recorded in history.', 'success')
+              }
+            }}
+            driverProfile={profile}
+          />
+        )
+      })()}
 
       {/* 3. ORDER DETAILS MODAL */}
       <Dialog

@@ -153,10 +153,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     }
 
     let isSubscribed = true
+    const controller = new AbortController()
+
     const fetchLiveRouteEta = async () => {
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${driverCoords[0]},${driverCoords[1]};${customerCoords[0]},${customerCoords[1]}?overview=false`
-        const res = await fetch(url)
+        const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
         if (isSubscribed && data.code === 'Ok' && data.routes?.[0]?.duration) {
           const rawMins = Math.round(data.routes[0].duration / 60)
@@ -165,7 +167,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           setDynamicDrivingEtaMins(mins)
           return
         }
-      } catch {}
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
+      }
       if (isSubscribed) {
         const distKm = calculateDistanceKm(driverCoords, customerCoords)
         const calculatedMins = Math.min(30, Math.max(3, Math.round(distKm * 2.2)))
@@ -176,6 +180,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     fetchLiveRouteEta()
     return () => {
       isSubscribed = false
+      controller.abort()
     }
   }, [activeBookings])
 
