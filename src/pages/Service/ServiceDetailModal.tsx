@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronLeft, Check, ArrowRight } from 'lucide-react'
 import { ServiceItem } from '@/types'
 
@@ -60,8 +60,8 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
     const preparedService: ServiceItem = {
       ...service,
       selectedTier,
-      price: isPackage ? activePrice : 'Included in Packages',
-      priceNumeric: isPackage ? activeNumeric : 0,
+      price: activePrice,
+      priceNumeric: activeNumeric ?? 0,
       vehicleModel: service.tieredPricing
         ? selectedTier === 'car'
           ? 'Car (Sedan/Coupe/Hatchback)'
@@ -123,16 +123,14 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             <span className="px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-bold">
               {service.category}
             </span>
-            {isPackage && (
-              <div className="text-right">
-                <span className="text-[11px] text-gray-500 block">
-                  {service.tieredPricing ? 'Vehicle Pricing' : 'Total Package Price'}
-                </span>
-                <span className="text-lg font-bold text-primary font-mono">
-                  {activePrice}
-                </span>
-              </div>
-            )}
+            <div className="text-right">
+              <span className="text-[11px] text-gray-500 block">
+                {service.tieredPricing ? 'Vehicle Pricing' : 'Service Price'}
+              </span>
+              <span className="text-lg font-bold text-primary font-mono">
+                {activePrice}
+              </span>
+            </div>
           </div>
 
           <div>

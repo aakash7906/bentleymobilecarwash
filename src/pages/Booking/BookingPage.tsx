@@ -12,9 +12,9 @@ import {
   Truck,
   Building2,
   Receipt,
-  RefreshCw,
   LocateFixed,
   Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG } from '@/data/mockData'
@@ -102,11 +102,57 @@ const generateDateSlots = () => {
 
 const TIME_SLOTS = [
   { time: '09:00 AM', label: 'Morning' },
+  { time: '10:00 AM', label: 'Morning' },
   { time: '11:00 AM', label: 'Morning' },
-  { time: '01:30 PM', label: 'Afternoon' },
-  { time: '03:30 PM', label: 'Afternoon' },
-  { time: '05:00 PM', label: 'Evening' },
+  { time: '12:00 PM', label: 'Afternoon' },
+  { time: '01:00 PM', label: 'Afternoon' },
+  { time: '02:00 PM', label: 'Afternoon' },
+  { time: '03:00 PM', label: 'Afternoon' },
+  { time: '04:00 PM', label: 'Afternoon' },
 ]
+
+/**
+ * Convert time string like '01:30 PM' or '09:00 AM' into minutes from midnight (0 - 1439)
+ */
+const parseTimeToMinutes = (timeStr: string): number => {
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return 0
+  let hours = parseInt(match[1], 10)
+  const minutes = parseInt(match[2], 10)
+  const period = match[3].toUpperCase()
+
+  if (period === 'PM' && hours < 12) hours += 12
+  if (period === 'AM' && hours === 12) hours = 0
+
+  return hours * 60 + minutes
+}
+
+/**
+ * Past-time validation: check if a specific time slot has already passed for Today
+ */
+const isTimeSlotPassed = (timeStr: string, isToday: boolean): boolean => {
+  if (!isToday) return false
+  const now = new Date()
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+  const slotMinutes = parseTimeToMinutes(timeStr)
+  return slotMinutes <= currentMinutes
+}
+
+/**
+ * Check if all slots for today have already passed
+ */
+const areAllSlotsPassedToday = (): boolean => {
+  return TIME_SLOTS.every((slot) => isTimeSlotPassed(slot.time, true))
+}
+
+/**
+ * Pre-selection fallback: get the first valid upcoming time slot for a date
+ */
+const getFirstAvailableTimeSlot = (dateIdx: number): string => {
+  const isToday = dateIdx === 0
+  const available = TIME_SLOTS.find((s) => !isTimeSlotPassed(s.time, isToday))
+  return available ? available.time : (TIME_SLOTS[0]?.time || '')
+}
 
 // Helper to infer vehicle type
 const getInferredVehicleType = (
@@ -253,8 +299,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     }
   }, [currentVehicle, vehicleOptions])
 
-  // Frequency & Subscription
-  const [frequency, setFrequency] = useState<'one_time' | 'biweekly' | 'monthly'>('one_time')
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
@@ -303,10 +347,38 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const [addressNotes, setAddressNotes] = useState('')
   const [isLocating, setIsLocating] = useState(false)
 
-  // Date & Time
-  const dateSlots = generateDateSlots()
-  const [selectedDateIndex, setSelectedDateIndex] = useState(0)
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState(TIME_SLOTS[1].time)
+  // Date & Time (with Past-Time validation and Pre-selection Fallback)
+  const dateSlots = React.useMemo(() => generateDateSlots(), [])
+  const allTodaySlotsPassed = React.useMemo(() => areAllSlotsPassedToday(), [])
+
+  // Pre-selection Fallback: If all today slots passed, default to Tomorrow (index 1), else Today (index 0)
+  const [selectedDateIndex, setSelectedDateIndex] = useState(() => (allTodaySlotsPassed ? 1 : 0))
+
+  // Pre-selection Fallback: Pick the first valid upcoming time slot (avoids selecting a passed slot)
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(() =>
+    getFirstAvailableTimeSlot(allTodaySlotsPassed ? 1 : 0)
+  )
+
+  const handleSelectDate = (idx: number) => {
+    setSelectedDateIndex(idx)
+    const isToday = idx === 0
+    // If selecting Today and current selected time has already passed, fallback to first available slot
+    if (isToday && isTimeSlotPassed(selectedTimeSlot, true)) {
+      const nextAvailable = getFirstAvailableTimeSlot(0)
+      if (nextAvailable) {
+        setSelectedTimeSlot(nextAvailable)
+      }
+    }
+  }
+
+  const handleSelectTimeSlot = (time: string) => {
+    const isToday = selectedDateIndex === 0
+    if (isTimeSlotPassed(time, isToday)) {
+      showToast('This time slot has already passed for today. Please select an upcoming slot.', 'warning')
+      return
+    }
+    setSelectedTimeSlot(time)
+  }
 
   // Add-ons
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
@@ -426,26 +498,31 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         ? 'truck'
         : 'car')
 
-  const basePrice = isPackage
-    ? isTieredService && selectedService.tieredPricing
+  const basePrice =
+    selectedService.tieredPricing
       ? effectiveTier === 'suv'
         ? selectedService.tieredPricing.suv
         : effectiveTier === 'truck'
           ? selectedService.tieredPricing.truck
           : selectedService.tieredPricing.car
       : selectedService.priceNumeric || 0
-    : 0
   const addonsTotal = selectedAddonIds.reduce((sum, id) => {
     const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
     return sum + (addon ? addon.price : 0)
   }, 0)
   const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal
-  const recurringDiscount =
-    frequency !== 'one_time' ? Math.round(preDiscountSubtotal * 0.15) : 0
   const mobileFee = 0 // Free mobile dispatch in service area
-  const subtotal = Math.max(0, preDiscountSubtotal - recurringDiscount + mobileFee)
+  const subtotal = Math.max(0, preDiscountSubtotal + mobileFee)
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
   const grandTotal = (subtotal + tax).toFixed(2)
+
+  // Mobile dispatch minimum order requirement ($60 CAD)
+  const MOBILE_MINIMUM_DISPATCH_AMOUNT = 60
+  const isUnderMobileMinimum =
+    locationType === 'mobile' && preDiscountSubtotal < MOBILE_MINIMUM_DISPATCH_AMOUNT
+  const mobileDispatchShortfall = isUnderMobileMinimum
+    ? Number((MOBILE_MINIMUM_DISPATCH_AMOUNT - preDiscountSubtotal).toFixed(2))
+    : 0
 
   const fullAddress =
     locationType === 'mobile'
@@ -482,7 +559,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         .filter(Boolean) as string[],
       paymentMethod: 'Cash on Delivery (Pay on Completion)',
       paymentStatus: 'pending',
-      frequency,
+      frequency: 'one_time',
       serviceItem: selectedService,
       createdAt: new Date().toISOString(),
     }
@@ -496,6 +573,41 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   }
 
   const handleConfirmBooking = () => {
+    // 1. Date selection validation
+    if (selectedDateIndex < 0 || selectedDateIndex >= dateSlots.length) {
+      showToast('Please select a valid booking date.', 'error')
+      return
+    }
+
+    const isToday = selectedDateIndex === 0
+
+    // 2. Validate if all slots today have already passed
+    if (isToday && areAllSlotsPassedToday()) {
+      showToast('All service slots for today have already passed. Please choose tomorrow or an upcoming date.', 'warning')
+      return
+    }
+
+    // 3. Time slot selection validation
+    if (!selectedTimeSlot) {
+      showToast('Please select a time slot for your appointment.', 'warning')
+      return
+    }
+
+    // 4. Past-Time validation for Today
+    if (isTimeSlotPassed(selectedTimeSlot, isToday)) {
+      showToast(`The time slot (${selectedTimeSlot}) has already passed for today. Please select an upcoming slot.`, 'error')
+      return
+    }
+
+    // 5. Mobile dispatch minimum limit validation ($60 CAD)
+    if (locationType === 'mobile' && preDiscountSubtotal < MOBILE_MINIMUM_DISPATCH_AMOUNT) {
+      showToast(
+        `Mobile dispatch requires a minimum of $${MOBILE_MINIMUM_DISPATCH_AMOUNT}.00 (current subtotal: $${preDiscountSubtotal}.00). Please add $${mobileDispatchShortfall.toFixed(2)} in add-ons or choose Bentley Studio Drop-off.`,
+        'warning'
+      )
+      return
+    }
+
     executeBookingConfirmation()
   }
 
@@ -643,17 +755,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <span className="text-xs text-gray-500 mt-0.5">
                 Est. {selectedService.estTime}
               </span>
-              {isPackage ? (
-                <span className="text-sm font-extrabold text-primary font-mono mt-1">
-                  {isTieredService && selectedService.tieredPricing
-                    ? `$${basePrice}.00`
-                    : selectedService.price}
-                </span>
-              ) : (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1 self-start">
-                  Included in Packages
-                </span>
-              )}
+              <span className="text-sm font-extrabold text-primary font-mono mt-1">
+                ${basePrice}.00
+              </span>
             </div>
           </div>
 
@@ -851,17 +955,25 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               {dateSlots.map((d, idx) => {
                 const isSelected = selectedDateIndex === idx
+                const isToday = idx === 0
+                const isTodayEnded = isToday && allTodaySlotsPassed
                 return (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setSelectedDateIndex(idx)}
-                    className={`min-w-[62px] py-2.5 px-2 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${isSelected
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                      }`}
+                    onClick={() => handleSelectDate(idx)}
+                    className={`min-w-[64px] py-2.5 px-2 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : isTodayEnded
+                        ? 'bg-gray-100 border border-gray-200 text-gray-400 hover:bg-gray-200/60'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
-                    <span className="text-[10px] font-medium opacity-90">{d.dayName}</span>
+                    <span className="text-[10px] font-medium opacity-90">
+                      {d.dayName}
+                      {isTodayEnded ? ' (Ended)' : ''}
+                    </span>
                     <span className="text-sm font-extrabold my-0.5">{d.dayNumber}</span>
                     <span className="text-[9px] uppercase tracking-wider">{d.month}</span>
                   </button>
@@ -872,30 +984,63 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
           {/* 5. Select Time Slot */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-primary" />
-              <span>Select Time Slot</span>
-            </label>
-
-            <div className="grid grid-cols-3 gap-2">
-              {TIME_SLOTS.map((slot, i) => {
-                const isSelected = selectedTimeSlot === slot.time
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setSelectedTimeSlot(slot.time)}
-                    className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${isSelected
-                      ? 'bg-primary text-primary-foreground shadow-sm font-bold'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium'
-                      }`}
-                  >
-                    <span className="text-xs block">{slot.time}</span>
-                    <span className="text-[9px] opacity-75 block">{slot.label}</span>
-                  </button>
-                )
-              })}
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-primary" />
+                <span>Select Time Slot</span>
+              </label>
+              {selectedDateIndex === 0 && !allTodaySlotsPassed && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Upcoming Slots Today
+                </span>
+              )}
             </div>
+
+            {selectedDateIndex === 0 && allTodaySlotsPassed ? (
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold">All wash slots for today have already passed.</span>
+                  <span className="text-[11px] text-amber-700">Please choose tomorrow or an upcoming date.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectDate(1)}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shrink-0 shadow-xs cursor-pointer transition-colors"
+                >
+                  Book Tomorrow
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {TIME_SLOTS.map((slot, i) => {
+                  const isSelected = selectedTimeSlot === slot.time
+                  const isPassed = isTimeSlotPassed(slot.time, selectedDateIndex === 0)
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={isPassed}
+                      onClick={() => handleSelectTimeSlot(slot.time)}
+                      className={`py-2 px-1 rounded-xl text-center transition-all ${
+                        isPassed
+                          ? 'bg-gray-100/90 border border-gray-200/70 text-gray-400 cursor-not-allowed opacity-50'
+                          : isSelected
+                          ? 'bg-primary text-primary-foreground shadow-sm font-bold cursor-pointer'
+                          : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium cursor-pointer'
+                      }`}
+                      title={isPassed ? 'This time slot has already passed for today' : `Select ${slot.time}`}
+                    >
+                      <span className={`text-xs block ${isPassed ? 'line-through text-gray-400' : ''}`}>
+                        {slot.time}
+                      </span>
+                      <span className="text-[9px] opacity-75 block">
+                        {isPassed ? 'Passed' : slot.label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* 6. Popular Add-Ons */}
@@ -939,58 +1084,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             </div>
           </div>
 
-          {/* 7. Service Frequency & Subscription Plan */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5 text-primary" />
-                <span>Service Frequency</span>
-              </label>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                Save 15% with Recurring
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setFrequency('one_time')}
-                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${frequency === 'one_time'
-                  ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-              >
-                <span className="text-xs font-bold text-gray-900">One-Time</span>
-                <span className="text-[10px] text-gray-500">Standard rate</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFrequency('biweekly')}
-                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all relative overflow-hidden ${frequency === 'biweekly'
-                  ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-              >
-                <span className="text-xs font-bold text-gray-900">Bi-Weekly</span>
-                <span className="text-[10px] font-bold text-emerald-600">Save 15%</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFrequency('monthly')}
-                className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${frequency === 'monthly'
-                  ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-              >
-                <span className="text-xs font-bold text-gray-900">Monthly</span>
-                <span className="text-[10px] font-bold text-emerald-600">Save 15%</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 8. Contact Details */}
+          {/* 7. Contact Details */}
           <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col gap-2.5">
             <span className="text-xs font-bold text-gray-900">Your Contact Details</span>
 
@@ -1041,12 +1135,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-gray-900">Cash on Delivery (Pay on Completion)</span>
-                  <span className="text-[10px] text-gray-600">Pay physical cash directly to technician after your wash</span>
+                  <span className="text-[10px] text-gray-600">Pay cash directly to technician after your wash</span>
                 </div>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                COD Only
-              </span>
             </div>
           </div>
 
@@ -1064,7 +1155,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 )}
               </span>
               <span className="font-mono">
-                {isPackage ? `$${basePrice}.00` : 'Included'}
+                ${basePrice}.00
               </span>
             </div>
 
@@ -1086,12 +1177,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               )
             })}
 
-            {recurringDiscount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-semibold">
-                <span>Recurring Subscription (15% Off)</span>
-                <span className="font-mono">-${recurringDiscount}.00</span>
-              </div>
-            )}
 
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>Mobile Dispatch Fee {city ? `(${city})` : ''}</span>
@@ -1109,6 +1194,25 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 ${grandTotal} CAD
               </span>
             </div>
+
+            {isUnderMobileMinimum && (
+              <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col gap-1.5 animate-in fade-in">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Mobile Dispatch Minimum: ${MOBILE_MINIMUM_DISPATCH_AMOUNT}.00</span>
+                </div>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  Mobile doorstep service requires a minimum order of ${MOBILE_MINIMUM_DISPATCH_AMOUNT}.00 (current subtotal: ${preDiscountSubtotal}.00). Add ${mobileDispatchShortfall.toFixed(2)} in add-ons above, or switch to Bentley Studio Drop-off (no minimum required).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLocationType('shop')}
+                  className="self-start text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                >
+                  Switch to Bentley Studio Drop-off &rarr;
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

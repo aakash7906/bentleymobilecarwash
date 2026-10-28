@@ -520,7 +520,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
   // Dynamic SMS Templates
   const smsTemplates = useMemo(
     () => [
-      `Hi ${booking.customerName}, this is ${driverName} from Bentley Mobile Car Wash. I'm on my way to your location! Dynamic ETA: ~${etaMins} mins (${distanceKm} km away).`,
+      `Hi ${booking.customerName}, this is ${driverName} from Bentley Mobile Car Wash. I'm on my way to your location! approximate: ~${etaMins} mins (${distanceKm} km away).`,
       `Hi ${booking.customerName}, I have arrived outside ${booking.address.split(',')[0] || 'your address'} with the mobile detailing van and am ready to start washing your ${booking.vehicle}.`,
       `Hi ${booking.customerName}, your ${booking.title} wash & detailing is successfully completed! Please let me know if you would like to inspect. Thank you!`,
     ],

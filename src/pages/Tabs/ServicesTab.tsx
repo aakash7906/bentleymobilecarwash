@@ -399,7 +399,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                 Individual Services
               </h2>
               <p className="text-[11px] text-gray-500 mt-0.5">
-                Targeted treatments & specialized mobile services • Included in custom packages
+                Targeted treatments & a la carte services with tiered sizing • Price range: Car, SUV & Truck
               </p>
             </div>
 
@@ -410,20 +410,36 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                     srv.category !== 'Cleaning Packages' && srv.category !== 'Specialty'
                 )
                 .map((service) => {
+                  const activeTier = service.tieredPricing
+                    ? selectedTiers[service.id] || defaultTier
+                    : null
+                  const displayedPrice =
+                    activeTier && service.tieredPricing
+                      ? `$${service.tieredPricing[activeTier]}.00`
+                      : service.price
+                  const displayedNumeric =
+                    activeTier && service.tieredPricing
+                      ? service.tieredPricing[activeTier]
+                      : service.priceNumeric
+
                   const handleSelectIndividual = () => {
-                    onSelectService({
+                    const preparedService: ServiceItem = {
                       ...service,
-                      price: 'Included in Packages',
-                      priceNumeric: 0,
-                      vehicleModel: currentVehicle,
-                    })
+                      selectedTier: (activeTier as 'car' | 'suv' | 'truck') || undefined,
+                      price: displayedPrice,
+                      priceNumeric: displayedNumeric,
+                      vehicleModel: activeTier
+                        ? `${activeTier === 'car' ? 'Car (Sedan/Coupe)' : activeTier === 'suv' ? 'SUV' : 'Truck / Van'}${currentVehicle ? ` (${currentVehicle})` : ''}`
+                        : service.vehicleModel || currentVehicle,
+                    }
+                    onSelectService(preparedService)
                   }
 
                   return (
                     <div
                       key={service.id}
                       onClick={handleSelectIndividual}
-                      className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md hover:border-gray-300 active:scale-[0.99] transition-all group"
+                      className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md hover:border-primary/40 active:scale-[0.99] transition-all group"
                     >
                       {/* Image */}
                       <div className="relative h-44 w-full overflow-hidden bg-slate-100">
@@ -433,22 +449,89 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                         />
-                      </div>
-
-                      {/* Information (WITHOUT PRICE) */}
-                      <div className="p-4 flex flex-col gap-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
-                            {service.title}
-                          </h3>
-                          <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-medium shrink-0 flex items-center gap-1">
+                        <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
+                          {service.badge && (
+                            <span className="px-2.5 py-1 rounded-lg bg-primary/95 text-white text-[10px] font-bold tracking-wider uppercase backdrop-blur-xs shadow-sm">
+                              {service.badge}
+                            </span>
+                          )}
+                          <span className="px-2.5 py-1 rounded-lg bg-black/75 text-white text-[10px] font-semibold tracking-wide backdrop-blur-xs ml-auto">
                             ⏱ {service.estTime}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Information */}
+                      <div className="p-4 flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-0.5 rounded-sm bg-primary-light text-primary text-[10px] font-bold tracking-wide">
+                            {service.category}
+                          </span>
+                          <div className="text-right">
+                            <span className="text-[10px] text-gray-500 block leading-none mb-0.5">
+                              {service.tieredPricing ? `Range ${service.price}` : 'Estimate'}
+                            </span>
+                            <span className="text-sm sm:text-base font-extrabold text-primary font-mono">
+                              {displayedPrice}
+                            </span>
+                          </div>
+                        </div>
+
+                        <h3 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
+                          {service.title}
+                        </h3>
 
                         <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
                           {service.description}
                         </p>
+
+                        {/* Interactive 3-Tier Vehicle Selector Pills */}
+                        {service.tieredPricing && (
+                          <div className="mt-1 flex items-center gap-1.5 p-1 bg-gray-50 rounded-xl border border-gray-100">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedTiers((prev) => ({ ...prev, [service.id]: 'car' }))
+                              }}
+                              className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-bold text-center transition-all cursor-pointer ${activeTier === 'car'
+                                ? 'bg-primary text-white shadow-xs'
+                                : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                              title="Sedan, Coupe, Hatchback"
+                            >
+                              🚗 Car ${service.tieredPricing.car}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedTiers((prev) => ({ ...prev, [service.id]: 'suv' }))
+                              }}
+                              className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-bold text-center transition-all cursor-pointer ${activeTier === 'suv'
+                                ? 'bg-primary text-white shadow-xs'
+                                : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                              title="Compact, Mid-size, Full-size SUV"
+                            >
+                              🚙 SUV ${service.tieredPricing.suv}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedTiers((prev) => ({ ...prev, [service.id]: 'truck' }))
+                              }}
+                              className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-bold text-center transition-all cursor-pointer ${activeTier === 'truck'
+                                ? 'bg-primary text-white shadow-xs'
+                                : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                              title="Pickup Truck, Minivan, Passenger Van"
+                            >
+                              🛻 Truck ${service.tieredPricing.truck}
+                            </button>
+                          </div>
+                        )}
 
                         <Button
                           variant="outline"
