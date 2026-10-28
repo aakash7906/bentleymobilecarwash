@@ -600,11 +600,10 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex flex-col">
-            <h2 className="text-xs sm:text-sm font-bold text-white leading-tight">
-              Order #{booking.id.slice(-6).toUpperCase()}
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-xs sm:text-sm font-bold text-white leading-tight truncate">
+              {booking.customerName || 'Customer'}
             </h2>
-            <p className="text-[10px] text-gray-300 font-medium">Live Navigation</p>
           </div>
         </div>
 
@@ -661,18 +660,18 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           <span className="text-gray-300 mx-1">→</span>
           <div
             className={`flex items-center gap-1 shrink-0 ${currentStatus === 'en_route'
-                ? 'text-primary'
-                : currentStatus === 'in_progress' || currentStatus === 'completed'
-                  ? 'text-emerald-600'
-                  : 'text-gray-400'
+              ? 'text-primary'
+              : currentStatus === 'in_progress' || currentStatus === 'completed'
+                ? 'text-emerald-600'
+                : 'text-gray-400'
               }`}
           >
             <span
               className={`w-2 h-2 rounded-full ${currentStatus === 'en_route'
-                  ? 'bg-primary animate-ping'
-                  : currentStatus === 'in_progress' || currentStatus === 'completed'
-                    ? 'bg-emerald-500'
-                    : 'bg-gray-300'
+                ? 'bg-primary animate-ping'
+                : currentStatus === 'in_progress' || currentStatus === 'completed'
+                  ? 'bg-emerald-500'
+                  : 'bg-gray-300'
                 }`}
             />
             <span>2. En Route</span>
@@ -680,18 +679,18 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           <span className="text-gray-300 mx-1">→</span>
           <div
             className={`flex items-center gap-1 shrink-0 ${currentStatus === 'in_progress'
-                ? 'text-emerald-600 font-black'
-                : currentStatus === 'completed'
-                  ? 'text-emerald-600'
-                  : 'text-gray-400'
+              ? 'text-emerald-600 font-black'
+              : currentStatus === 'completed'
+                ? 'text-emerald-600'
+                : 'text-gray-400'
               }`}
           >
             <span
               className={`w-2 h-2 rounded-full ${currentStatus === 'in_progress'
-                  ? 'bg-emerald-500 animate-pulse'
-                  : currentStatus === 'completed'
-                    ? 'bg-emerald-500'
-                    : 'bg-gray-300'
+                ? 'bg-emerald-500 animate-pulse'
+                : currentStatus === 'completed'
+                  ? 'bg-emerald-500'
+                  : 'bg-gray-300'
                 }`}
             />
             <span>3. Washing</span>
@@ -950,8 +949,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
               <div className="grid grid-cols-4 gap-1.5 text-center">
                 <div
                   className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${currentStatus === 'accepted'
-                      ? 'bg-primary text-white border-primary shadow-xs'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                     }`}
                 >
                   <span className="text-[10px] font-bold">1. Accept</span>
@@ -960,10 +959,10 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
                 <div
                   className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${currentStatus === 'en_route'
-                      ? 'bg-primary text-white border-primary shadow-xs animate-pulse'
-                      : currentStatus === 'in_progress' || currentStatus === 'completed'
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-white border-gray-200 text-gray-400'
+                    ? 'bg-primary text-white border-primary shadow-xs animate-pulse'
+                    : currentStatus === 'in_progress' || currentStatus === 'completed'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-white border-gray-200 text-gray-400'
                     }`}
                 >
                   <span className="text-[10px] font-bold">2. En Route</span>
@@ -974,10 +973,10 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
                 <div
                   className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${currentStatus === 'in_progress'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : currentStatus === 'completed'
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-white border-gray-200 text-gray-400'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : currentStatus === 'completed'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-white border-gray-200 text-gray-400'
                     }`}
                 >
                   <span className="text-[10px] font-bold">3. Wash</span>
@@ -986,8 +985,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
                 <div
                   className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${currentStatus === 'completed'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-white border-gray-200 text-gray-400'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-white border-gray-200 text-gray-400'
                     }`}
                 >
                   <span className="text-[10px] font-bold">4. Done</span>
