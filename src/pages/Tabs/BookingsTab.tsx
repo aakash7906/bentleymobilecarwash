@@ -182,6 +182,11 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
 
   const handleConfirmCancel = () => {
     if (cancelTarget && onCancelBooking) {
+      if (cancelTarget.status === 'en_route' || cancelTarget.status === 'in_progress') {
+        showToast('Cancellation not allowed once technician starts riding or service has begun.', 'error')
+        setCancelTarget(null)
+        return
+      }
       onCancelBooking(cancelTarget.id)
     }
     setCancelTarget(null)
@@ -359,27 +364,42 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={booking.status === 'en_route' || booking.status === 'in_progress'}
                     onClick={() => {
                       setRescheduleTarget(booking)
                       setNewSelectedDate(RESCHEDULE_DATES[0])
                       setNewSelectedTime(booking.time || RESCHEDULE_TIME_SLOTS[1])
                     }}
-                    className="flex-1 h-8 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    className={`flex-1 h-8 border border-neutral-200 bg-white font-semibold text-[11px] flex items-center justify-center gap-1 ${
+                      booking.status === 'en_route' || booking.status === 'in_progress'
+                        ? 'opacity-40 cursor-not-allowed text-neutral-400'
+                        : 'text-neutral-700 hover:bg-neutral-50 cursor-pointer'
+                    }`}
                   >
                     <RotateCcw className="w-3 h-3 text-neutral-500" />
                     <span>Reschedule</span>
                   </Button>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCancelTarget(booking)}
-                    className="group flex-1 h-8 border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 shadow-none font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Ban className="w-3 h-3 text-neutral-400 group-hover:text-red-500" />
-                    <span>Cancel</span>
-                  </Button>
+                  {booking.status !== 'en_route' && booking.status !== 'in_progress' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCancelTarget(booking)}
+                      className="group flex-1 h-8 border border-neutral-200 bg-white hover:bg-red-50 text-neutral-700 hover:text-red-600 shadow-none font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Ban className="w-3 h-3 text-neutral-400 group-hover:text-red-500" />
+                      <span>Cancel</span>
+                    </Button>
+                  ) : (
+                    <div
+                      title="Cancellation unavailable once the technician is en route or service is in progress"
+                      className="flex-1 h-8 px-2 rounded-lg bg-neutral-100/90 border border-neutral-200 text-neutral-400 font-semibold text-[10px] flex items-center justify-center gap-1 cursor-not-allowed select-none"
+                    >
+                      <Ban className="w-3 h-3 text-neutral-400 shrink-0" />
+                      <span className="truncate">Cannot Cancel</span>
+                    </div>
+                  )}
 
                   <Button
                     type="button"

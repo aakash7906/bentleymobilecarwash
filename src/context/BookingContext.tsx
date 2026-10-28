@@ -212,6 +212,12 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Cancel booking
   const handleCancelBooking = async (bookingId: string) => {
+    const existing = bookings.find((b) => b.id === bookingId)
+    if (existing && (existing.status === 'en_route' || existing.status === 'in_progress')) {
+      showToast('Cancellation not allowed once technician starts riding or service has begun.', 'error')
+      return
+    }
+
     setBookings((prev) =>
       prev.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' as const } : b))
     )
