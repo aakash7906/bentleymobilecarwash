@@ -229,6 +229,10 @@ const AppContent: React.FC = () => {
               setCurrentRole('driver')
               try {
                 localStorage.setItem('bentley_current_role', 'driver')
+                localStorage.setItem('bentley_driver_current_tab', 'orders')
+                localStorage.setItem('bentley_driver_orders_subtab', 'available')
+                localStorage.removeItem('bentley_driver_profile_open')
+                localStorage.removeItem('bentley_driver_map_booking_id')
               } catch {}
             } else {
               setCurrentRole('customer')
@@ -266,6 +270,10 @@ const AppContent: React.FC = () => {
               setCurrentRole('driver')
               try {
                 localStorage.setItem('bentley_current_role', 'driver')
+                localStorage.setItem('bentley_driver_current_tab', 'orders')
+                localStorage.setItem('bentley_driver_orders_subtab', 'available')
+                localStorage.removeItem('bentley_driver_profile_open')
+                localStorage.removeItem('bentley_driver_map_booking_id')
               } catch {}
             } else {
               setCurrentRole('customer')

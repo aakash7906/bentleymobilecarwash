@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   ChevronLeft,
   Camera,
@@ -277,6 +277,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
       }, 700)
     }, 400)
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
