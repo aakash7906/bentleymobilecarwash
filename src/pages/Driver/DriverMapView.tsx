@@ -1117,7 +1117,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Payment:</span>
                 <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                  <span>{booking.paymentMethod || 'Pay on Completion'}</span>
+                  <span>{booking.paymentMethod || 'Cash on Delivery (COD)'}</span>
                   {booking.paymentStatus === 'paid' ? (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
                       PAID

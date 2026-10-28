@@ -8,7 +8,7 @@ import {
   MapPin,
   Calendar,
   Clock,
-  CreditCard,
+  Banknote,
   Shield,
   Truck,
   Sparkles,
@@ -79,7 +79,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
     booking.paymentStatus === 'paid' ||
     (booking.paymentMethod &&
       !booking.paymentMethod.toLowerCase().includes('completion') &&
-      !booking.paymentMethod.toLowerCase().includes('pending'))
+      !booking.paymentMethod.toLowerCase().includes('pending') &&
+      !booking.paymentMethod.toLowerCase().includes('delivery'))
 
   // Close on Escape key
   useEffect(() => {
@@ -523,9 +524,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
               {/* 5. PAYMENT METHOD & VERIFICATION */}
               <div className="p-2.5 sm:p-3 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs text-gray-600">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                  <Banknote className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span className="font-medium text-[11px] sm:text-xs">
-                    Payment Method: {booking.paymentMethod || (isPaid ? 'Credit / Debit Card' : 'Pay on Completion')}
+                    Payment Method: {booking.paymentMethod || (isPaid ? 'Cash on Delivery (Paid)' : 'Cash on Delivery (Pending)')}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-emerald-700 font-bold text-[11px]">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { User, Trash2, AlertTriangle, Loader2, LogOut } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'

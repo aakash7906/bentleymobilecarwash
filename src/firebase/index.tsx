@@ -1,4 +1,4 @@
-// Cloud Firestore Functions
+﻿// Cloud Firestore Functions
 export {
   compoundQuery,
   numOfDocuments,

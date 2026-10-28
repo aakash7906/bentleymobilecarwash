@@ -1,4 +1,4 @@
-// Unified Geolocation & Reverse Geocoding Service
+﻿// Unified Geolocation & Reverse Geocoding Service
 // Ensures 100% consistency between HomeTab and BookingPage
 
 export interface GeoLocationResult {

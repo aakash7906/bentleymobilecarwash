@@ -6,7 +6,7 @@ import {
   MapPin,
   Car,
   CheckCircle2,
-  CreditCard,
+  Banknote,
   ShieldCheck,
   Check,
   Truck,
@@ -19,8 +19,6 @@ import {
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
-import { StripeCardForm } from '@/components/StripeCardForm'
-import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { useToast } from '@/context/ToastContext'
 import { auth, db } from '@/firebase'
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
@@ -382,18 +380,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     }
   }
 
-  // Payment method
-  const [paymentMethod, setPaymentMethod] = useState<'on_completion' | 'card'>('on_completion')
+  // Payment method - Cash on Delivery (Pay on Completion)
+  const paymentMethod = 'on_completion'
   const { showToast } = useToast()
-  const [stripeCardDetails, setStripeCardDetails] = useState<StripeCardDetails>({
-    cardNumber: '',
-    cardholderName: userProfile?.name || '',
-    expiry: '',
-    cvc: '',
-    postalCode: userProfile?.postalCode || '',
-  })
-  const [isStripeCardValid, setIsStripeCardValid] = useState(false)
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
 
   // Booking completion state
   const [isSuccess, setIsSuccess] = useState(false)
@@ -464,42 +453,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       : `Bentley Studio ${city ? `(${city})` : ''}`
 
   const executeBookingConfirmation = async () => {
-    let stripeTx: any = null
-
-    if (paymentMethod === 'card') {
-      if (!isStripeCardValid) {
-        showToast('Please enter complete & valid card details for Stripe payment.', 'error')
-        return
-      }
-
-      setIsProcessingPayment(true)
-      try {
-        const paymentResult = await processStripePayment(
-          parseFloat(grandTotal),
-          'cad',
-          stripeCardDetails,
-          {
-            serviceTitle: selectedService.title,
-            customerName,
-            customerEmail,
-          }
-        )
-
-        if (!paymentResult.success) {
-          setIsProcessingPayment(false)
-          showToast(paymentResult.error || 'Stripe card payment authorization failed.', 'error')
-          return
-        }
-
-        stripeTx = paymentResult
-      } catch (err: any) {
-        setIsProcessingPayment(false)
-        showToast(err?.message || 'Payment processing error.', 'error')
-        return
-      }
-      setIsProcessingPayment(false)
-    }
-
     // Generate official auto-generated Firebase Document ID
     const newBookingDocRef = doc(collection(db, 'bookings'))
     const newBookingId = newBookingDocRef.id
@@ -527,14 +480,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       addons: selectedAddonIds
         .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
         .filter(Boolean) as string[],
-      paymentMethod:
-        paymentMethod === 'card'
-          ? `Credit / Debit Card (Stripe •••• ${stripeTx?.last4 || '4242'})`
-          : 'Pay on Completion',
-      stripePaymentId: stripeTx?.paymentIntentId,
-      cardBrand: stripeTx?.cardBrand,
-      cardLast4: stripeTx?.last4,
-      paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
+      paymentMethod: 'Cash on Delivery (Pay on Completion)',
+      paymentStatus: 'pending',
       frequency,
       serviceItem: selectedService,
       createdAt: new Date().toISOString(),
@@ -600,14 +547,12 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               </span>
             </div>
 
-            {createdBooking?.stripePaymentId && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">Stripe Payment:</span>
-                <span className="font-mono text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Paid ({createdBooking.cardBrand || 'Card'} •••• {createdBooking.cardLast4 || '4242'})
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">Payment Option:</span>
+              <span className="font-mono text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Cash on Delivery (Due after wash)
+              </span>
+            </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
               <span className="font-bold text-gray-900">Total Estimated:</span>
@@ -1085,62 +1030,24 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           {/* 8. Payment Method */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-primary" />
+              <Banknote className="w-3.5 h-3.5 text-primary" />
               <span>Payment Option</span>
             </label>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('on_completion')}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${paymentMethod === 'on_completion'
-                  ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-              >
-                <div className="flex items-center justify-between">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  {paymentMethod === 'on_completion' && (
-                    <span className="w-2 h-2 rounded-full bg-primary" />
-                  )}
+            <div className="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Banknote className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-1">Pay on Completion</span>
-                <span className="text-[10px] text-gray-500">Tap / Card / Cash after wash</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('card')}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 cursor-pointer transition-all ${paymentMethod === 'card'
-                  ? 'border-primary bg-primary-light/40 ring-1 ring-primary'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-              >
-                <div className="flex items-center justify-between">
-                  <CreditCard className="w-4 h-4 text-gray-700" />
-                  {paymentMethod === 'card' && (
-                    <span className="w-2 h-2 rounded-full bg-primary" />
-                  )}
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-gray-900">Cash on Delivery (Pay on Completion)</span>
+                  <span className="text-[10px] text-gray-600">Pay physical cash directly to technician after your wash</span>
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-1">Credit / Debit Card</span>
-                <span className="text-[10px] text-gray-500">Stripe instant payment</span>
-              </button>
-            </div>
-
-            {/* Embedded Stripe Card Form */}
-            {paymentMethod === 'card' && (
-              <div className="mt-2 animate-in fade-in duration-200">
-                <StripeCardForm
-                  onChange={(details, isValid) => {
-                    setStripeCardDetails(details)
-                    setIsStripeCardValid(isValid)
-                  }}
-                  disabled={isProcessingPayment}
-                  initialName={customerName}
-                  initialPostal={postalCode}
-                />
               </div>
-            )}
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                COD Only
+              </span>
+            </div>
           </div>
 
           {/* 9. Price Breakdown Box */}
@@ -1217,17 +1124,10 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <button
               onClick={handleConfirmBooking}
-              disabled={isProcessingPayment}
-              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              {isProcessingPayment ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Processing Stripe Payment...</span>
-                </>
-              ) : (
-                <span>{paymentMethod === 'card' ? `Pay $${grandTotal} & Schedule` : 'Confirm & Schedule'}</span>
-              )}
+              <Check className="w-4 h-4" />
+              <span>Confirm &amp; Schedule (Cash on Delivery)</span>
             </button>
           </div>
         </div>

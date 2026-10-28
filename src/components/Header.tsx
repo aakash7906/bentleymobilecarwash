@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { TabType } from '@/types'
 import logoBentley from '@/assets/Logo_Bentley.png'

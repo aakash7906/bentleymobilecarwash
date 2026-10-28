@@ -390,7 +390,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl text-gray-700">
                 <span className="font-medium">Payment Mode:</span>
                 <span className="font-bold">
-                  {selectedDetailBooking.paymentMethod || 'Pay on Completion'}
+                  {selectedDetailBooking.paymentMethod || 'Cash on Delivery (COD)'}
                 </span>
               </div>
             </div>

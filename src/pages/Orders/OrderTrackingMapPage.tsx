@@ -159,7 +159,7 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
   // Dynamic Pricing & Payment Summary
   const activePrice = booking?.price || (booking?.totalNumeric ? `$${booking.totalNumeric.toFixed(2)}` : '')
-  const activePaymentMethod = booking?.paymentMethod || (booking?.paymentStatus === 'paid' ? 'Paid & Confirmed' : 'Pay on Completion')
+  const activePaymentMethod = booking?.paymentMethod || (booking?.paymentStatus === 'paid' ? 'Cash Collected (Paid)' : 'Cash on Delivery')
   const activeDate = booking?.date || 'Today'
   const activeTime = booking?.time || ''
 

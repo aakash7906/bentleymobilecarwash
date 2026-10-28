@@ -9,7 +9,7 @@ import {
   Truck,
   ShieldCheck,
   CheckCircle2,
-  CreditCard,
+  Banknote,
   ArrowRight,
   MapPin,
   Clock,
@@ -18,8 +18,6 @@ import {
 } from 'lucide-react'
 import { CartItem, DeliveryAddress } from '@/types'
 import { useToast } from '@/context/ToastContext'
-import { StripeCardForm } from '@/components/StripeCardForm'
-import { processStripePayment, StripeCardDetails } from '@/stripe/stripeClient'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
@@ -67,19 +65,10 @@ export const CartPage: React.FC<CartPageProps> = ({
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
 
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod'>('card')
+  const paymentMethod = 'cod'
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderComplete, setOrderComplete] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState('')
-  const [stripeCardDetails, setStripeCardDetails] = useState<StripeCardDetails>({
-    cardNumber: '',
-    cardholderName: userProfile?.name || '',
-    expiry: '',
-    cvc: '',
-    postalCode: userProfile?.postalCode || '',
-  })
-  const [isCardValid, setIsCardValid] = useState(false)
-  const [stripeReceiptInfo, setStripeReceiptInfo] = useState<{ id?: string; brand?: string; last4?: string } | null>(null)
 
   // Delivery Address Selection & Editing State
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress>(() => ({
@@ -160,47 +149,7 @@ export const CartPage: React.FC<CartPageProps> = ({
   }
 
   const handleConfirmOrder = async () => {
-    let stripeTx: any = null
-
-    if (paymentMethod === 'card') {
-      if (!isCardValid) {
-        showToast('Please enter complete & valid card details for Stripe payment.', 'error')
-        return
-      }
-
-      setIsProcessing(true)
-      try {
-        const stripeRes = await processStripePayment(
-          parseFloat(grandTotal),
-          'cad',
-          stripeCardDetails,
-          {
-            orderType: 'cart_checkout',
-            customerName: userProfile?.name || 'Customer',
-            customerEmail: userProfile?.email || '',
-          }
-        )
-
-        if (!stripeRes.success) {
-          setIsProcessing(false)
-          showToast(stripeRes.error || 'Stripe card payment failed.', 'error')
-          return
-        }
-
-        stripeTx = stripeRes
-        setStripeReceiptInfo({
-          id: stripeRes.paymentIntentId,
-          brand: stripeRes.cardBrand,
-          last4: stripeRes.last4,
-        })
-      } catch (err: any) {
-        setIsProcessing(false)
-        showToast(err?.message || 'Payment processing error.', 'error')
-        return
-      }
-    } else {
-      setIsProcessing(true)
-    }
+    setIsProcessing(true)
 
     const originalDocRef = doc(collection(db, 'orders'))
     const fallbackId = originalDocRef.id
@@ -215,14 +164,8 @@ export const CartPage: React.FC<CartPageProps> = ({
           shippingFee,
           taxFee,
           grandTotal,
-          paymentMethod:
-            paymentMethod === 'card'
-              ? `Stripe Card (•••• ${stripeTx?.last4 || stripeCardDetails.cardNumber.slice(-4) || '4242'})`
-              : 'Cash / COD',
-          paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-          stripePaymentId: stripeTx?.paymentIntentId,
-          cardBrand: stripeTx?.cardBrand,
-          cardLast4: stripeTx?.last4,
+          paymentMethod: 'Cash on Delivery (COD)',
+          paymentStatus: 'pending',
           shippingAddress: `${selectedAddress.streetAddress}, ${selectedAddress.city} ${selectedAddress.postalCode}`,
           deliveryNotes: selectedAddress.deliveryNotes || '',
           customerName: selectedAddress.recipientName || userProfile?.name || 'Customer',
@@ -670,47 +613,20 @@ export const CartPage: React.FC<CartPageProps> = ({
                   <label className="text-[11px] font-bold uppercase tracking-wider text-gray-700 block mb-1.5">
                     Payment Method
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('card')}
-                      className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'card'
-                          ? 'border-primary bg-primary-light text-primary'
-                          : 'border-gray-200 bg-surface-alt text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span className="text-xs font-bold">Credit / Debit Card</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('cod')}
-                      className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'cod'
-                          ? 'border-primary bg-primary-light text-primary'
-                          : 'border-gray-200 bg-surface-alt text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className="text-xs font-bold">Cash / COD</span>
-                      <span className="text-[10px] text-gray-500">On Delivery</span>
-                    </button>
-                  </div>
-
-                  {/* Embedded Stripe Card Form */}
-                  {paymentMethod === 'card' && (
-                    <div className="mt-2.5 animate-in fade-in duration-200">
-                      <StripeCardForm
-                        onChange={(details, isValid) => {
-                          setStripeCardDetails(details)
-                          setIsCardValid(isValid)
-                        }}
-                        disabled={isProcessing}
-                        initialName={userProfile?.name || ''}
-                        initialPostal={userProfile?.postalCode || ''}
-                      />
+                  <div className="p-3 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Banknote className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gray-900">Cash on Delivery (COD)</span>
+                        <span className="text-[10px] text-gray-600">Pay cash upon doorstep delivery</span>
+                      </div>
                     </div>
-                  )}
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                      COD Only
+                    </span>
+                  </div>
                 </div>
 
                 {/* Payment Total Callout */}
@@ -733,12 +649,12 @@ export const CartPage: React.FC<CartPageProps> = ({
                   {isProcessing ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Authorizing Payment...</span>
+                      <span>Placing COD Order...</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4" />
-                      <span>Pay ${grandTotal} &amp; Complete</span>
+                      <span>Place Order (Cash on Delivery)</span>
                     </>
                   )}
                 </Button>
@@ -771,19 +687,17 @@ export const CartPage: React.FC<CartPageProps> = ({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Amount Paid:</span>
+                    <span className="text-gray-500">Amount Due:</span>
                     <span className="font-mono font-bold text-primary">
-                      ${grandTotal}
+                      ${grandTotal} CAD
                     </span>
                   </div>
-                  {stripeReceiptInfo?.id && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Stripe Payment:</span>
-                      <span className="font-mono font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Paid ({stripeReceiptInfo.brand || 'Card'} •••• {stripeReceiptInfo.last4 || '4242'})
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Payment Option:</span>
+                    <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Cash on Delivery (Pay on arrival)
+                    </span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Delivery Status:</span>
                     <span className="font-semibold text-emerald-600 flex items-center gap-1">

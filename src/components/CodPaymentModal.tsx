@@ -3,14 +3,10 @@ import { BookingRecord, PaymentCollectionData } from '@/types'
 import { Dialog } from '@/components/ui/dialog'
 import {
   Banknote,
-  CreditCard,
-  Smartphone,
   CheckCircle2,
   AlertTriangle,
   User,
   Car,
-  Receipt,
-  Sparkles,
 } from 'lucide-react'
 
 interface CodPaymentModalProps {
@@ -28,7 +24,7 @@ export const CodPaymentModal: React.FC<CodPaymentModalProps> = ({
   driverName,
   onConfirmPayment,
 }) => {
-  const [selectedMethod, setSelectedMethod] = useState<'Cash' | 'Card POS' | 'E-Transfer'>('Cash')
+  const selectedMethod = 'Cash'
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSkipWarning, setShowSkipWarning] = useState(false)
@@ -104,76 +100,26 @@ export const CodPaymentModal: React.FC<CodPaymentModalProps> = ({
           </div>
         </div>
 
-        {/* Payment Method Selector */}
+        {/* Payment Collection Mode - Cash on Delivery Only */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold text-gray-800 flex items-center justify-between">
-            <span>How did the customer pay?</span>
-            <span className="text-[10px] text-emerald-600 font-semibold uppercase">Required</span>
+            <span>Payment Collection Mode</span>
+            <span className="text-[10px] text-emerald-600 font-semibold uppercase">Cash on Delivery (COD)</span>
           </label>
 
-          <div className="grid grid-cols-3 gap-2">
-            {/* Cash */}
-            <button
-              type="button"
-              onClick={() => setSelectedMethod('Cash')}
-              className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                selectedMethod === 'Cash'
-                  ? 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-bold shadow-xs ring-1 ring-emerald-500'
-                  : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-              }`}
-            >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  selectedMethod === 'Cash' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                <Banknote className="w-4 h-4" />
+          <div className="p-3.5 rounded-xl border border-emerald-600 bg-emerald-50/80 text-emerald-900 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-900">Cash on Delivery</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Verified COD
+                </span>
               </div>
-              <span className="text-xs">Cash</span>
-              <span className="text-[10px] text-gray-500 font-normal">Physical Cash</span>
-            </button>
-
-            {/* Mobile POS Card Terminal */}
-            <button
-              type="button"
-              onClick={() => setSelectedMethod('Card POS')}
-              className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                selectedMethod === 'Card POS'
-                  ? 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-bold shadow-xs ring-1 ring-emerald-500'
-                  : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-              }`}
-            >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  selectedMethod === 'Card POS' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <span className="text-xs">POS Machine</span>
-              <span className="text-[10px] text-gray-500 font-normal">Card Terminal</span>
-            </button>
-
-            {/* Interac / E-Transfer */}
-            <button
-              type="button"
-              onClick={() => setSelectedMethod('E-Transfer')}
-              className={`p-3 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                selectedMethod === 'E-Transfer'
-                  ? 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-bold shadow-xs ring-1 ring-emerald-500'
-                  : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-              }`}
-            >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  selectedMethod === 'E-Transfer' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <span className="text-xs">E-Transfer</span>
-              <span className="text-[10px] text-gray-500 font-normal">Direct Bank</span>
-            </button>
+              <span className="text-[11px] text-gray-600">Collect ${totalAmount} CAD physical cash directly from customer</span>
+            </div>
           </div>
         </div>
 
@@ -186,7 +132,7 @@ export const CodPaymentModal: React.FC<CodPaymentModalProps> = ({
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Exact cash received, or E-transfer confirmation #"
+            placeholder="e.g. Exact cash received, change provided, etc."
             className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-emerald-500 focus:outline-hidden transition-all text-gray-900"
           />
         </div>
@@ -213,7 +159,7 @@ export const CodPaymentModal: React.FC<CodPaymentModalProps> = ({
             className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Confirm ${totalAmount} CAD Received & Finish Job</span>
+            <span>Confirm ${totalAmount} CAD Cash Received & Finish Job</span>
           </button>
 
           {!showSkipWarning ? (

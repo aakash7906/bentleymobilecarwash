@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, setDoc, type DocumentData, type DocumentReference, type CollectionReference } from "firebase/firestore";
+﻿import { addDoc, collection, doc, setDoc, type DocumentData, type DocumentReference, type CollectionReference } from "firebase/firestore";
 import { db } from "../firebase";
 
 export function cleanUndefined<T extends Record<string, any>>(data: T): Record<string, any> {

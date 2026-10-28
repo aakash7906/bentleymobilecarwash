@@ -1,4 +1,4 @@
-import { updateProfile, createUserWithEmailAndPassword } from "firebase/auth";
+﻿import { updateProfile, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 
 // SignUp users using their Email and Password

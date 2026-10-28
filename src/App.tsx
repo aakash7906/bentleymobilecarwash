@@ -1079,8 +1079,8 @@ export const App: React.FC = () => {
                 paymentNotes: paymentData.paymentNotes,
                 paymentMethod:
                   paymentData.paymentStatus === 'paid' &&
-                  (!b.paymentMethod || b.paymentMethod.toLowerCase().includes('completion'))
-                    ? `Pay on Completion (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
+                  (!b.paymentMethod || b.paymentMethod.toLowerCase().includes('completion') || b.paymentMethod.toLowerCase().includes('delivery'))
+                    ? `Cash on Delivery (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
                     : b.paymentMethod,
               }
               : {}),
@@ -1111,9 +1111,9 @@ export const App: React.FC = () => {
           const existing = bookings.find((b) => b.id === bookingId)
           if (
             paymentData.paymentStatus === 'paid' &&
-            (!existing?.paymentMethod || existing.paymentMethod.toLowerCase().includes('completion'))
+            (!existing?.paymentMethod || existing.paymentMethod.toLowerCase().includes('completion') || existing.paymentMethod.toLowerCase().includes('delivery'))
           ) {
-            updatePayload.paymentMethod = `Pay on Completion (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
+            updatePayload.paymentMethod = `Cash on Delivery (${paymentData.paymentCollectedMethod || 'Cash'} Collected)`
           }
         }
         await updateDoc(bookingDocRef, updatePayload)

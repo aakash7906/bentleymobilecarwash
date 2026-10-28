@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+﻿import { httpsCallable } from "firebase/functions";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { functions, db } from "../firebase";
 import { deleteDocument } from "../CloudFirestore/DeleteData";

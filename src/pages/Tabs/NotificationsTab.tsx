@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { BookingRecord } from '@/types'
 import { Bell, Calendar, CheckCircle2, Navigation, Sparkles, Shield, Droplets } from 'lucide-react'
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord } from '@/types'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
