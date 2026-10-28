@@ -1,4 +1,4 @@
-﻿import { addDoc, collection, doc, setDoc, type DocumentData, type DocumentReference, type CollectionReference } from "firebase/firestore";
+import { addDoc, collection, doc, setDoc, type DocumentData, type DocumentReference, type CollectionReference } from "firebase/firestore";
 import { db } from "../firebase";
 
 export function cleanUndefined<T extends Record<string, any>>(data: T): Record<string, any> {
@@ -11,10 +11,13 @@ export function cleanUndefined<T extends Record<string, any>>(data: T): Record<s
   const clean: Record<string, any> = {};
   Object.entries(data).forEach(([key, val]) => {
     if (val !== undefined) {
-      if (
+      if (Array.isArray(val)) {
+        clean[key] = val.map((item) =>
+          item && typeof item === "object" ? cleanUndefined(item) : item
+        );
+      } else if (
         val &&
         typeof val === "object" &&
-        !Array.isArray(val) &&
         !(val instanceof Date) &&
         typeof (val as any)?.toDate !== "function" &&
         typeof (val as any)?.toMillis !== "function" &&

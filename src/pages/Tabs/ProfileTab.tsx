@@ -3,6 +3,7 @@ import { User, Trash2, AlertTriangle, Loader2, LogOut } from 'lucide-react'
 import { UserProfile } from '@/types'
 import { preloadMembershipImages } from '@/pages/Membership/MembershipPage'
 import { EditProfilePage } from '@/pages/Profile/EditProfilePage'
+import { OrdersPage } from '@/pages/Orders/OrdersPage'
 import { ContactUsPage } from '@/pages/Contact/ContactUsPage'
 import { AboutUsPage } from '@/pages/About/AboutUsPage'
 import { useToast } from '@/context/ToastContext'
@@ -12,6 +13,7 @@ import { Dialog } from '@/components/ui/dialog'
 interface ProfileTabProps {
   onBack: () => void
   onOpenSavedVehicles: () => void
+  onOpenOrdersPage?: () => void
   onNavigateToNotifications: () => void
   onOpenBooking?: () => void
   onOpenMembership?: () => void
@@ -36,6 +38,7 @@ interface MenuItem {
 export const ProfileTab: React.FC<ProfileTabProps> = ({
   onBack,
   onOpenSavedVehicles,
+  onOpenOrdersPage,
   onNavigateToNotifications,
   onOpenBooking,
   onOpenMembership,
@@ -97,6 +100,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   })
 
+  const [isOrdersPageOpen, setIsOrdersPageOpen] = useState(false)
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(() => {
     try {
       return localStorage.getItem('bentley_edit_profile_open') === 'true'
@@ -155,6 +159,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       subtitle: savedVehiclesCount && savedVehiclesCount > 0 ? 'Manage registered vehicles' : 'Add your vehicle',
       action: onOpenSavedVehicles,
       badge: savedVehiclesCount !== undefined && savedVehiclesCount > 0 ? `${savedVehiclesCount} Cars` : undefined,
+    },
+    {
+      icon: 'local_shipping',
+      title: 'My Shop Orders',
+      subtitle: 'Track your product deliveries',
+      action: onOpenOrdersPage || (() => setIsOrdersPageOpen(true)),
     },
     {
       icon: 'notifications',
@@ -442,6 +452,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       />
 
       {/* Dedicated About Us Full Page Modal */}
+      <OrdersPage
+        isOpen={isOrdersPageOpen}
+        onClose={() => setIsOrdersPageOpen(false)}
+        userProfile={profile}
+      />
+
       <AboutUsPage
         isOpen={isAboutUsOpen}
         onClose={() => setIsAboutUsOpen(false)}

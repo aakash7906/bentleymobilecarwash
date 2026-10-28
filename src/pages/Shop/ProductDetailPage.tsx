@@ -16,6 +16,7 @@ import {
   Banknote,
 } from 'lucide-react'
 import { ProductItem, DeliveryAddress } from '@/types'
+import { isValidPhone } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
@@ -112,6 +113,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }
 
   const handleConfirmOrder = async () => {
+    if (!product) {
+      showToast('No product selected.', 'error')
+      return
+    }
+    if (!selectedAddress.streetAddress || selectedAddress.streetAddress.trim().length < 5) {
+      showToast('Please enter a complete street address (at least 5 characters).', 'error')
+      return
+    }
+    if (!selectedAddress.recipientName || selectedAddress.recipientName.trim().length < 2) {
+      showToast('Please enter a recipient name (at least 2 characters).', 'error')
+      return
+    }
+    if (!selectedAddress.phone || !isValidPhone(selectedAddress.phone)) {
+      showToast('Please enter a valid 10-digit phone number for delivery.', 'error')
+      return
+    }
     setIsProcessing(true)
 
     const originalDocRef = doc(collection(db, 'orders'))

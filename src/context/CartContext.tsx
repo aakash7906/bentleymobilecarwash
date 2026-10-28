@@ -122,16 +122,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add to cart
   const handleAddToCart = (product: any, quantity: number = 1) => {
+    if (!product || !product.id) return
+    const safeQty = Math.max(1, Math.min(50, Math.floor(Number(quantity) || 1)))
     setCartItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id)
       if (existing) {
+        const nextQty = Math.min(50, existing.quantity + safeQty)
         return prev.map((item) =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: nextQty }
             : item
         )
       }
-      return [...prev, { product, quantity }]
+      return [...prev, { product, quantity: safeQty }]
     })
     showToast(`${product.title} added to cart!`, 'success')
   }

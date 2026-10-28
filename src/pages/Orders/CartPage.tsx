@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react'
 import { CartItem, DeliveryAddress } from '@/types'
+import { isValidPhone } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
 import { db } from '@/firebase'
@@ -42,6 +43,7 @@ interface CartPageProps {
     postalCode?: string
   }
   onCheckoutOrder?: (orderData: any) => Promise<string>
+  onBundleWithBooking?: () => void
 }
 
 export const CartPage: React.FC<CartPageProps> = ({
@@ -55,6 +57,7 @@ export const CartPage: React.FC<CartPageProps> = ({
   onContinueShopping,
   userProfile,
   onCheckoutOrder,
+  onBundleWithBooking,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
@@ -149,6 +152,22 @@ export const CartPage: React.FC<CartPageProps> = ({
   }
 
   const handleConfirmOrder = async () => {
+    if (!items || items.length === 0) {
+      showToast('Your cart is empty. Please add items to checkout.', 'error')
+      return
+    }
+    if (!selectedAddress.streetAddress || selectedAddress.streetAddress.trim().length < 5) {
+      showToast('Please enter a valid delivery street address (at least 5 characters).', 'error')
+      return
+    }
+    if (!selectedAddress.recipientName || selectedAddress.recipientName.trim().length < 2) {
+      showToast('Please enter a valid recipient name.', 'error')
+      return
+    }
+    if (!selectedAddress.phone || !isValidPhone(selectedAddress.phone)) {
+      showToast('Please enter a valid 10-digit contact phone number.', 'error')
+      return
+    }
     setIsProcessing(true)
 
     const originalDocRef = doc(collection(db, 'orders'))

@@ -14,6 +14,7 @@ import {
   Check,
   Truck,
   Loader2,
+  Package,
 } from 'lucide-react'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
@@ -831,6 +832,28 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
         {/* ======================================================== */}
         <div className="lg:hidden bg-white border-t border-gray-200/80 p-3.5 sm:p-4 shadow-xl z-20 flex flex-col gap-2.5 sm:gap-3 shrink-0">
 
+
+          {booking.shopItems && booking.shopItems.length > 0 && (
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/90 text-xs flex flex-col gap-1">
+              <div className="flex items-center justify-between font-bold text-amber-950">
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <Package className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Hand-Deliver Shop Products ({booking.shopItems.reduce((a, c) => a + c.quantity, 0)})</span>
+                </span>
+                <span className="text-[9px] bg-amber-200/90 text-amber-950 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                  With Wash
+                </span>
+              </div>
+              <ul className="text-gray-700 text-[11px] space-y-0.5">
+                {booking.shopItems.map((item, idx) => (
+                  <li key={idx} className="flex justify-between items-center">
+                    <span>• {item.product.title} <strong className="text-amber-900">×{item.quantity}</strong></span>
+                    <span className="font-mono text-gray-500">${(item.product.priceNumeric * item.quantity).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Customer & Quick Contact Row */}
           <div className="flex items-center justify-between pb-2 border-b border-gray-100">

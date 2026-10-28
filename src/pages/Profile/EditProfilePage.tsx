@@ -18,6 +18,7 @@ import {
   Lock,
 } from 'lucide-react'
 import { UserProfile } from '@/types'
+import { compressImageFile, isValidPhone, isValidPostalCode } from '@/lib/utils'
 import { Select } from '@/components/ui/select'
 import { Dialog } from '@/components/ui/dialog'
 import { useToast } from '@/context/ToastContext'

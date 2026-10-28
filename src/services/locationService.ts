@@ -1,3 +1,4 @@
+import { isValidCoords } from '@/lib/utils';
 ﻿// Unified Geolocation & Reverse Geocoding Service
 // Ensures 100% consistency between HomeTab and BookingPage
 

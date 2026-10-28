@@ -12,6 +12,8 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { ServiceItem, BookingRecord, BookingStatus, DriverProfile } from '@/types'
+import { sanitizeText } from '@/lib/utils'
+import { useToast } from '@/context/ToastContext'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
@@ -85,6 +87,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
     return null
   })
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<BookingRecord | null>(null)
+  const { showToast } = useToast()
 
   // Persist tracking modal state across refreshes
   React.useEffect(() => {

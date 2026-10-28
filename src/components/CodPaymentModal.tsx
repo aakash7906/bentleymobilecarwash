@@ -1,3 +1,4 @@
+import { sanitizeText } from '@/lib/utils';
 import React, { useState } from 'react'
 import { BookingRecord, PaymentCollectionData } from '@/types'
 import { Dialog } from '@/components/ui/dialog'
@@ -30,29 +31,32 @@ export const CodPaymentModal: React.FC<CodPaymentModalProps> = ({
   const [showSkipWarning, setShowSkipWarning] = useState(false)
 
   const rawAmount = booking.price?.replace('$', '') || `${booking.totalNumeric || '0.00'}`
-  const totalAmount = parseFloat(rawAmount).toFixed(2)
+  const parsedAmt = parseFloat(rawAmount)
+  const totalAmount = (isNaN(parsedAmt) || parsedAmt <= 0 ? 0 : parsedAmt).toFixed(2)
 
   const handleConfirmPaid = () => {
+    const cleanNotes = sanitizeText(notes).slice(0, 200)
     setIsSubmitting(true)
     onConfirmPayment({
       paymentStatus: 'paid',
       paymentCollectedBy: driverName || 'Certified Technician',
       paymentCollectedAt: new Date().toISOString(),
       paymentCollectedMethod: selectedMethod,
-      paymentNotes: notes.trim() || undefined,
+      paymentNotes: cleanNotes || undefined,
     })
     setIsSubmitting(false)
     onClose()
   }
 
   const handleSkipPayment = () => {
+    const cleanNotes = sanitizeText(notes).slice(0, 200)
     setIsSubmitting(true)
     onConfirmPayment({
       paymentStatus: 'pending',
       paymentCollectedBy: driverName || 'Certified Technician',
       paymentCollectedAt: new Date().toISOString(),
       paymentCollectedMethod: 'Unpaid / Pending Doorstep Follow-up',
-      paymentNotes: notes.trim() ? `Unpaid Note: ${notes.trim()}` : 'Payment not collected on completion',
+      paymentNotes: cleanNotes ? `Unpaid Note: ${cleanNotes}` : 'Payment not collected on completion',
     })
     setIsSubmitting(false)
     onClose()

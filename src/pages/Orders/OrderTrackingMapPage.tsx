@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, Navigation, User, Layers, Car, Calendar, Clock, Phone, Sparkles } from 'lucide-react'
+import { ChevronLeft, Navigation, User, Layers, Car, Calendar, Clock, Phone, Sparkles, Package } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { BookingStatus, BookingRecord } from '@/types'
 import { Dialog } from '@/components/ui/dialog'
@@ -710,6 +710,23 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
             <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">
               {activeAddress}
             </p>
+            {booking?.shopItems && booking.shopItems.length > 0 && (
+              <div className="w-full mt-2.5 pt-2 border-t border-amber-200/60 bg-amber-50/60 p-2.5 rounded-xl text-xs flex flex-col gap-1">
+                <span className="font-bold text-amber-950 flex items-center gap-1.5 text-[11px]">
+                  <Package className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Bundled Shop Products (Delivered by Tech):</span>
+                </span>
+                <ul className="text-gray-700 text-[11px] space-y-0.5">
+                  {booking.shopItems.map((item, idx) => (
+                    <li key={idx} className="flex justify-between items-center">
+                      <span>• {item.product.title} <strong className="text-amber-900">×{item.quantity}</strong></span>
+                      <span className="font-mono text-gray-500">${(item.product.priceNumeric * item.quantity).toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {(activeDate || activeTime) && (
               <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-gray-100 text-[11px] text-gray-600 font-medium">
                 <span className="flex items-center gap-1.5">

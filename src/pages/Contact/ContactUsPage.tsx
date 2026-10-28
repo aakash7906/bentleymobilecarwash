@@ -18,6 +18,7 @@ import { useToast } from '@/context/ToastContext'
 import { db } from '@/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
+import { isValidEmail, isValidPhone, sanitizeText } from '@/lib/utils'
 
 interface ContactUsPageProps {
   isOpen: boolean
@@ -63,16 +64,30 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name.trim()) {
-      showToast('Please enter your name.', 'error')
+    const cleanName = sanitizeText(formData.name)
+    const cleanEmail = formData.email.trim()
+    const cleanPhone = formData.phone.trim()
+    const cleanSubject = sanitizeText(formData.subject)
+    const cleanMessage = sanitizeText(formData.message)
+
+    if (!cleanName || cleanName.length < 2) {
+      showToast('Please enter your name (at least 2 characters).', 'error')
       return
     }
-    if (!formData.email.trim()) {
-      showToast('Please enter your email address.', 'error')
+    if (!cleanEmail || !isValidEmail(cleanEmail)) {
+      showToast('Please enter a valid email address.', 'error')
       return
     }
-    if (!formData.message.trim()) {
-      showToast('Please enter your message.', 'error')
+    if (cleanPhone && !isValidPhone(cleanPhone)) {
+      showToast('Please enter a valid contact phone number (at least 10 digits).', 'error')
+      return
+    }
+    if (!cleanMessage || cleanMessage.length < 10) {
+      showToast('Please enter a message of at least 10 characters.', 'error')
+      return
+    }
+    if (cleanMessage.length > 2000) {
+      showToast('Message exceeds maximum limit of 2000 characters.', 'error')
       return
     }
 
@@ -83,7 +98,11 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({
       try {
         const inquiriesRef = collection(db, 'inquiries')
         const payload = cleanUndefined({
-          ...formData,
+          name: cleanName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          subject: cleanSubject,
+          message: cleanMessage,
           createdAt: new Date().toISOString(),
           serverTimestamp: serverTimestamp(),
           source: 'ContactUsPage',

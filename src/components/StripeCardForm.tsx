@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CreditCard, Lock, ShieldCheck, Check, Sparkles } from 'lucide-react'
 import { StripeCardDetails, detectCardBrand } from '@/stripe/stripeClient'
+import { isValidCardExpiry } from '@/lib/utils'
 
 interface StripeCardFormProps {
   onChange: (details: StripeCardDetails, isValid: boolean) => void
@@ -56,9 +57,10 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = ({
 
   // Validation
   const rawNumber = cardNumber.replace(/\s+/g, '')
+  const isExpiryValid = isValidCardExpiry(expiry)
   const isValid =
     rawNumber.length >= 15 &&
-    expiry.length === 5 &&
+    isExpiryValid &&
     cvc.length >= 3 &&
     cardholderName.trim().length >= 2
 

@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { DriverProfile } from '@/types'
+import { compressImageFile, isValidLicensePlate } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
 import { getLiveGPSLocation } from '@/services/locationService'

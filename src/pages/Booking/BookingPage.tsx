@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import {
   ChevronLeft,
+  ChevronDown,
   Calendar,
   Clock,
   MapPin,
@@ -15,8 +16,13 @@ import {
   LocateFixed,
   Loader2,
   AlertCircle,
+  Package,
+  ShoppingBag,
 } from 'lucide-react'
-import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
+import { ServiceItem, SavedVehicle, BookingRecord, ProductItem } from '@/types'
+import { BENTLEY_PRODUCTS } from '@/data/productsData'
+import { useCart } from '@/context/CartContext'
+import { isValidPhone, isValidEmail, sanitizeText } from '@/lib/utils'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
 import { useToast } from '@/context/ToastContext'
@@ -222,6 +228,60 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   // Service selection (Dynamic sync with incoming service)
   const [selectedService, setSelectedService] = useState<ServiceItem>(
     initialService || SERVICES_CATALOG[0]
+  )
+  const { cartItems, handleClearCart } = useCart()
+
+  // Shop Product Add-Ons (Delivered with Car Wash)
+  const [selectedShopAddons, setSelectedShopAddons] = useState<{
+    [productId: string]: { product: ProductItem; quantity: number }
+  }>(() => {
+    const initial: { [productId: string]: { product: ProductItem; quantity: number } } = {}
+    if (cartItems && cartItems.length > 0) {
+      cartItems.forEach((c) => {
+        if (c.product && c.product.id) {
+          initial[c.product.id] = { product: c.product, quantity: c.quantity || 1 }
+        }
+      })
+    }
+    return initial
+  })
+
+  const handleToggleShopAddon = (product: ProductItem) => {
+    setSelectedShopAddons((prev) => {
+      const updated = { ...prev }
+      if (updated[product.id]) {
+        delete updated[product.id]
+      } else {
+        updated[product.id] = { product, quantity: 1 }
+      }
+      return updated
+    })
+  }
+
+  const handleUpdateShopAddonQuantity = (productId: string, delta: number) => {
+    setSelectedShopAddons((prev) => {
+      const existing = prev[productId]
+      if (!existing) return prev
+      const newQty = existing.quantity + delta
+      if (newQty <= 0) {
+        const updated = { ...prev }
+        delete updated[productId]
+        return updated
+      }
+      return {
+        ...prev,
+        [productId]: { ...existing, quantity: Math.min(20, newQty) },
+      }
+    })
+  }
+
+  const shopAddonsList = React.useMemo(() => Object.values(selectedShopAddons), [selectedShopAddons])
+  const shopItemsCount = shopAddonsList.reduce((acc, item) => acc + item.quantity, 0)
+  const [isShopDropdownOpen, setIsShopDropdownOpen] = useState<boolean>(false)
+
+  const shopItemsSubtotal = shopAddonsList.reduce(
+    (sum, item) => sum + (item.product.priceNumeric || 0) * item.quantity,
+    0
   )
 
   React.useEffect(() => {
@@ -510,7 +570,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
     return sum + (addon ? addon.price : 0)
   }, 0)
-  const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal
+  const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal + shopItemsSubtotal
   const mobileFee = 0 // Free mobile dispatch in service area
   const subtotal = Math.max(0, preDiscountSubtotal + mobileFee)
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
@@ -1084,6 +1144,143 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             </div>
           </div>
 
+          {/* Shop Products as Add-Ons (Dropdown Menu) */}
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="border border-gray-200 rounded-2xl bg-white shadow-xs overflow-hidden transition-all">
+              {/* Dropdown Header / Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
+                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-gray-50/80 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary shrink-0">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-gray-900">
+                        Shop Products Add-On
+                      </span>
+                      <span className="px-2 py-0.2 rounded-full bg-primary-light text-primary text-[10px] font-bold border border-primary-border/60 uppercase tracking-wider">
+                        Delivered With Wash
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-gray-500 truncate mt-0.5">
+                      {shopItemsCount > 0
+                        ? `${shopItemsCount} ${shopItemsCount === 1 ? 'item' : 'items'} added (+${shopItemsSubtotal.toFixed(2)})`
+                        : 'Select detailing products & apparel to deliver with your wash'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {shopItemsCount > 0 && !isShopDropdownOpen && (
+                    <span className="px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-mono font-bold">
+                      +${shopItemsSubtotal.toFixed(2)}
+                    </span>
+                  )}
+                  <div className={`w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 transition-transform duration-200 ${isShopDropdownOpen ? 'rotate-180 bg-primary-light text-primary' : ''}`}>
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </button>
+
+              {/* Dropdown Menu Content */}
+              {isShopDropdownOpen && (
+                <div className="p-3.5 pt-1 border-t border-gray-100 flex flex-col gap-2.5 bg-surface-subtle/50 animate-in fade-in duration-150">
+                  <p className="text-[11px] text-gray-500 pb-1">
+                    Official Bentley detailing care products & apparel. Your technician will hand-deliver them upon arrival:
+                  </p>
+
+                  <div className="flex flex-col gap-2">
+                    {BENTLEY_PRODUCTS.map((prod) => {
+                      const added = selectedShopAddons[prod.id]
+                      return (
+                        <div
+                          key={prod.id}
+                          className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                            added
+                              ? 'bg-primary-light/25 border-primary shadow-2xs'
+                              : 'bg-white border-gray-200/90 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                              <img src={prod.image} alt={prod.title} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-gray-900 truncate">
+                                  {prod.title}
+                                </span>
+                                {prod.badge && (
+                                  <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.2 rounded-sm">
+                                    {prod.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-gray-500 truncate">
+                                {prod.subtitle || prod.category}
+                              </span>
+                              <span className="text-xs font-black text-primary font-mono mt-0.5">
+                                +${prod.priceNumeric.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Add / Stepper Controls */}
+                          <div className="shrink-0">
+                            {added ? (
+                              <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg p-1 shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateShopAddonQuantity(prod.id, -1)}
+                                  className="w-6 h-6 rounded-md bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="text-xs font-bold text-gray-900 px-1 font-mono min-w-[16px] text-center">
+                                  {added.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateShopAddonQuantity(prod.id, 1)}
+                                  className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleShopAddon(prod)}
+                                className="px-3 py-1.5 rounded-lg border border-primary/30 bg-primary-light hover:bg-primary hover:text-white text-primary text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                              >
+                                <span>+ Add</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {shopItemsCount > 0 && (
+                    <div className="pt-2 border-t border-gray-200/80 flex items-center justify-between text-xs">
+                      <span className="text-gray-600 font-medium">
+                        Total Shop Add-Ons ({shopItemsCount} {shopItemsCount === 1 ? 'item' : 'items'}):
+                      </span>
+                      <span className="font-mono font-extrabold text-primary text-sm">
+                        +${shopItemsSubtotal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* 7. Contact Details */}
           <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col gap-2.5">
             <span className="text-xs font-bold text-gray-900">Your Contact Details</span>
@@ -1163,6 +1360,26 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <div className="flex items-center justify-between text-xs text-gray-600">
                 <span>+ {vehicleType} Size Surcharge</span>
                 <span className="font-mono">+${vehicleSizeSurcharge}.00</span>
+              </div>
+            )}
+
+            {shopItemsSubtotal > 0 && (
+              <div className="flex flex-col gap-1 p-2.5 rounded-xl bg-surface-subtle border border-gray-200">
+                <div className="flex items-center justify-between text-xs text-gray-800">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Package className="w-3.5 h-3.5 text-primary" />
+                    <span>Shop Products Add-On ({shopItemsCount})</span>
+                  </span>
+                  <span className="font-mono font-extrabold text-primary">
+                    +${shopItemsSubtotal.toFixed(2)}
+                  </span>
+                </div>
+                {shopAddonsList.map((item) => (
+                  <div key={item.product.id} className="flex items-center justify-between text-[11px] text-gray-500 pl-5">
+                    <span className="truncate max-w-[200px]">{item.quantity}x {item.product.title}</span>
+                    <span className="font-mono">${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
             )}
 

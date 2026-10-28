@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Truck,
   MapPin,
@@ -13,9 +13,13 @@ import {
   Radio,
   History,
   Calendar,
+  Package,
+  ShoppingBag,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
-import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
+import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData, ShopOrder, ShopOrderStatus } from '@/types'
+import { auth, db } from '@/firebase'
+import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
@@ -105,6 +109,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   })
 
   const [selectedDetailBooking, setSelectedDetailBooking] = useState<BookingRecord | null>(null)
+  const [selectedDetailShopOrder, setSelectedDetailShopOrder] = useState<ShopOrder | null>(null)
   const [codPaymentBooking, setCodPaymentBooking] = useState<BookingRecord | null>(null)
 
   // Persist driver navigation tabs
@@ -236,6 +241,114 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       ),
     [bookings, profile.name, profile.phone]
   )
+
+  // Real-time standalone shop delivery orders from Firestore
+  const [shopOrders, setShopOrders] = useState<ShopOrder[]>([])
+  const [jobCategoryFilter, setJobCategoryFilter] = useState<'all' | 'washes' | 'deliveries'>('all')
+
+  useEffect(() => {
+    const ordersRef = collection(db, 'orders')
+    const unsub = onSnapshot(
+      ordersRef,
+      (snapshot) => {
+        const loaded: ShopOrder[] = snapshot.docs.map((d) => ({
+          ...(d.data() as any),
+          id: d.id,
+          status: (d.data().status || 'pending') as ShopOrderStatus,
+          items: Array.isArray(d.data().items) ? d.data().items : [],
+          grandTotal: d.data().grandTotal || '0.00',
+        }))
+        setShopOrders(loaded)
+      },
+      (err) => console.warn('Driver shop orders listener warning:', err)
+    )
+    return () => unsub()
+  }, [])
+
+  // Filter available standalone shop delivery orders
+  const availableShopOrders = useMemo(
+    () =>
+      shopOrders.filter(
+        (o) =>
+          o.status === 'pending' &&
+          !o.driverId &&
+          o.deliveryType !== 'technician_carwash_dispatch'
+      ),
+    [shopOrders]
+  )
+
+  // Active driver shop delivery orders
+  const myActiveShopOrders = useMemo(
+    () =>
+      shopOrders.filter((o) => {
+        const isActive = o.status === 'accepted' || o.status === 'en_route'
+        if (!isActive) return false
+        return (
+          o.driverId === auth.currentUser?.uid ||
+          o.driverName === profile.name ||
+          o.driverPhone === profile.phone
+        )
+      }),
+    [shopOrders, profile.name, profile.phone]
+  )
+
+  // Completed driver shop delivery orders
+  const completedShopOrders = useMemo(
+    () =>
+      shopOrders.filter(
+        (o) =>
+          o.status === 'delivered' &&
+          (o.driverId === auth.currentUser?.uid ||
+            o.driverName === profile.name ||
+            o.driverPhone === profile.phone)
+      ),
+    [shopOrders, profile.name, profile.phone]
+  )
+
+  // Handle Driver Accepting Shop Delivery
+  const handleAcceptShopOrder = async (order: ShopOrder) => {
+    try {
+      const orderRef = doc(db, 'orders', order.id)
+      await updateDoc(orderRef, {
+        status: 'accepted',
+        driverId: auth.currentUser?.uid || 'driver-current',
+        driverName: profile.name,
+        driverPhone: profile.phone,
+        driverVanNumber: profile.vanModel || profile.licensePlate || 'Mobile Detailing Van',
+        driverAvatar: profile.avatar || '',
+        acceptedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      showToast(`Shop order #${order.id.slice(-6).toUpperCase()} accepted for delivery!`, 'success')
+      setOrdersSubTab('active')
+    } catch (err) {
+      console.error('Failed to accept shop order:', err)
+      showToast('Could not accept delivery. Please try again.', 'error')
+    }
+  }
+
+  // Handle Driver Updating Shop Order Delivery Status
+  const handleUpdateShopOrderStatus = async (orderId: string, newStatus: ShopOrderStatus) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId)
+      const updateData: any = {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      }
+      if (newStatus === 'delivered') {
+        updateData.paymentStatus = 'paid'
+        updateData.deliveredAt = serverTimestamp()
+        updateData.paymentCollectedBy = profile.name
+        updateData.paymentCollectedAt = serverTimestamp()
+      }
+      await updateDoc(orderRef, updateData)
+      showToast(newStatus === 'delivered' ? 'Order delivered and payment collected!' : `Delivery status updated to ${newStatus}`, 'success')
+    } catch (err) {
+      console.error('Failed to update delivery status:', err)
+      showToast('Failed to update delivery status.', 'error')
+    }
+  }
+
 
   // Handle saving driver profile updates
   const handleSaveProfile = (updated: DriverProfile) => {
@@ -442,6 +555,166 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         )}
       </Dialog>
 
+      {/* 3.1 SHOP ORDER DETAILS MODAL */}
+      <Dialog
+        isOpen={!!selectedDetailShopOrder}
+        onClose={() => setSelectedDetailShopOrder(null)}
+        zIndex="z-60"
+        position="center"
+        maxWidth="md"
+        contentClassName="p-5 sm:p-6"
+      >
+        {selectedDetailShopOrder && (
+          <>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                <h3 className="text-base font-bold text-gray-900">
+                  Shop Delivery #{selectedDetailShopOrder.id.slice(-6).toUpperCase()}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDetailShopOrder(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 text-xs">
+              {/* Customer & Address */}
+              <div className="p-3.5 bg-surface-subtle rounded-2xl border border-gray-100 flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold text-gray-500 uppercase">Customer & Delivery Location</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-gray-900">
+                    {selectedDetailShopOrder.recipientName || selectedDetailShopOrder.customerName || 'Customer'}
+                  </span>
+                  {(selectedDetailShopOrder.recipientPhone || selectedDetailShopOrder.customerPhone) && (
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`tel:${selectedDetailShopOrder.recipientPhone || selectedDetailShopOrder.customerPhone}`}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold hover:bg-emerald-100 flex items-center gap-1 transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5 fill-emerald-600" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`sms:${selectedDetailShopOrder.recipientPhone || selectedDetailShopOrder.customerPhone}`}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 font-bold hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>SMS</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between mt-1 text-gray-600">
+                  <span className="truncate max-w-[260px]">
+                    {selectedDetailShopOrder.deliveryAddress || selectedDetailShopOrder.shippingAddress || 'Address on file'}
+                    {selectedDetailShopOrder.deliveryCity ? `, ${selectedDetailShopOrder.deliveryCity}` : ''}
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedDetailShopOrder.deliveryAddress || selectedDetailShopOrder.shippingAddress || '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary font-bold hover:underline inline-flex items-center gap-0.5 shrink-0"
+                  >
+                    <span>Maps</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="p-3.5 bg-surface-subtle rounded-2xl border border-gray-100 flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-gray-500 uppercase">
+                  Purchased Products ({selectedDetailShopOrder.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0} items)
+                </span>
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                  {selectedDetailShopOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-3 bg-white p-2 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {item.product?.image ? (
+                          <img src={item.product.image} alt={item.product.title} className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center text-primary shrink-0">
+                            <Package className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-gray-900 text-xs truncate">{item.product?.title || 'Product'}</span>
+                          <span className="text-[11px] text-gray-500">Qty: {item.quantity}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono font-bold text-gray-900 text-xs shrink-0">
+                        ${((Number(item.product?.priceNumeric || 0) || Number(String(item.product?.price || '').replace(/[^0-9.]/g, '')) || 0) * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total & Payment Method */}
+              <div className="p-3.5 bg-surface-subtle rounded-2xl border border-gray-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase">Payment Method</span>
+                  <div className="text-xs font-bold text-gray-900 capitalize mt-0.5">
+                    {selectedDetailShopOrder.paymentMethod === 'cod' ? 'Cash on Delivery (Collect Cash)' : (selectedDetailShopOrder.paymentMethod || 'Prepaid')}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase">Grand Total</span>
+                  <div className="text-base font-black text-primary font-mono">
+                    ${Number(selectedDetailShopOrder.grandTotal).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-gray-100">
+              {selectedDetailShopOrder.status === 'pending' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAcceptShopOrder(selectedDetailShopOrder)
+                    setSelectedDetailShopOrder(null)
+                  }}
+                  className="w-full py-3 rounded-2xl bg-primary hover:bg-primary-hover active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <Package className="w-4 h-4" />
+                  <span>Accept Shop Delivery</span>
+                </button>
+              ) : selectedDetailShopOrder.status === 'accepted' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateShopOrderStatus(selectedDetailShopOrder.id, 'en_route')
+                    setSelectedDetailShopOrder(null)
+                  }}
+                  className="w-full py-3 rounded-2xl bg-primary hover:bg-primary-hover active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4" />
+                  <span>Mark En Route</span>
+                </button>
+              ) : selectedDetailShopOrder.status === 'en_route' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateShopOrderStatus(selectedDetailShopOrder.id, 'delivered')
+                    setSelectedDetailShopOrder(null)
+                  }}
+                  className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Mark Delivered & Confirm Cash Collected</span>
+                </button>
+              ) : null}
+            </div>
+          </>
+        )}
+      </Dialog>
+
       {/* 4. MAIN RESPONSIVE DASHBOARD LAYOUT */}
       <main className="w-full max-w-full min-h-screen bg-canvas flex flex-col pb-32">
         {/* TOP RESPONSIVE HEADER: Logo on Left (Profile icon only in Bottom Navbar) */}
@@ -487,7 +760,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                           : 'bg-primary/10 text-primary'
                       }`}
                     >
-                      {availableOrders.length}
+                      {availableOrders.length + availableShopOrders.length}
                     </span>
                   </button>
 
@@ -512,100 +785,243 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                           : 'bg-secondary/10 text-secondary'
                       }`}
                     >
-                      {myActiveOrders.length}
+                      {myActiveOrders.length + myActiveShopOrders.length}
                     </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-gray-100/90 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'all'
+                        ? 'bg-white text-gray-900 shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    All Jobs ({ordersSubTab === 'available' ? availableOrders.length + availableShopOrders.length : myActiveOrders.length + myActiveShopOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('washes')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'washes'
+                        ? 'bg-white text-primary shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Washes ({ordersSubTab === 'available' ? availableOrders.length : myActiveOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('deliveries')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'deliveries'
+                        ? 'bg-white text-primary shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Shop Deliveries ({ordersSubTab === 'available' ? availableShopOrders.length : myActiveShopOrders.length})
                   </button>
                 </div>
 
                 <div className="text-[11px] text-gray-500 font-medium">
                   {ordersSubTab === 'available'
-                    ? `${availableOrders.length} incoming customer requests`
-                    : `${myActiveOrders.length} orders currently assigned to you`}
+                    ? `${
+                        jobCategoryFilter === 'all'
+                          ? availableOrders.length + availableShopOrders.length
+                          : jobCategoryFilter === 'washes'
+                          ? availableOrders.length
+                          : availableShopOrders.length
+                      } incoming customer requests`
+                    : `${
+                        jobCategoryFilter === 'all'
+                          ? myActiveOrders.length + myActiveShopOrders.length
+                          : jobCategoryFilter === 'washes'
+                          ? myActiveOrders.length
+                          : myActiveShopOrders.length
+                      } orders currently assigned to you`}
                 </div>
               </div>
 
               {/* Sub-tab 1: Available Live Orders */}
               {ordersSubTab === 'available' && (
                 <>
-                  {availableOrders.length === 0 ? (
+                  {((jobCategoryFilter === 'washes' && availableOrders.length === 0) ||
+                    (jobCategoryFilter === 'deliveries' && availableShopOrders.length === 0) ||
+                    (jobCategoryFilter === 'all' && availableOrders.length === 0 && availableShopOrders.length === 0)) ? (
                     <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
                       <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                      <span className="text-base font-bold text-gray-800">No pending orders right now</span>
+                      <span className="text-base font-bold text-gray-800">
+                        {jobCategoryFilter === 'deliveries'
+                          ? 'No pending shop deliveries right now'
+                          : jobCategoryFilter === 'washes'
+                          ? 'No pending car washes right now'
+                          : 'No pending orders right now'}
+                      </span>
                       <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                        New customer car wash and detailing requests will appear here in real-time.
+                        {jobCategoryFilter === 'deliveries'
+                          ? 'Real-time customer shop product orders will appear here automatically.'
+                          : 'New customer car wash and detailing requests will appear here in real-time.'}
                       </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                      {availableOrders.map((booking) => (
-                        <div
-                          key={booking.id}
-                          className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5"
-                        >
-                          {/* Customer & Distance */}
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                                {booking.customerName.charAt(0)}
+                      {/* Available Washes */}
+                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') &&
+                        availableOrders.map((booking) => (
+                          <div
+                            key={booking.id}
+                            className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                                  {booking.customerName.charAt(0)}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs sm:text-sm font-bold text-gray-900">
+                                    {booking.customerName}
+                                  </span>
+                                  <span className="text-[11px] text-gray-500 font-medium">
+                                    {booking.vehicle} ({booking.vehicleType || 'Vehicle'})
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                  {booking.customerName}
+
+                              <div className="flex flex-col items-end">
+                                <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                  {booking.price}
                                 </span>
-                                <span className="text-[11px] text-gray-500 font-medium">
-                                  {booking.vehicle} ({booking.vehicleType || 'Vehicle'})
+                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
+                                  {booking.distanceKm ? `${booking.distanceKm} km away` : 'Available'}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex flex-col items-end">
-                              <span className="text-sm sm:text-base font-black text-primary font-mono">
-                                {booking.price}
-                              </span>
-                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
-                                {booking.distanceKm ? `${booking.distanceKm} km away` : 'Available'}
-                              </span>
+                            <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="truncate">{booking.address}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-gray-500 text-[11px]">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-gray-400" />
+                                  <span>{booking.date} at {booking.time}</span>
+                                </span>
+                                <span className="font-semibold text-gray-700">{booking.title}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailBooking(booking)}
+                                className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                title="View Order Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Details</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAccept(booking)}
+                                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Accept Request</span>
+                              </button>
                             </div>
                           </div>
+                        ))}
 
-                          {/* Address & Time */}
-                          <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                              <span className="truncate">{booking.address}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-gray-500 text-[11px]">
-                              <span className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-gray-400" />
-                                <span>{booking.date} at {booking.time}</span>
-                              </span>
-                              <span className="font-semibold text-gray-700">{booking.title}</span>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDetailBooking(booking)}
-                              className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                              title="View Order Details"
+                      {/* Available Shop Deliveries */}
+                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') &&
+                        availableShopOrders.map((order) => {
+                          const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                          return (
+                            <div
+                              key={order.id}
+                              className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5 relative overflow-hidden"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Details</span>
-                            </button>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                                    <Package className="w-5 h-5" />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs sm:text-sm font-bold text-gray-900">
+                                        {order.recipientName || order.customerName || 'Customer'}
+                                      </span>
+                                      <span className="px-2 py-0.2 rounded-full bg-primary-light text-primary border border-primary-border/60 text-[10px] font-bold uppercase tracking-wider">
+                                        Shop Delivery
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 font-medium">
+                                      {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
+                                    </span>
+                                  </div>
+                                </div>
 
-                            <button
-                              type="button"
-                              onClick={() => handleAccept(booking)}
-                              className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Accept Request</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                                <div className="flex flex-col items-end">
+                                  <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                    ${Number(order.grandTotal).toFixed(2)}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
+                                    {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  <span className="truncate">
+                                    {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 pt-1.5 border-t border-gray-200/60 flex items-center gap-1.5 overflow-x-auto py-0.5">
+                                  {order.items?.slice(0, 3).map((item, idx) => (
+                                    <span key={idx} className="inline-flex items-center gap-1 text-[11px] bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 font-medium shrink-0">
+                                      <span className="font-bold text-primary">{item.quantity}x</span>
+                                      <span className="truncate max-w-[110px]">{item.product?.title || 'Product'}</span>
+                                    </span>
+                                  ))}
+                                  {(order.items?.length || 0) > 3 && (
+                                    <span className="text-[10px] text-gray-400 font-bold shrink-0">
+                                      +${order.items.length - 3} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDetailShopOrder(order)}
+                                  className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                  title="View Order Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Details</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleAcceptShopOrder(order)}
+                                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>Accept Delivery</span>
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
                     </div>
                   )}
                 </>
@@ -614,111 +1030,220 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               {/* Sub-tab 2: My Active Accepted Orders */}
               {ordersSubTab === 'active' && (
                 <>
-                  {myActiveOrders.length === 0 ? (
+                  {((jobCategoryFilter === 'washes' && myActiveOrders.length === 0) ||
+                    (jobCategoryFilter === 'deliveries' && myActiveShopOrders.length === 0) ||
+                    (jobCategoryFilter === 'all' && myActiveOrders.length === 0 && myActiveShopOrders.length === 0)) ? (
                     <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
                       <Truck className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                      <span className="text-base font-bold text-gray-800">No active deliveries in progress</span>
+                      <span className="text-base font-bold text-gray-800">
+                        {jobCategoryFilter === 'deliveries'
+                          ? 'No active shop deliveries in progress'
+                          : jobCategoryFilter === 'washes'
+                          ? 'No active washes in progress'
+                          : 'No active jobs in progress'}
+                      </span>
                       <p className="text-xs text-gray-400 mt-1 max-w-sm">
                         Accept a live order from the "Live Requests" tab to start your delivery route.
                       </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                      {myActiveOrders.map((booking) => (
-                        <div
-                          key={booking.id}
-                          className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
-                        >
-                          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200 uppercase flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                <span>{booking.status.replace('_', ' ')}</span>
+                      {/* Active Washes */}
+                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') &&
+                        myActiveOrders.map((booking) => (
+                          <div
+                            key={booking.id}
+                            className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200 uppercase flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                  <span>{booking.status.replace('_', ' ')}</span>
+                                </span>
+                              </div>
+                              <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                {booking.price}
                               </span>
                             </div>
-                            <span className="text-sm sm:text-base font-black text-primary font-mono">
-                              {booking.price}
-                            </span>
-                          </div>
 
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="text-sm font-bold text-gray-900">{booking.customerName}</h3>
-                              <p className="text-xs text-gray-500 font-medium">{booking.vehicle}</p>
-                              <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
-                                {booking.address}
-                              </p>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="text-sm font-bold text-gray-900">{booking.customerName}</h3>
+                                <p className="text-xs text-gray-500 font-medium">{booking.vehicle}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                                  {booking.address}
+                                </p>
+                              </div>
                             </div>
-                          </div>
 
-                          {/* Progress Flow Actions */}
-                          <div className="flex flex-col gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedBookingForMap(booking)}
-                              className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-                            >
-                              <Navigation className="w-3.5 h-3.5 fill-white" />
-                              <span>Open Live Map & Route</span>
-                            </button>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              {booking.status === 'accepted' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateStatus(booking.id, 'en_route')}
-                                  className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                >
-                                  Mark En Route
-                                </button>
-                              )}
-
-                              {booking.status === 'en_route' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateStatus(booking.id, 'in_progress')}
-                                  className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                >
-                                  Start Washing
-                                </button>
-                              )}
-
-                              {booking.status === 'in_progress' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      !booking.paymentStatus ||
-                                      booking.paymentStatus !== 'paid' ||
-                                      booking.paymentMethod?.toLowerCase().includes('cash') ||
-                                      booking.paymentMethod?.toLowerCase().includes('delivery') ||
-                                      booking.paymentMethod?.toLowerCase().includes('completion')
-                                    ) {
-                                      setCodPaymentBooking(booking)
-                                    } else {
-                                      onUpdateStatus(booking.id, 'completed')
-                                      showToast('Service marked as completed!', 'success')
-                                    }
-                                  }}
-                                  className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer col-span-2 shadow-xs"
-                                >
-                                  Complete Service & Collect COD
-                                </button>
-                              )}
-
+                            {/* Progress Flow Actions */}
+                            <div className="flex flex-col gap-2 pt-1">
                               <button
                                 type="button"
-                                onClick={() => setSelectedDetailBooking(booking)}
-                                className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${
-                                  booking.status === 'in_progress' ? 'hidden' : ''
-                                }`}
+                                onClick={() => setSelectedBookingForMap(booking)}
+                                className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                               >
-                                Details
+                                <Navigation className="w-3.5 h-3.5 fill-white" />
+                                <span>Open Live Map & Route</span>
                               </button>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                {booking.status === 'accepted' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateStatus(booking.id, 'en_route')}
+                                    className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                  >
+                                    Mark En Route
+                                  </button>
+                                )}
+
+                                {booking.status === 'en_route' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateStatus(booking.id, 'in_progress')}
+                                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                  >
+                                    Start Washing
+                                  </button>
+                                )}
+
+                                {booking.status === 'in_progress' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (
+                                        !booking.paymentStatus ||
+                                        booking.paymentStatus !== 'paid' ||
+                                        booking.paymentMethod?.toLowerCase().includes('cash') ||
+                                        booking.paymentMethod?.toLowerCase().includes('delivery') ||
+                                        booking.paymentMethod?.toLowerCase().includes('completion')
+                                      ) {
+                                        setCodPaymentBooking(booking)
+                                      } else {
+                                        onUpdateStatus(booking.id, 'completed')
+                                        showToast('Service marked as completed!', 'success')
+                                      }
+                                    }}
+                                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer col-span-2 shadow-xs"
+                                  >
+                                    Complete Service & Collect COD
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDetailBooking(booking)}
+                                  className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${
+                                    booking.status === 'in_progress' ? 'hidden' : ''
+                                  }`}
+                                >
+                                  Details
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+
+                      {/* Active Shop Deliveries */}
+                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') &&
+                        myActiveShopOrders.map((order) => {
+                          const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                          return (
+                            <div
+                              key={order.id}
+                              className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                            >
+                              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-primary-light text-primary text-[10px] font-bold border border-primary-border/60 uppercase flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                                    <span>Shop: {order.status.replace('_', ' ')}</span>
+                                  </span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                    ${Number(order.grandTotal).toFixed(2)}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-gray-500">
+                                    {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-bold text-gray-900">
+                                      {order.recipientName || order.customerName || 'Customer'}
+                                    </h3>
+                                    {(order.recipientPhone || order.customerPhone) && (
+                                      <a
+                                        href={`tel:${order.recipientPhone || order.customerPhone}`}
+                                        className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                        title="Call recipient"
+                                      >
+                                        <Phone className="w-3 h-3 fill-emerald-600" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                    {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
+                                  </p>
+                                  <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                                    {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Progress Flow Actions */}
+                              <div className="flex flex-col gap-2 pt-1">
+                                <a
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress || order.shippingAddress || '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                >
+                                  <Navigation className="w-3.5 h-3.5 fill-white" />
+                                  <span>Open Maps Directions</span>
+                                </a>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  {order.status === 'accepted' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateShopOrderStatus(order.id, 'en_route')}
+                                      className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                    >
+                                      Mark En Route
+                                    </button>
+                                  )}
+
+                                  {order.status === 'en_route' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateShopOrderStatus(order.id, 'delivered')}
+                                      className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                    >
+                                      Delivered & Cash
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedDetailShopOrder(order)}
+                                    className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${
+                                      order.status === 'en_route' ? 'col-span-1' : 'col-span-1'
+                                    }`}
+                                  >
+                                    Details
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                     </div>
                   )}
                 </>
@@ -817,8 +1342,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             setDriverTab(tab)
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
-          ordersBadge={availableOrders.length}
-          historyBadge={completedOrders.length}
+          ordersBadge={availableOrders.length + availableShopOrders.length}
+          historyBadge={completedOrders.length + completedShopOrders.length}
         />
       )}
 

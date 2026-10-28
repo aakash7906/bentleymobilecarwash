@@ -95,8 +95,17 @@ async function executeCreateCarwashCheckout(data: any, authUid?: string) {
   } = data || {};
 
   const numericAmount = parseFloat(amount);
-  if (isNaN(numericAmount) || numericAmount <= 0) {
-    throw new Error("A valid positive 'amount' is required.");
+  if (isNaN(numericAmount) || numericAmount < 1 || numericAmount > 10000) {
+    throw new Error("Amount must be a valid number between $1.00 and $10,000.00 CAD.");
+  }
+  const cleanCurrency = String(currency || "cad").toLowerCase().trim();
+  if (!["cad", "usd"].includes(cleanCurrency)) {
+    throw new Error("Invalid currency specified. Only CAD and USD are supported.");
+  }
+  if (type === "shop_order") {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("Shop order requires a non-empty items array.");
+    }
   }
 
   const appBaseUrl = process.env.APP_URL || "http://localhost:5173";

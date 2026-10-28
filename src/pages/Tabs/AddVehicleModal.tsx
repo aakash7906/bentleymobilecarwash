@@ -5,6 +5,8 @@ import {
   VEHICLE_CATEGORIES,
 } from '@/data/mockData'
 import { SavedVehicle, VehicleCategory } from '@/types'
+import { isValidLicensePlate } from '@/lib/utils'
+import { useToast } from '@/context/ToastContext'
 import { ChevronLeft, Car } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -79,6 +81,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   onClose,
   onVehicleAdded,
 }) => {
+  const { showToast } = useToast()
   const [mode, setMode] = useState<'guided' | 'quick'>('guided')
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
 

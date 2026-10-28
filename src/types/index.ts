@@ -96,6 +96,54 @@ export interface DeliveryAddress {
   isDefault?: boolean
 }
 
+export type ShopOrderStatus =
+  | 'pending'
+  | 'accepted'
+  | 'en_route'
+  | 'delivered'
+  | 'cancelled'
+
+export interface ShopOrder {
+  id: string
+  userId?: string
+  customerName: string
+  customerEmail?: string
+  customerPhone?: string
+  shippingAddress?: string
+  deliveryAddress?: string
+  deliveryCity?: string
+  deliveryPostalCode?: string
+  recipientName?: string
+  recipientPhone?: string
+  deliveryNotes?: string
+  items: CartItem[]
+  totalItemsCount?: number
+  itemsSubtotal?: number
+  subtotal?: number
+  discountAmount?: number
+  shippingFee?: number
+  deliveryFee?: number
+  taxFee?: number
+  taxes?: number
+  grandTotal: string | number
+  paymentMethod: string
+  paymentStatus: 'pending' | 'paid' | 'failed'
+  status: ShopOrderStatus
+  deliveryType?: string
+  driverId?: string
+  driverName?: string
+  driverPhone?: string
+  driverVanNumber?: string
+  driverAvatar?: string
+  driverCoords?: [number, number]
+  customerCoords?: [number, number]
+  createdAt: any
+  updatedAt?: any
+  deliveredAt?: any
+  paymentCollectedAt?: any
+  paymentCollectedMethod?: string
+}
+
 export interface UserProfile {
   name: string
   email: string
@@ -166,6 +214,8 @@ export interface BookingRecord {
   distanceKm?: number
   estimatedMins?: number
   addons?: string[]
+  shopItems?: CartItem[]
+  shopItemsTotal?: number
   paymentMethod?: string
   stripePaymentId?: string
   paymentStatus?: 'pending' | 'paid' | 'failed'

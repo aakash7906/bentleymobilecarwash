@@ -14,6 +14,7 @@ import {
   Sparkles,
   AlertCircle,
   Receipt,
+  Package,
 } from 'lucide-react'
 
 interface InvoiceModalProps {
@@ -477,6 +478,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                           <span className="text-[11px] sm:text-xs">Add-on: {addon}</span>
                         </div>
                         <span className="font-semibold text-gray-800 text-[10px] sm:text-xs">Included</span>
+                      </div>
+                    ))}
+
+                  {/* Bundled Shop Delivery Products */}
+                  {booking.shopItems &&
+                    booking.shopItems.length > 0 &&
+                    booking.shopItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center p-2 sm:p-2.5 bg-amber-50/70 text-xs border-t border-amber-100/80"
+                      >
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="text-[11px] sm:text-xs">
+                            Shop Item: {item.product.title} (×{item.quantity})
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-950 text-xs">
+                          ${(item.product.priceNumeric * item.quantity).toFixed(2)}
+                        </span>
                       </div>
                     ))}
 
