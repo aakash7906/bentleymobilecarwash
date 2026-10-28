@@ -281,8 +281,8 @@ export const DriverProfilePage: React.FC<DriverProfilePageProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
-      <div className="w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-24">
+    <div className="fixed inset-0 z-40 bg-[#f7f9fb] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+      <div className="w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto min-h-screen flex flex-col bg-[#f7f9fb] pb-36 sm:pb-40">
         {/* TOP RESPONSIVE APP BAR */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-4 sm:px-6 md:px-8 py-3.5 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">

@@ -807,15 +807,20 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             </div>
           )}
         </div>
+      </main>
 
-        {/* 5. BOTTOM NAVIGATION TABS (Option B: Orders, History, Profile) */}
+      {/* 5. BOTTOM NAVIGATION TABS (Visible across Orders, History, and Profile) */}
+      {!selectedBookingForMap && (
         <DriverBottomNav
           currentTab={driverTab}
-          onTabChange={(tab) => setDriverTab(tab)}
+          onTabChange={(tab) => {
+            setDriverTab(tab)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
           ordersBadge={availableOrders.length}
           historyBadge={completedOrders.length}
         />
-      </main>
+      )}
 
       {/* COD Payment Confirmation Modal */}
       {codPaymentBooking && (

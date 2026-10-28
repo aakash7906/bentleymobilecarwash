@@ -38,7 +38,7 @@ export const DriverBottomNav: React.FC<DriverBottomNavProps> = ({
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none select-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none select-none">
       <div className="w-full pointer-events-auto">
         {/* Parabolic Top Edge SVG - Matches Customer BottomNav Aesthetic */}
         <div className="relative w-full">
