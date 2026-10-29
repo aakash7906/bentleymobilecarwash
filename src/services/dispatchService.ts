@@ -37,28 +37,47 @@ export function getRemainingEtaMinutes(
     status?: string
     estimatedArrivalTime?: string
     estimatedMins?: number
+    distanceKm?: number
+    driverCoords?: [number, number]
+    customerCoords?: [number, number]
   } | null
 ): number | null {
   if (!record || record.status !== 'en_route') {
     return null
   }
 
+  // 1. Primary: Exact absolute arrival timestamp countdown
   if (record.estimatedArrivalTime) {
     const targetMs = new Date(record.estimatedArrivalTime).getTime()
     if (!isNaN(targetMs)) {
       const diffMs = targetMs - Date.now()
       const remaining = Math.round(diffMs / 60000)
       // When time is reached or vehicle is outside, lock to 1 min (Arriving now)
-      return Math.min(45, Math.max(1, remaining))
+      return Math.min(60, Math.max(1, remaining))
     }
   }
 
-  // Graceful fallback to estimatedMins if timestamp is still propagating
+  // 2. Direct synchronized ETA minutes from driver or live route calculation
   if (typeof record.estimatedMins === 'number' && record.estimatedMins > 0) {
-    return Math.min(45, Math.max(1, Math.round(record.estimatedMins)))
+    return Math.min(60, Math.max(1, Math.round(record.estimatedMins)))
   }
 
-  return 10
+  // 3. Derived from real road distance if distanceKm is present (e.g. 15.2 km -> 17 mins)
+  if (typeof record.distanceKm === 'number' && record.distanceKm > 0) {
+    const calculated = Math.round(record.distanceKm * 1.12)
+    return Math.min(60, Math.max(1, calculated))
+  }
+
+  // 4. Derived from driverCoords & customerCoords if available
+  if (record.driverCoords && record.customerCoords) {
+    const dist = calculateDistanceKm(record.driverCoords, record.customerCoords)
+    if (dist > 0) {
+      const realisticDist = dist > 35 ? 3.5 : dist
+      return Math.min(60, Math.max(1, Math.round(realisticDist * 1.25)))
+    }
+  }
+
+  return 15
 }
 
 /**

@@ -1,6 +1,6 @@
-﻿import React, { useState } from 'react'
-import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord, ShopOrder } from '@/types'
-import { getRemainingEtaMinutes, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
+import React, { useState, useMemo } from 'react'
+import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord, ShopOrder, BookingStatus } from '@/types'
+import { getRemainingEtaMinutes, computeEstimatedArrivalTime, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
@@ -13,12 +13,20 @@ import catTireShineImg from '@/assets/home/cat-tire-shine.png'
 import recCarWashImg from '@/assets/home/rec-car-wash.png'
 import shopTireShineImg from '@/assets/home/shop-tire-shine.jpg'
 import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
+
+function mapShopStatusToBookingStatus(status?: string): BookingStatus {
+  if (status === 'en_route') return 'en_route'
+  if (status === 'accepted') return 'accepted'
+  if (status === 'delivered') return 'completed'
+  if (status === 'cancelled') return 'cancelled'
+  return 'scheduled'
+}
 import { ProductDetailPage } from '@/pages/Shop/ProductDetailPage'
 import { CartPage } from '@/pages/Orders/CartPage'
 import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
 import { auth, db } from '@/firebase'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getLiveGPSLocation } from '@/services/locationService'
 
 interface HomeTabProps {
@@ -57,9 +65,9 @@ function calculateDistanceKm(c1: [number, number], c2: [number, number]): number
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((c1[1] * Math.PI) / 180) *
-      Math.cos((c2[1] * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2)
+    Math.cos((c2[1] * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return parseFloat((R * c).toFixed(1))
 }
@@ -170,9 +178,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         const data = await res.json()
         if (isSubscribed && data.code === 'Ok' && data.routes?.[0]?.duration) {
           const rawMins = Math.round(data.routes[0].duration / 60)
-          // Ensure ETA in minutes is realistic (mobile dispatch is between 2 and 30 mins)
           const mins = Math.min(30, Math.max(2, rawMins))
           setDynamicDrivingEtaMins(mins)
+          if (enRouteBooking.id) {
+            try {
+              const collName = (enRouteBooking as any).kind === 'shop' || enRouteBooking.category === 'Shop Delivery' ? 'orders' : 'bookings'
+              updateDoc(doc(db, collName, enRouteBooking.id), {
+                estimatedMins: mins,
+                estimatedArrivalTime: computeEstimatedArrivalTime(mins),
+              }).catch(() => {})
+            } catch {}
+          }
           return
         }
       } catch (err: any) {
@@ -266,50 +282,50 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     badge: string
     serviceItem: ServiceItem
   }[] = [
-    {
-      id: supremeItem.id,
-      title: supremeItem.title,
-      category: supremeItem.category,
-      price: supremeItem.price,
-      image: supremeItem.image,
-      badge: 'Best Value',
-      serviceItem: {
-        ...supremeItem,
-        vehicleModel: currentVehicle,
+      {
+        id: supremeItem.id,
+        title: supremeItem.title,
+        category: supremeItem.category,
+        price: supremeItem.price,
+        image: supremeItem.image,
+        badge: 'Best Value',
+        serviceItem: {
+          ...supremeItem,
+          vehicleModel: currentVehicle,
+        },
       },
-    },
-    {
-      id: premiumItem.id,
-      title: premiumItem.title,
-      category: premiumItem.category,
-      price: `$${premiumPriceNumeric}.00`,
-      image: premiumItem.image,
-      badge: `${activeVehicleType} Rate`,
-      serviceItem: {
-        ...premiumItem,
-        selectedTier: (activeVehicleType === 'SUV'
-          ? 'suv'
-          : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
-            ? 'truck'
-            : 'car') as 'car' | 'suv' | 'truck',
+      {
+        id: premiumItem.id,
+        title: premiumItem.title,
+        category: premiumItem.category,
         price: `$${premiumPriceNumeric}.00`,
-        priceNumeric: premiumPriceNumeric,
-        vehicleModel: `${activeVehicleType}${currentVehicle ? ` (${currentVehicle})` : ''}`,
+        image: premiumItem.image,
+        badge: `${activeVehicleType} Rate`,
+        serviceItem: {
+          ...premiumItem,
+          selectedTier: (activeVehicleType === 'SUV'
+            ? 'suv'
+            : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
+              ? 'truck'
+              : 'car') as 'car' | 'suv' | 'truck',
+          price: `$${premiumPriceNumeric}.00`,
+          priceNumeric: premiumPriceNumeric,
+          vehicleModel: `${activeVehicleType}${currentVehicle ? ` (${currentVehicle})` : ''}`,
+        },
       },
-    },
-    {
-      id: deluxeItem.id,
-      title: deluxeItem.title,
-      category: deluxeItem.category,
-      price: deluxeItem.price,
-      image: deluxeItem.image,
-      badge: 'Popular',
-      serviceItem: {
-        ...deluxeItem,
-        vehicleModel: currentVehicle,
+      {
+        id: deluxeItem.id,
+        title: deluxeItem.title,
+        category: deluxeItem.category,
+        price: deluxeItem.price,
+        image: deluxeItem.image,
+        badge: 'Popular',
+        serviceItem: {
+          ...deluxeItem,
+          vehicleModel: currentVehicle,
+        },
       },
-    },
-  ]
+    ]
 
   // Bentley Shop authentic products from src/assets/products
   const shopProducts = BENTLEY_PRODUCTS
@@ -327,8 +343,30 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     }
   }
 
+  // Resolve active dispatch item for floating popup banner and bottom scroll clearance
+  const activeDispatch: ActiveDispatchItem | null = useMemo(() => {
+    const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
+    const enRouteShop = activeShopOrders.find((o) => o.status === 'en_route')
+    const inProgressBooking = activeBookings.find((b) => b.status === 'in_progress')
+    const acceptedBooking = activeBookings.find((b) => b.status === 'accepted')
+    const acceptedShop = activeShopOrders.find((o) => o.status === 'accepted')
+    const scheduledBooking = activeBookings.find((b) => b.status === 'scheduled')
+    const pendingBooking = activeBookings.find((b) => b.status === 'pending')
+    const pendingShop = activeShopOrders.find((o) => o.status === 'pending')
+
+    return enRouteBooking ? toActiveDispatchItem(enRouteBooking, 'wash') :
+      enRouteShop ? toActiveDispatchItem(enRouteShop, 'shop') :
+        inProgressBooking ? toActiveDispatchItem(inProgressBooking, 'wash') :
+          acceptedBooking ? toActiveDispatchItem(acceptedBooking, 'wash') :
+            acceptedShop ? toActiveDispatchItem(acceptedShop, 'shop') :
+              scheduledBooking ? toActiveDispatchItem(scheduledBooking, 'wash') :
+                pendingBooking ? toActiveDispatchItem(pendingBooking, 'wash') :
+                  pendingShop ? toActiveDispatchItem(pendingShop, 'shop') :
+                    null
+  }, [activeBookings, activeShopOrders])
+
   return (
-    <div className="flex flex-col w-full pb-32 relative select-none">
+    <div className={`flex flex-col w-full ${activeDispatch ? 'pb-32 sm:pb-36' : 'pb-28 sm:pb-32'} relative select-none`}>
       {/* 1. TOP HEADER: Bentley Mascot Logo & Red Action Buttons */}
       <div className="screen-padding pt-3 sm:pt-4 flex items-center justify-between">
         <img
@@ -373,11 +411,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               {isLocating ? 'sync' : 'location_on'}
             </span>
             <span
-              className={`text-[11px] sm:text-xs truncate tracking-tight ${
-                !isLocating && !currentAddress
-                  ? 'text-gray-400 font-normal'
-                  : 'text-gray-700 font-medium'
-              }`}
+              className={`text-[11px] sm:text-xs truncate tracking-tight ${!isLocating && !currentAddress
+                ? 'text-gray-400 font-normal'
+                : 'text-gray-700 font-medium'
+                }`}
             >
               {isLocating ? 'Detecting your live location...' : (currentAddress || 'Select your location')}
             </span>
@@ -411,6 +448,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
+
       {/* 4. RED CONTOUR VEHICLE SELECTOR */}
       <div className="relative w-full screen-padding mt-1.5 z-20">
         {/* Left Downward Curved Line */}
@@ -433,9 +471,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             className="w-full bg-white border border-primary rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary-light/50 active:scale-98 transition-all"
           >
             <span
-              className={`text-xs sm:text-sm tracking-tight truncate ${
-                currentVehicle ? 'font-semibold text-gray-900' : 'font-medium text-gray-400'
-              }`}
+              className={`text-xs sm:text-sm tracking-tight truncate ${currentVehicle ? 'font-semibold text-gray-900' : 'font-medium text-gray-400'
+                }`}
             >
               {currentVehicle || 'Add your vehicle'}
             </span>
@@ -465,8 +502,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         setIsDropdownOpen(false)
                       }}
                       className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${veh.name === currentVehicle
-                          ? 'bg-primary-light text-primary font-bold'
-                          : 'hover:bg-gray-50 text-gray-800 font-medium'
+                        ? 'bg-primary-light text-primary font-bold'
+                        : 'hover:bg-gray-50 text-gray-800 font-medium'
                         }`}
                     >
                       <div className="flex flex-col min-w-0">
@@ -765,30 +802,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
+      {/* Dynamic bottom spacer to ensure Bentley Shop cards & action buttons are never occluded by floating banner */}
+      {activeDispatch && (
+        <div className="h-10 sm:h-12 w-full shrink-0 pointer-events-none" aria-hidden="true" />
+      )}
+
       {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status & Real-time ETA */}
-      {(() => {
-        // Resolve active dispatch with priority: en_route -> in_progress -> accepted -> scheduled -> pending
-        const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
-        const enRouteShop = activeShopOrders.find((o) => o.status === 'en_route')
-        const inProgressBooking = activeBookings.find((b) => b.status === 'in_progress')
-        const acceptedBooking = activeBookings.find((b) => b.status === 'accepted')
-        const acceptedShop = activeShopOrders.find((o) => o.status === 'accepted')
-        const scheduledBooking = activeBookings.find((b) => b.status === 'scheduled')
-        const pendingBooking = activeBookings.find((b) => b.status === 'pending')
-        const pendingShop = activeShopOrders.find((o) => o.status === 'pending')
-
-        const activeDispatch: ActiveDispatchItem | null =
-          enRouteBooking ? toActiveDispatchItem(enRouteBooking, 'wash') :
-          enRouteShop ? toActiveDispatchItem(enRouteShop, 'shop') :
-          inProgressBooking ? toActiveDispatchItem(inProgressBooking, 'wash') :
-          acceptedBooking ? toActiveDispatchItem(acceptedBooking, 'wash') :
-          acceptedShop ? toActiveDispatchItem(acceptedShop, 'shop') :
-          scheduledBooking ? toActiveDispatchItem(scheduledBooking, 'wash') :
-          pendingBooking ? toActiveDispatchItem(pendingBooking, 'wash') :
-          pendingShop ? toActiveDispatchItem(pendingShop, 'shop') :
-          null
-
-        if (!activeDispatch) return null
+      {activeDispatch && (() => {
 
         // ONLY show time when driver accepted the booking/order and started driving (en_route)
         const isDriving = activeDispatch.status === 'en_route'
@@ -812,7 +832,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         }
 
         // Real-time synchronized ETA derived from absolute timestamp
-        const dynamicMins = isDriving ? getRemainingEtaMinutes(activeDispatch) : null
+        const dynamicMins = isDriving ? (getRemainingEtaMinutes(activeDispatch) ?? dynamicDrivingEtaMins ?? 15) : null
 
         const statusBadgeText =
           activeDispatch.status === 'accepted'
@@ -824,17 +844,35 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 : 'Pending'
 
         return (
-          <div className="fixed bottom-20 sm:bottom-21 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
+          <div className="fixed bottom-24 sm:bottom-25 left-0 right-0 z-30 pointer-events-none px-5 sm:px-6 animate-in slide-in-from-bottom duration-300">
             <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
               <div
                 onClick={() => {
                   if (activeDispatch.rawBooking) {
-                    setSelectedTrackingBooking(activeDispatch.rawBooking)
-                    if (onOpenTracking) {
-                      onOpenTracking(activeDispatch.rawBooking)
-                    } else {
-                      setIsTrackingMapOpen(true)
+                    const rawBooking = activeDispatch.rawBooking
+                    const resolvedDriverName =
+                      activeDispatch.driverName && activeDispatch.driverName.toLowerCase() !== 'alex rivera'
+                        ? activeDispatch.driverName
+                        : rawBooking.driverName && rawBooking.driverName.toLowerCase() !== 'alex rivera'
+                          ? rawBooking.driverName
+                          : rawBooking.technicianName && rawBooking.technicianName.toLowerCase() !== 'alex rivera'
+                            ? rawBooking.technicianName
+                            : undefined
+
+                    const enrichedBooking: BookingRecord = {
+                      ...rawBooking,
+                      driverName: resolvedDriverName || rawBooking.driverName,
+                      technicianName: resolvedDriverName || rawBooking.technicianName,
+                      driverPhone: activeDispatch.driverPhone || rawBooking.driverPhone,
+                      driverVanNumber: activeDispatch.driverVanNumber || rawBooking.driverVanNumber,
+                      driverCoords: activeDispatch.driverCoords || rawBooking.driverCoords,
+                      customerCoords: activeDispatch.customerCoords || rawBooking.customerCoords,
+                      estimatedMins: activeDispatch.estimatedMins ?? rawBooking.estimatedMins,
+                      estimatedArrivalTime: activeDispatch.estimatedArrivalTime ?? rawBooking.estimatedArrivalTime,
+                      distanceKm: activeDispatch.distanceKm ?? rawBooking.distanceKm,
                     }
+                    setSelectedTrackingBooking(enrichedBooking)
+                    setIsTrackingMapOpen(true)
                   } else if (activeDispatch.rawShopOrder) {
                     const shopAsBooking: BookingRecord = {
                       id: activeDispatch.rawShopOrder.id,
@@ -842,11 +880,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       category: 'Shop Delivery',
                       vehicle: 'Product Package',
                       image: activeDispatch.rawShopOrder.items?.[0]?.product?.image || '',
-                      price: `${Number(activeDispatch.rawShopOrder.grandTotal).toFixed(2)}`,
+                      price: `$${Number(activeDispatch.rawShopOrder.grandTotal).toFixed(2)}`,
                       totalNumeric: Number(activeDispatch.rawShopOrder.grandTotal) || 0,
                       date: 'Today',
                       time: 'Now',
-                      status: activeDispatch.rawShopOrder.status === 'en_route' ? 'en_route' : 'accepted',
+                      status: mapShopStatusToBookingStatus(activeDispatch.rawShopOrder.status),
                       locationType: 'mobile',
                       address: activeDispatch.address,
                       customerName: activeDispatch.customerName || '',
@@ -859,6 +897,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       estimatedMins: activeDispatch.estimatedMins,
                       estimatedArrivalTime: activeDispatch.estimatedArrivalTime,
                       distanceKm: activeDispatch.distanceKm,
+                      shopItems: activeDispatch.rawShopOrder.items || [],
                       createdAt: activeDispatch.rawShopOrder.createdAt,
                     }
                     setSelectedTrackingBooking(shopAsBooking)
@@ -902,14 +941,44 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 10. Direct Order Tracking Map Modal from Floating Button */}
       {isTrackingMapOpen && (() => {
-        const currentTrackingBooking =
-          selectedTrackingBooking ||
-          activeBookings.find(
-            (b) =>
-              (b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') &&
-              Boolean(b.driverName || b.technicianName)
-          ) ||
-          activeBookings[0]
+        let currentTrackingBooking: BookingRecord | undefined = undefined
+
+        if (selectedTrackingBooking?.id) {
+          const liveWash = activeBookings.find((b) => b.id === selectedTrackingBooking.id)
+          if (liveWash) {
+            currentTrackingBooking = liveWash
+          } else {
+            const liveShop = activeShopOrders.find((o) => o.id === selectedTrackingBooking.id)
+            if (liveShop) {
+              currentTrackingBooking = {
+                ...selectedTrackingBooking,
+                status: mapShopStatusToBookingStatus(liveShop.status),
+                driverName: liveShop.driverName || selectedTrackingBooking.driverName,
+                driverPhone: liveShop.driverPhone || selectedTrackingBooking.driverPhone,
+                driverVanNumber: liveShop.driverVanNumber || selectedTrackingBooking.driverVanNumber,
+                driverCoords: liveShop.driverCoords || selectedTrackingBooking.driverCoords,
+                customerCoords: liveShop.customerCoords || selectedTrackingBooking.customerCoords,
+                estimatedMins: liveShop.estimatedMins ?? selectedTrackingBooking.estimatedMins,
+                estimatedArrivalTime: liveShop.estimatedArrivalTime ?? selectedTrackingBooking.estimatedArrivalTime,
+                distanceKm: liveShop.distanceKm ?? selectedTrackingBooking.distanceKm,
+                shopItems: liveShop.items || selectedTrackingBooking.shopItems,
+              }
+            } else {
+              currentTrackingBooking = selectedTrackingBooking
+            }
+          }
+        }
+
+        if (!currentTrackingBooking) {
+          currentTrackingBooking =
+            selectedTrackingBooking ||
+            activeBookings.find(
+              (b) =>
+                (b.status === 'en_route' || b.status === 'in_progress' || b.status === 'accepted') &&
+                Boolean(b.driverName || b.technicianName)
+            ) ||
+            activeBookings[0]
+        }
 
         return (
           <OrderTrackingMapPage

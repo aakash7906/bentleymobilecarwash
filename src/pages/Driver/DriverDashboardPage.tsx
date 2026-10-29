@@ -612,28 +612,31 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                   </div>
                 )}
                 {selectedDetailBooking.shopItems && selectedDetailBooking.shopItems.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-gray-200 flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 uppercase">
-                      <span className="flex items-center gap-1.5 text-gray-700">
-                        <Package className="w-3.5 h-3.5 text-primary" />
-                        <span>Shop Products to Hand-Deliver ({selectedDetailBooking.shopItems.reduce((a, c) => a + c.quantity, 0)})</span>
+                  <div className="mt-2 p-3 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between font-bold text-amber-950 text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <Package className="w-4 h-4 text-amber-600" />
+                        <span>Hand-Deliver Shop Products ({selectedDetailBooking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} items)</span>
                       </span>
-                      {selectedDetailBooking.shopItemsTotal && (
-                        <span className="font-mono font-bold text-xs text-primary">
-                          +${Number(selectedDetailBooking.shopItemsTotal).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1.5 bg-white p-2.5 rounded-xl border border-gray-200/90 divide-y divide-gray-100 shadow-2xs">
-                      {selectedDetailBooking.shopItems.map((item, idx) => (
-                        <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs text-gray-900">
-                          <span className="font-medium truncate max-w-[200px]">{item.product.title}</span>
-                          <span className="font-bold text-gray-700 text-[11px] bg-gray-100 px-2 py-0.5 rounded-md font-mono border border-gray-200/60">
-                            x{item.quantity} (${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)})
+                      <div className="flex items-center gap-2">
+                        {selectedDetailBooking.shopItemsTotal && (
+                          <span className="font-mono font-bold text-xs text-amber-900">
+                            +${Number(selectedDetailBooking.shopItemsTotal).toFixed(2)}
                           </span>
-                        </div>
-                      ))}
+                        )}
+                        <span className="text-[9px] bg-amber-200 text-amber-950 px-2 py-0.5 rounded-full uppercase font-extrabold">
+                          With Wash
+                        </span>
+                      </div>
                     </div>
+                    <ul className="divide-y divide-amber-200/60 text-gray-800 text-xs mt-1">
+                      {selectedDetailBooking.shopItems.map((item, i) => (
+                        <li key={i} className="py-1 flex items-center justify-between">
+                          <span className="font-medium text-gray-900">• {item.product.title} <strong className="text-amber-900">×{item.quantity}</strong></span>
+                          <span className="font-mono font-bold text-gray-600">${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
@@ -1047,20 +1050,19 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                 </span>
                                 <span className="font-semibold text-gray-700">{booking.title}</span>
                               </div>
-                              {booking.shopItems && booking.shopItems.length > 0 && (
-                                <div className="mt-1 pt-1.5 border-t border-gray-200/80 flex items-center justify-between text-[11px] text-gray-700 font-semibold">
-                                  <span className="flex items-center gap-1.5">
-                                    <Package className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
-                                  </span>
-                                  {booking.shopItemsTotal && (
-                                    <span className="font-mono font-bold text-primary">
-                                      +${Number(booking.shopItemsTotal).toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
                             </div>
+
+                            {booking.shopItems && booking.shopItems.length > 0 && (
+                              <div className="px-2.5 py-1 bg-amber-50 border border-amber-200/80 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
+                                <span className="flex items-center gap-1.5">
+                                  <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Includes {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
+                                </span>
+                                <span className="font-mono text-amber-800">
+                                  +${booking.shopItems.reduce((s, i) => s + (i.product?.priceNumeric || 0) * (i.quantity || 1), 0).toFixed(2)}
+                                </span>
+                              </div>
+                            )}
 
                             <div className="flex items-center gap-2 pt-1">
                               <button
@@ -1222,21 +1224,20 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                 <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
                                   {booking.address}
                                 </p>
-                                {booking.shopItems && booking.shopItems.length > 0 && (
-                                  <div className="mt-2 flex items-center justify-between text-[11px] text-gray-800 bg-surface-subtle px-2.5 py-1.5 rounded-xl border border-gray-200 font-semibold">
-                                    <span className="flex items-center gap-1.5">
-                                      <Package className="w-3.5 h-3.5 text-primary shrink-0" />
-                                      <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
-                                    </span>
-                                    {booking.shopItemsTotal && (
-                                      <span className="font-mono font-bold text-primary">
-                                        +${Number(booking.shopItemsTotal).toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
                               </div>
                             </div>
+
+                            {booking.shopItems && booking.shopItems.length > 0 && (
+                              <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
+                                <span className="flex items-center gap-1.5">
+                                  <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Hand-Deliver {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
+                                </span>
+                                <span className="text-[10px] bg-amber-200 px-1.5 py-0.2 rounded font-extrabold uppercase">
+                                  With Wash
+                                </span>
+                              </div>
+                            )}
 
                             {/* Progress Flow Actions */}
                             <div className="flex flex-col gap-2 pt-1">

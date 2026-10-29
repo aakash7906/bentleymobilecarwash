@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Ban,
   CheckCircle,
+  Package,
 } from 'lucide-react'
 import { ServiceItem, BookingRecord, BookingStatus, DriverProfile } from '@/types'
 import { sanitizeText } from '@/lib/utils'
@@ -307,6 +308,12 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                         {booking.category}
                       </span>
                       {renderStatusBadge(booking.status)}
+                      {booking.shopItems && booking.shopItems.length > 0 && (
+                        <span className="px-2 py-0.5 rounded-sm bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-1">
+                          <Package className="w-3 h-3 text-amber-600" />
+                          <span>+{booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Items</span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">
@@ -447,11 +454,17 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
               {/* Top row: details + thumbnail */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col items-start gap-1 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="px-2.5 py-0.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-bold">
                       {booking.category}
                     </span>
                     {renderStatusBadge(booking.status)}
+                    {booking.shopItems && booking.shopItems.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-sm bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-1">
+                        <Package className="w-3 h-3 text-amber-600" />
+                        <span>+{booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Items</span>
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">

@@ -238,7 +238,12 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           const movedEnough = !lastCoords || calculateDistanceKm(lastCoords, newCoords) > 0.01
           if (movedEnough) {
             lastBroadcastCoordsRef.current = newCoords
-            onUpdateStatusRef.current?.(booking.id, currentStatus, newCoords)
+            const tracking = currentStatus === 'en_route' ? {
+              estimatedMins: etaMins || undefined,
+              estimatedArrivalTime: etaMins ? computeEstimatedArrivalTime(etaMins) : undefined,
+              distanceKm: distanceKm || undefined,
+            } : undefined
+            onUpdateStatusRef.current?.(booking.id, currentStatus, newCoords, undefined, tracking)
           }
 
           // Smoothly pan camera if driver is not manually exploring
@@ -369,11 +374,21 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
             const dist = parseFloat((route.distance / 1000).toFixed(1))
             setDistanceKm(dist)
 
-            if (currentStatus === 'in_progress' || currentStatus === 'completed') {
+                        if (currentStatus === 'in_progress' || currentStatus === 'completed') {
               setEtaMins(0)
             } else {
               const mins = Math.min(30, Math.max(1, Math.round(route.duration / 60)))
               setEtaMins(mins)
+
+              // Synchronize calculated ETA and distance with Firestore
+              if (currentStatus === 'en_route') {
+                const arrivalTime = computeEstimatedArrivalTime(mins)
+                onUpdateStatusRef.current?.(booking.id, 'en_route', driverPos, undefined, {
+                  estimatedMins: mins,
+                  estimatedArrivalTime: arrivalTime,
+                  distanceKm: dist,
+                })
+              }
             }
             return
           }
@@ -427,7 +442,16 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
           const nextIndex = prev + 1
           const nextPos = routeWaypoints[nextIndex]
           setDriverPos(nextPos)
-          onUpdateStatus(booking.id, 'en_route', nextPos)
+          const remainingFraction = 1 - nextIndex / (routeWaypoints.length - 1)
+          const newEta = Math.max(1, Math.round(etaMins * remainingFraction))
+          const newDist = parseFloat((distanceKm * remainingFraction).toFixed(1))
+          setEtaMins(newEta)
+          setDistanceKm(newDist)
+          onUpdateStatus(booking.id, 'en_route', nextPos, undefined, {
+            estimatedMins: newEta,
+            estimatedArrivalTime: computeEstimatedArrivalTime(newEta),
+            distanceKm: newDist,
+          })
 
           if (!isExploreModeRef.current) {
             mapRef.current?.flyTo({
@@ -443,8 +467,13 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     return () => clearInterval(timer)
   }, [isSimulating, routeWaypoints, booking.id, onUpdateStatus, customerCoords, driverPos])
 
-  const handleStepStatus = (newStatus: BookingStatus, paymentData?: PaymentCollectionData) => {
-    onUpdateStatus(booking.id, newStatus, driverPos, paymentData)
+    const handleStepStatus = (newStatus: BookingStatus, paymentData?: PaymentCollectionData) => {
+    const tracking = newStatus === 'en_route' ? {
+      estimatedMins: etaMins || (distanceKm ? Math.round(distanceKm * 1.12) : 15),
+      estimatedArrivalTime: computeEstimatedArrivalTime(etaMins || (distanceKm ? Math.round(distanceKm * 1.12) : 15)),
+      distanceKm: distanceKm || undefined,
+    } : undefined
+    onUpdateStatus(booking.id, newStatus, driverPos, paymentData, tracking)
   }
 
   // Manual GPS trigger
@@ -1181,6 +1210,28 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {booking.shopItems && booking.shopItems.length > 0 && (
+                <div className="pt-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between text-amber-950 font-bold mb-1">
+                    <span className="text-[10px] uppercase flex items-center gap-1 text-amber-700">
+                      <Package className="w-3 h-3" />
+                      <span>Hand-Deliver Shop Items ({booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)}):</span>
+                    </span>
+                    <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-extrabold uppercase">
+                      With Wash
+                    </span>
+                  </div>
+                  <ul className="text-[11px] text-gray-700 space-y-0.5">
+                    {booking.shopItems.map((item, idx) => (
+                      <li key={idx} className="flex justify-between items-center bg-amber-50/60 px-2 py-0.5 rounded">
+                        <span>• {item.product.title} <strong className="text-amber-900">×{item.quantity}</strong></span>
+                        <span className="font-mono text-gray-500">${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

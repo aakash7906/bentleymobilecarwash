@@ -411,7 +411,6 @@ const AppContent: React.FC = () => {
                 onRemoveCartItem={handleRemoveCartItem}
                 onClearCart={handleClearCart}
                 onCheckoutOrder={handleCheckoutOrder}
-                onOpenTracking={() => navigateToTab('bookings')}
                 onUpdateLocation={handleUpdateGlobalLocation}
               />
             )}

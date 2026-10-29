@@ -7,12 +7,14 @@ import {
   onSnapshot,
   setDoc,
   updateDoc,
+  getDocs,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
 import { BookingRecord, BookingStatus, PaymentCollectionData } from '@/types'
 import { createBookingInvoice } from '@/services/invoiceService'
+import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -148,7 +150,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 p.driverCoords?.[0] === n.driverCoords?.[0] &&
                 p.driverCoords?.[1] === n.driverCoords?.[1] &&
                 p.estimatedArrivalTime === n.estimatedArrivalTime &&
-                p.estimatedMins === n.estimatedMins
+                p.estimatedMins === n.estimatedMins &&
+                p.shopItems?.length === n.shopItems?.length
               )
             })
           ) {
@@ -394,7 +397,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           status: newStatus,
           updatedAt: serverTimestamp(),
         }
-        if (coords) {
+                if (coords) {
           updatePayload.driverCoords = coords
         }
         if (trackingData?.estimatedMins !== undefined) {
@@ -405,6 +408,27 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         if (trackingData?.distanceKm !== undefined) {
           updatePayload.distanceKm = trackingData.distanceKm
+        }
+
+        // Guarantee synchronized ETA and arrival timestamp whenever order is en_route
+        if (newStatus === 'en_route') {
+          const currentBooking = bookings.find((b) => b.id === bookingId)
+          const estMins =
+            trackingData?.estimatedMins ||
+            currentBooking?.estimatedMins ||
+            (trackingData?.distanceKm ? Math.round(trackingData.distanceKm * 1.12) : undefined) ||
+            (currentBooking?.distanceKm ? Math.round(currentBooking.distanceKm * 1.12) : undefined) ||
+            15
+          if (updatePayload.estimatedMins === undefined && !currentBooking?.estimatedMins) {
+            updatePayload.estimatedMins = estMins
+          }
+          if (!updatePayload.estimatedArrivalTime && !currentBooking?.estimatedArrivalTime) {
+            updatePayload.estimatedArrivalTime =
+              trackingData?.estimatedArrivalTime || computeEstimatedArrivalTime(updatePayload.estimatedMins || estMins)
+          }
+          if (updatePayload.distanceKm === undefined && currentBooking?.distanceKm) {
+            updatePayload.distanceKm = currentBooking.distanceKm
+          }
         }
         if (newStatus === 'completed') {
           updatePayload.completedAt = serverTimestamp()
@@ -452,6 +476,40 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
         await updateDoc(bookingDocRef, updatePayload)
+
+        // Synchronize status with mirrored shop order in Firestore 'orders'
+        try {
+          const ordersRef = collection(db, 'orders')
+          const qOrder = query(ordersRef, where('bookingId', '==', bookingId))
+          const orderSnap = await getDocs(qOrder)
+          orderSnap.forEach(async (d) => {
+            const mappedStatus =
+              newStatus === 'completed'
+                ? 'delivered'
+                : newStatus === 'en_route'
+                ? 'en_route'
+                : newStatus === 'accepted'
+                ? 'accepted'
+                : 'pending'
+            const oUpdate: Record<string, any> = {
+              status: mappedStatus,
+              updatedAt: serverTimestamp(),
+            }
+                        if (newStatus === 'en_route') {
+              if (updatePayload.estimatedMins !== undefined) oUpdate.estimatedMins = updatePayload.estimatedMins
+              if (updatePayload.estimatedArrivalTime) oUpdate.estimatedArrivalTime = updatePayload.estimatedArrivalTime
+              if (updatePayload.distanceKm !== undefined) oUpdate.distanceKm = updatePayload.distanceKm
+              if (coords) oUpdate.driverCoords = coords
+            }
+            if (newStatus === 'completed') {
+              oUpdate.deliveredAt = serverTimestamp()
+              if (paymentData?.paymentStatus) oUpdate.paymentStatus = paymentData.paymentStatus
+            }
+            await updateDoc(d.ref, oUpdate)
+          })
+        } catch (mirrorErr) {
+          console.warn('Could not sync status to mirrored shop order:', mirrorErr)
+        }
       } catch (err) {
         console.error('Failed to update booking status in Firestore:', err)
       }
