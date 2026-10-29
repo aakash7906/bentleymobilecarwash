@@ -9,6 +9,7 @@ import {
   updateDoc,
   getDocs,
   serverTimestamp,
+  runTransaction,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
@@ -39,7 +40,7 @@ export interface BookingContextType {
     rating: number,
     review: string
   ) => Promise<void>
-  handleAcceptOrder: (bookingId: string) => Promise<void>
+  handleAcceptOrder: (bookingId: string, initialCoords?: [number, number]) => Promise<void>
   handleUpdateBookingStatus: (
     bookingId: string,
     newStatus: BookingStatus,
@@ -243,6 +244,22 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           status: 'cancelled',
           cancelledAt: serverTimestamp(),
         })
+
+        // Also cancel any mirrored shop orders associated with this booking
+        try {
+          const qOrder = query(collection(db, 'orders'), where('bookingId', '==', bookingId))
+          const orderSnap = await getDocs(qOrder)
+          const updatePromises = orderSnap.docs.map((d) =>
+            updateDoc(d.ref, {
+              status: 'cancelled',
+              cancelledAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+          )
+          await Promise.all(updatePromises)
+        } catch (mirrorErr) {
+          console.warn('Could not cancel mirrored shop order:', mirrorErr)
+        }
       } catch (err) {
         console.error('Failed to update booking status in Firestore:', err)
       }
@@ -306,7 +323,19 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   // Driver accept order
-  const handleAcceptOrder = async (bookingId: string) => {
+  const handleAcceptOrder = async (bookingId: string, initialCoords?: [number, number]) => {
+    const target = bookings.find((b) => b.id === bookingId)
+    // Dynamic coordinate resolution:
+    // 1. Explicit initial coords passed by driver device
+    // 2. Existing driver coords if already valid on booking
+    // 3. Proximity offset (~1.5km) anchored to customer location in the same city
+    const resolvedCoords: [number, number] | undefined =
+      initialCoords ||
+      target?.driverCoords ||
+      (target?.customerCoords
+        ? [target.customerCoords[0] - 0.015, target.customerCoords[1] + 0.012]
+        : undefined)
+
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId
@@ -319,7 +348,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
               driverVehicle: driverProfile.vanModel,
               driverVanNumber: driverProfile.licensePlate,
               driverAvatar: driverProfile.avatar || '',
-              driverCoords: b.driverCoords || [-79.4035, 43.6635],
+              ...(resolvedCoords ? { driverCoords: resolvedCoords } : {}),
             }
           : b
       )
@@ -328,7 +357,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (currentUser) {
       try {
         const bookingDocRef = doc(db, 'bookings', bookingId)
-        await updateDoc(bookingDocRef, {
+        const updateData: Record<string, any> = {
           status: 'accepted',
           driverId: currentUser.uid,
           driverName: driverProfile.name,
@@ -336,11 +365,31 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           driverVehicle: driverProfile.vanModel,
           driverVanNumber: driverProfile.licensePlate,
           driverAvatar: driverProfile.avatar || '',
-          driverCoords: [-79.4035, 43.6635],
           acceptedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        if (resolvedCoords) {
+          updateData.driverCoords = resolvedCoords
+        }
+
+        await runTransaction(db, async (transaction) => {
+          const snap = await transaction.get(bookingDocRef)
+          if (!snap.exists()) {
+            throw new Error('This booking no longer exists.')
+          }
+          const data = snap.data()
+          if (data.status !== 'scheduled' && data.status !== 'pending') {
+            throw new Error('This booking has already been claimed by another technician.')
+          }
+          if (data.driverId && data.driverId !== currentUser.uid) {
+            throw new Error('This booking has already been assigned to another technician.')
+          }
+          transaction.update(bookingDocRef, updateData)
         })
-      } catch (err) {
+        showToast('Booking claimed successfully! Proceed to customer location.', 'success')
+      } catch (err: any) {
         console.error('Failed to accept booking in Firestore:', err)
+        showToast(err?.message || 'Could not claim booking. Please try again.', 'error')
       }
     }
   }
@@ -397,7 +446,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           status: newStatus,
           updatedAt: serverTimestamp(),
         }
-                if (coords) {
+        if (coords) {
           updatePayload.driverCoords = coords
         }
         if (trackingData?.estimatedMins !== undefined) {
@@ -482,7 +531,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const ordersRef = collection(db, 'orders')
           const qOrder = query(ordersRef, where('bookingId', '==', bookingId))
           const orderSnap = await getDocs(qOrder)
-          orderSnap.forEach(async (d) => {
+          const updatePromises = orderSnap.docs.map(async (d) => {
             const mappedStatus =
               newStatus === 'completed'
                 ? 'delivered'
@@ -490,12 +539,14 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 ? 'en_route'
                 : newStatus === 'accepted'
                 ? 'accepted'
+                : newStatus === 'cancelled'
+                ? 'cancelled'
                 : 'pending'
             const oUpdate: Record<string, any> = {
               status: mappedStatus,
               updatedAt: serverTimestamp(),
             }
-                        if (newStatus === 'en_route') {
+            if (newStatus === 'en_route') {
               if (updatePayload.estimatedMins !== undefined) oUpdate.estimatedMins = updatePayload.estimatedMins
               if (updatePayload.estimatedArrivalTime) oUpdate.estimatedArrivalTime = updatePayload.estimatedArrivalTime
               if (updatePayload.distanceKm !== undefined) oUpdate.distanceKm = updatePayload.distanceKm
@@ -505,8 +556,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
               oUpdate.deliveredAt = serverTimestamp()
               if (paymentData?.paymentStatus) oUpdate.paymentStatus = paymentData.paymentStatus
             }
-            await updateDoc(d.ref, oUpdate)
+            return updateDoc(d.ref, oUpdate)
           })
+          await Promise.all(updatePromises)
         } catch (mirrorErr) {
           console.warn('Could not sync status to mirrored shop order:', mirrorErr)
         }

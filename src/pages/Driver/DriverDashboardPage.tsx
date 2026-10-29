@@ -21,7 +21,7 @@ import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData, Sho
 import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { createShopOrderInvoice } from '@/services/invoiceService'
 import { auth, db } from '@/firebase'
-import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot, doc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
@@ -31,7 +31,7 @@ import { DriverBottomNav, DriverTabType } from '@/components/DriverBottomNav'
 
 interface DriverDashboardProps {
   bookings: BookingRecord[]
-  onAcceptOrder: (bookingId: string) => void
+  onAcceptOrder: (bookingId: string, initialCoords?: [number, number]) => void
   onUpdateStatus: (
     bookingId: string,
     newStatus: BookingStatus,
@@ -337,25 +337,38 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     [shopOrders, profile.name, profile.phone]
   )
 
-  // Handle Driver Accepting Shop Delivery
+  // Handle Driver Accepting Shop Delivery with atomic transaction
   const handleAcceptShopOrder = async (order: ShopOrder) => {
     try {
       const orderRef = doc(db, 'orders', order.id)
-      await updateDoc(orderRef, {
-        status: 'accepted',
-        driverId: auth.currentUser?.uid || 'driver-current',
-        driverName: profile.name,
-        driverPhone: profile.phone,
-        driverVanNumber: profile.vanModel || profile.licensePlate || 'Mobile Detailing Van',
-        driverAvatar: profile.avatar || '',
-        acceptedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(orderRef)
+        if (!snap.exists()) {
+          throw new Error('This order no longer exists.')
+        }
+        const data = snap.data()
+        if (data.status !== 'pending') {
+          throw new Error('This delivery order has already been accepted by another driver.')
+        }
+        if (data.driverId && data.driverId !== auth.currentUser?.uid) {
+          throw new Error('This delivery order is already assigned to another driver.')
+        }
+        transaction.update(orderRef, {
+          status: 'accepted',
+          driverId: auth.currentUser?.uid || 'driver-current',
+          driverName: profile.name,
+          driverPhone: profile.phone,
+          driverVanNumber: profile.vanModel || profile.licensePlate || 'Mobile Detailing Van',
+          driverAvatar: profile.avatar || '',
+          acceptedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
       })
       showToast(`Shop order #${order.id.slice(-6).toUpperCase()} accepted for delivery!`, 'success')
       setOrdersSubTab('active')
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to accept shop order:', err)
-      showToast('Could not accept delivery. Please try again.', 'error')
+      showToast(err?.message || 'Could not accept delivery. Please try again.', 'error')
     }
   }
 
@@ -456,7 +469,22 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
   // Handle accepting order
   const handleAccept = (booking: BookingRecord) => {
-    onAcceptOrder(booking.id)
+    // If device geolocation is available, grab real driver coords immediately
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const liveCoords: [number, number] = [pos.coords.longitude, pos.coords.latitude]
+          onAcceptOrder(booking.id, liveCoords)
+        },
+        () => {
+          onAcceptOrder(booking.id)
+        },
+        { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }
+      )
+    } else {
+      onAcceptOrder(booking.id)
+    }
+
     showToast(`Order #${booking.id} accepted! Opening live route navigation.`, 'success')
     // Seamlessly focus on My Active
     setOrdersSubTab('active')

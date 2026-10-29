@@ -101,7 +101,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }
 
   const handleIncreaseQty = () => {
-    if (quantity < 10) setQuantity((prev) => prev + 1)
+    if (quantity < 20) setQuantity((prev) => prev + 1)
   }
 
   const handleAddToCartClick = () => {
@@ -169,10 +169,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       if (onBuyNowSuccess) {
         onBuyNowSuccess(product, quantity)
       }
-    } catch {
+    } catch (err: any) {
       setIsProcessing(false)
-      setConfirmedOrderId(finalOrderId)
-      setOrderComplete(true)
+      showToast(err?.message || 'Could not place order. Please try again.', 'error')
     }
   }
 

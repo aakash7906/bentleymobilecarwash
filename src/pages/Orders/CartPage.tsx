@@ -411,7 +411,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            if (item.quantity < 15) {
+                            if (item.quantity < 20) {
                               onUpdateQuantity(item.product.id, item.quantity + 1)
                             }
                           }}

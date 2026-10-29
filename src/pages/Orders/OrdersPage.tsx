@@ -75,12 +75,22 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
     const userEmail = currentUser?.email || userProfile?.email || ''
     const userId = currentUser?.uid || ''
 
-    const ordersRef = collection(db, 'orders')
-    // Listen to orders
+    const ordersQuery = userId
+      ? query(collection(db, 'orders'), where('userId', '==', userId))
+      : userEmail
+      ? query(collection(db, 'orders'), where('customerEmail', '==', userEmail))
+      : null
+
+    if (!ordersQuery) {
+      setOrders([])
+      return
+    }
+
+    // Listen to current user's orders securely
     const unsubscribe = onSnapshot(
-      ordersRef,
+      ordersQuery,
       (snapshot) => {
-        const allLoaded: ShopOrder[] = snapshot.docs.map((d) => {
+        const myOrders: ShopOrder[] = snapshot.docs.map((d) => {
           const data = d.data() as any
           return {
             ...data,
@@ -92,14 +102,6 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
           }
         })
 
-        // Filter for current user's orders (by userId or userEmail)
-        const myOrders = allLoaded.filter((o) => {
-          if (userId && o.userId === userId) return true
-          if (userEmail && o.customerEmail && o.customerEmail.toLowerCase() === userEmail.toLowerCase()) return true
-          // Also show if placed without userId in local session
-          return false
-        })
-
         // Sort newest first
         myOrders.sort((a, b) => {
           const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime()
@@ -108,12 +110,9 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         })
 
         setOrders(myOrders)
-        try {
-          localStorage.setItem('bentley_user_orders', JSON.stringify(myOrders))
-        } catch { }
       },
-      (error) => {
-        console.warn('Orders listener error (using local cache):', error)
+      (err) => {
+        console.warn('Orders listener error:', err)
       }
     )
 

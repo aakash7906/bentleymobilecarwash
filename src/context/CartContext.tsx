@@ -177,8 +177,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return orderId
     } catch (err) {
       console.error('Failed to sync product order to Firestore:', err)
-      const fallbackDocRef = doc(collection(db, 'orders'))
-      return fallbackDocRef.id
+      throw err
     }
   }
 
