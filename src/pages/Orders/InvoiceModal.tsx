@@ -330,7 +330,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 pb-3 sm:pb-4 border-b border-gray-100">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-
                     <h2 className="font-black text-base sm:text-xl tracking-tight text-gray-900">
                       Bentley Mobile Car Wash
                     </h2>
