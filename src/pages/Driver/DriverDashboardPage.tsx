@@ -598,6 +598,31 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                     </ul>
                   </div>
                 )}
+                {selectedDetailBooking.shopItems && selectedDetailBooking.shopItems.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-gray-200 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-amber-900 uppercase">
+                      <span className="flex items-center gap-1">
+                        <Package className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Shop Products to Hand-Deliver ({selectedDetailBooking.shopItems.reduce((a, c) => a + c.quantity, 0)})</span>
+                      </span>
+                      {selectedDetailBooking.shopItemsTotal && (
+                        <span className="font-mono font-bold text-xs text-amber-900">
+                          +${Number(selectedDetailBooking.shopItemsTotal).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/90 divide-y divide-amber-100">
+                      {selectedDetailBooking.shopItems.map((item, idx) => (
+                        <div key={idx} className="pt-1 first:pt-0 flex items-center justify-between text-xs text-gray-800">
+                          <span className="font-medium truncate max-w-[200px]">{item.product.title}</span>
+                          <span className="font-bold text-amber-950 text-[11px] bg-amber-100/90 px-1.5 py-0.5 rounded font-mono">
+                            x{item.quantity} (${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl text-gray-700">
@@ -1009,6 +1034,19 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                 </span>
                                 <span className="font-semibold text-gray-700">{booking.title}</span>
                               </div>
+                              {booking.shopItems && booking.shopItems.length > 0 && (
+                                <div className="mt-1 pt-1.5 border-t border-gray-200/80 flex items-center justify-between text-[11px] text-amber-900 font-bold">
+                                  <span className="flex items-center gap-1">
+                                    <Package className="w-3 h-3 text-amber-600" />
+                                    <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
+                                  </span>
+                                  {booking.shopItemsTotal && (
+                                    <span className="font-mono text-amber-950">
+                                      +${Number(booking.shopItemsTotal).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-2 pt-1">
@@ -1165,12 +1203,25 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                             </div>
 
                             <div className="flex items-start justify-between">
-                              <div>
+                              <div className="w-full">
                                 <h3 className="text-sm font-bold text-gray-900">{booking.customerName}</h3>
                                 <p className="text-xs text-gray-500 font-medium">{booking.vehicle}</p>
                                 <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
                                   {booking.address}
                                 </p>
+                                {booking.shopItems && booking.shopItems.length > 0 && (
+                                  <div className="mt-2 flex items-center justify-between text-[11px] text-amber-900 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200 font-bold">
+                                    <span className="flex items-center gap-1.5">
+                                      <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
+                                    </span>
+                                    {booking.shopItemsTotal && (
+                                      <span className="font-mono text-amber-950">
+                                        +${Number(booking.shopItemsTotal).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1481,6 +1532,12 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                         <div className="text-[11px] text-gray-400 truncate">
                           {booking.address}
                         </div>
+
+                        {booking.shopItems && booking.shopItems.length > 0 && (
+                          <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1.5 rounded-xl border border-amber-200/60 truncate">
+                            📦 Delivered {booking.shopItems.reduce((a, c) => a + c.quantity, 0)} shop items ({booking.shopItems.map(i => i.product?.title || 'Product').join(', ')})
+                          </div>
+                        )}
 
                         <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
                           <span className="text-gray-400">Completed: {booking.date}</span>

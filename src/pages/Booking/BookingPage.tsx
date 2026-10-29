@@ -617,6 +617,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       addons: selectedAddonIds
         .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
         .filter(Boolean) as string[],
+      shopItems: shopAddonsList.length > 0 ? shopAddonsList : undefined,
+      shopItemsTotal: shopItemsSubtotal > 0 ? shopItemsSubtotal : undefined,
       paymentMethod: 'Cash on Delivery (Pay on Completion)',
       paymentStatus: 'pending',
       frequency: 'one_time',

@@ -75,6 +75,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
   const subtotal = total / (1 + taxRate)
   const gst = total - subtotal
 
+  const shopItemsSum = React.useMemo(() => {
+    if (!booking.shopItems || !Array.isArray(booking.shopItems)) return 0
+    return booking.shopItems.reduce(
+      (sum, item) => sum + (Number(item.product?.priceNumeric) || 0) * (item.quantity || 1),
+      0
+    )
+  }, [booking.shopItems])
+
+  const serviceBaseNet = Math.max(
+    0,
+    subtotal - shopItemsSum - (booking.addons?.length ? booking.addons.length * 15 : 0)
+  )
+
   // Payment status derivation
   const isPaid =
     booking.paymentStatus === 'paid' ||
@@ -461,7 +474,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                       </span>
                     </div>
                     <span className="font-mono font-black text-gray-900 text-xs sm:text-sm shrink-0">
-                      ${(subtotal - (booking.addons?.length ? booking.addons.length * 15 : 0)).toFixed(2)}
+                      ${serviceBaseNet.toFixed(2)}
                     </span>
                   </div>
 
@@ -492,11 +505,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                         <div className="flex items-center gap-1.5 text-gray-800">
                           <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           <span className="text-[11px] sm:text-xs">
-                            Shop Item: {item.product.title} (×{item.quantity})
+                            Shop Item: {item.product?.title || 'Product'} (×{item.quantity})
                           </span>
                         </div>
                         <span className="font-mono font-bold text-amber-950 text-xs">
-                          ${(item.product.priceNumeric * item.quantity).toFixed(2)}
+                          ${((Number(item.product?.priceNumeric) || 0) * (item.quantity || 1)).toFixed(2)}
                         </span>
                       </div>
                     ))}
