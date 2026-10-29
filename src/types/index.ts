@@ -1,4 +1,4 @@
-﻿export type TabType = 'home' | 'services' | 'bookings' | 'notifications' | 'profile'
+export type TabType = 'home' | 'services' | 'bookings' | 'notifications' | 'profile'
 
 export interface ServiceItem {
   id: string
@@ -137,6 +137,9 @@ export interface ShopOrder {
   driverAvatar?: string
   driverCoords?: [number, number]
   customerCoords?: [number, number]
+  distanceKm?: number
+  estimatedMins?: number
+  estimatedArrivalTime?: string
   createdAt: any
   updatedAt?: any
   deliveredAt?: any
@@ -213,6 +216,7 @@ export interface BookingRecord {
   customerCoords?: [number, number]
   distanceKm?: number
   estimatedMins?: number
+  estimatedArrivalTime?: string
   addons?: string[]
   shopItems?: CartItem[]
   shopItemsTotal?: number

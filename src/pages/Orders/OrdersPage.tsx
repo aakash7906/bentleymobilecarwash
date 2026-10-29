@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { ShopOrder, ShopOrderStatus } from '@/types'
+import { getRemainingEtaMinutes } from '@/services/dispatchService'
 import { auth, db } from '@/firebase'
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useToast } from '@/context/ToastContext'
@@ -57,6 +58,11 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'delivered'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ShopOrder | null>(null)
+  const [, setWallClockTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setWallClockTick((t) => t + 1), 10000)
+    return () => clearInterval(timer)
+  }, [])
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -389,7 +395,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                               {order.driverName}
                             </span>
                             <span className="text-[10px] text-gray-500">
-                              {isDelivered ? 'Hand-delivered to your door' : isEnRoute ? 'Driver is currently en route' : 'Assigned delivery driver'}
+                              {isDelivered ? 'Hand-delivered to your door' : isEnRoute ? `Driver en route • Arriving in ~${getRemainingEtaMinutes(order) || 10} mins` : 'Assigned delivery driver'}
                             </span>
                           </div>
                         </div>
@@ -588,7 +594,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                       {selectedOrder.driverName}
                     </span>
                     <span className="text-[10px] text-gray-500">
-                      {selectedOrder.driverVanNumber || 'Mobile Dispatch Unit'}
+                      {selectedOrder.status === 'en_route' ? `Arriving in ~${getRemainingEtaMinutes(selectedOrder) || 10} mins • ${selectedOrder.driverVanNumber || 'Mobile Dispatch'}` : (selectedOrder.driverVanNumber || 'Mobile Dispatch Unit')}
                     </span>
                   </div>
                 </div>

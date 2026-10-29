@@ -15,6 +15,12 @@ import { BookingRecord, BookingStatus, PaymentCollectionData } from '@/types'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
+export interface TrackingUpdateData {
+  estimatedMins?: number
+  estimatedArrivalTime?: string
+  distanceKm?: number
+}
+
 export interface BookingContextType {
   bookings: BookingRecord[]
   setBookings: React.Dispatch<React.SetStateAction<BookingRecord[]>>
@@ -35,7 +41,8 @@ export interface BookingContextType {
     bookingId: string,
     newStatus: BookingStatus,
     coords?: [number, number],
-    paymentData?: PaymentCollectionData
+    paymentData?: PaymentCollectionData,
+    trackingData?: TrackingUpdateData
   ) => Promise<void>
 }
 
@@ -138,7 +145,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 p.status === n.status &&
                 p.paymentStatus === n.paymentStatus &&
                 p.driverCoords?.[0] === n.driverCoords?.[0] &&
-                p.driverCoords?.[1] === n.driverCoords?.[1]
+                p.driverCoords?.[1] === n.driverCoords?.[1] &&
+                p.estimatedArrivalTime === n.estimatedArrivalTime &&
+                p.estimatedMins === n.estimatedMins
               )
             })
           ) {
@@ -337,7 +346,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     bookingId: string,
     newStatus: BookingStatus,
     coords?: [number, number],
-    paymentData?: PaymentCollectionData
+    paymentData?: PaymentCollectionData,
+    trackingData?: TrackingUpdateData
   ) => {
     setBookings((prev) =>
       prev.map((b) =>
@@ -346,6 +356,15 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ...b,
               status: newStatus,
               ...(coords ? { driverCoords: coords } : {}),
+              ...(trackingData?.estimatedMins !== undefined
+                ? { estimatedMins: trackingData.estimatedMins }
+                : {}),
+              ...(trackingData?.estimatedArrivalTime
+                ? { estimatedArrivalTime: trackingData.estimatedArrivalTime }
+                : {}),
+              ...(trackingData?.distanceKm !== undefined
+                ? { distanceKm: trackingData.distanceKm }
+                : {}),
               ...(paymentData
                 ? {
                     paymentStatus: paymentData.paymentStatus || b.paymentStatus,
@@ -376,6 +395,15 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         if (coords) {
           updatePayload.driverCoords = coords
+        }
+        if (trackingData?.estimatedMins !== undefined) {
+          updatePayload.estimatedMins = trackingData.estimatedMins
+        }
+        if (trackingData?.estimatedArrivalTime) {
+          updatePayload.estimatedArrivalTime = trackingData.estimatedArrivalTime
+        }
+        if (trackingData?.distanceKm !== undefined) {
+          updatePayload.distanceKm = trackingData.distanceKm
         }
         if (newStatus === 'completed') {
           updatePayload.completedAt = serverTimestamp()

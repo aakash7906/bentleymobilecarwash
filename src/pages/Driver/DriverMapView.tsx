@@ -17,6 +17,7 @@ import {
   Package,
 } from 'lucide-react'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
+import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { Dialog } from '@/components/ui/dialog'
 import { CodPaymentModal } from '@/components/CodPaymentModal'
@@ -61,7 +62,12 @@ export interface DriverMapViewProps {
     bookingId: string,
     newStatus: BookingStatus,
     coords?: [number, number],
-    paymentData?: PaymentCollectionData
+    paymentData?: PaymentCollectionData,
+    trackingData?: {
+      estimatedMins?: number
+      estimatedArrivalTime?: string
+      distanceKm?: number
+    }
   ) => void
   driverProfile?: DriverProfile
 }

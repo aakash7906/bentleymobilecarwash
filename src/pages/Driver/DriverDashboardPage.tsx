@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData, ShopOrder, ShopOrderStatus } from '@/types'
+import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { auth, db } from '@/firebase'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { DriverMapView } from './DriverMapView'
@@ -34,7 +35,12 @@ interface DriverDashboardProps {
     bookingId: string,
     newStatus: BookingStatus,
     coords?: [number, number],
-    paymentData?: PaymentCollectionData
+    paymentData?: PaymentCollectionData,
+    trackingData?: {
+      estimatedMins?: number
+      estimatedArrivalTime?: string
+      distanceKm?: number
+    }
   ) => void
   onLogout: () => void
   driverName?: string
@@ -166,6 +172,29 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     return url
   }
 
+  const formatDeliveredDate = (val: any): string => {
+    if (!val) return 'Completed'
+    try {
+      let date: Date | null = null
+      if (typeof val?.toDate === 'function') {
+        date = val.toDate()
+      } else if (val?.seconds) {
+        date = new Date(val.seconds * 1000)
+      } else if (typeof val === 'string' || typeof val === 'number') {
+        date = new Date(val)
+      } else if (val instanceof Date) {
+        date = val
+      }
+      if (date && !isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        })
+      }
+    } catch {}
+    return 'Completed'
+  }
+
   // Live Driver Profile
   const [profile, setProfile] = useState<DriverProfile>(() => {
     if (externalProfile) {
@@ -245,6 +274,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   // Real-time standalone shop delivery orders from Firestore
   const [shopOrders, setShopOrders] = useState<ShopOrder[]>([])
   const [jobCategoryFilter, setJobCategoryFilter] = useState<'all' | 'washes' | 'deliveries'>('all')
+  const [historyCategoryFilter, setHistoryCategoryFilter] = useState<'all' | 'washes' | 'deliveries'>('all')
 
   useEffect(() => {
     const ordersRef = collection(db, 'orders')
@@ -300,7 +330,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
           o.status === 'delivered' &&
           (o.driverId === auth.currentUser?.uid ||
             o.driverName === profile.name ||
-            o.driverPhone === profile.phone)
+            o.driverPhone === profile.phone ||
+            (!o.driverId && !o.driverName))
       ),
     [shopOrders, profile.name, profile.phone]
   )
@@ -327,19 +358,64 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     }
   }
 
-  // Handle Driver Updating Shop Order Delivery Status
-  const handleUpdateShopOrderStatus = async (orderId: string, newStatus: ShopOrderStatus) => {
+  // Helper to convert ShopOrder to BookingRecord for DriverMapView
+  const shopOrderToBookingRecord = useCallback((order: ShopOrder): BookingRecord => ({
+    id: order.id,
+    title: `Shop Delivery (${order.items?.length || 1} items)`,
+    category: 'Shop Delivery',
+    vehicle: 'Delivery Package',
+    image: order.items?.[0]?.product?.image || '',
+    price: `$${Number(order.grandTotal).toFixed(2)}`,
+    totalNumeric: Number(order.grandTotal) || 0,
+    date: 'Today',
+    time: 'Now',
+    status: order.status === 'en_route' ? 'en_route' : 'accepted',
+    locationType: 'mobile',
+    address: order.deliveryAddress || order.shippingAddress || '',
+    customerName: order.recipientName || order.customerName,
+    customerPhone: order.recipientPhone || order.customerPhone || '',
+    driverName: profile.name,
+    driverPhone: profile.phone,
+    driverVanNumber: profile.licensePlate || profile.vanModel,
+    driverCoords: order.driverCoords,
+    customerCoords: order.customerCoords,
+    estimatedMins: order.estimatedMins,
+    estimatedArrivalTime: order.estimatedArrivalTime,
+    distanceKm: order.distanceKm,
+    createdAt: order.createdAt,
+  }), [profile])
+
+  // Handle Driver Updating Shop Order Delivery Status with live GPS & ETA tracking support
+  const handleUpdateShopOrderStatus = async (
+    orderId: string,
+    newStatus: ShopOrderStatus,
+    coords?: [number, number],
+    trackingData?: {
+      estimatedMins?: number
+      estimatedArrivalTime?: string
+      distanceKm?: number
+    }
+  ) => {
     try {
       const orderRef = doc(db, 'orders', orderId)
       const updateData: any = {
         status: newStatus,
         updatedAt: serverTimestamp(),
       }
+      if (newStatus === 'en_route') {
+        const estMins = trackingData?.estimatedMins || 10
+        updateData.estimatedMins = estMins
+        updateData.estimatedArrivalTime =
+          trackingData?.estimatedArrivalTime || computeEstimatedArrivalTime(estMins)
+        if (coords) updateData.driverCoords = coords
+        if (trackingData?.distanceKm !== undefined) updateData.distanceKm = trackingData.distanceKm
+      }
       if (newStatus === 'delivered') {
         updateData.paymentStatus = 'paid'
         updateData.deliveredAt = serverTimestamp()
         updateData.paymentCollectedBy = profile.name
         updateData.paymentCollectedAt = serverTimestamp()
+        updateData.estimatedMins = 0
       }
       await updateDoc(orderRef, updateData)
       showToast(newStatus === 'delivered' ? 'Order delivered and payment collected!' : `Delivery status updated to ${newStatus}`, 'success')
@@ -348,7 +424,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       showToast('Failed to update delivery status.', 'error')
     }
   }
-
 
   // Handle saving driver profile updates
   const handleSaveProfile = (updated: DriverProfile) => {
@@ -398,18 +473,35 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
       {/* 2. DRIVER MAP MODAL */}
       {selectedBookingForMap && (() => {
-        const targetBooking =
-          bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
+        const isShopOrder = shopOrders.some((o) => o.id === selectedBookingForMap.id)
+        const currentShopOrder = isShopOrder ? shopOrders.find((o) => o.id === selectedBookingForMap.id) : null
+        const targetBooking = isShopOrder && currentShopOrder
+          ? shopOrderToBookingRecord(currentShopOrder)
+          : bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
 
         return (
           <DriverMapView
             booking={targetBooking}
             onBack={() => setSelectedBookingForMap(null)}
-            onUpdateStatus={(id, status, coords, paymentData) => {
-              onUpdateStatus(id, status, coords, paymentData)
-              if (status === 'completed') {
-                setSelectedBookingForMap(null)
-                showToast('Wash completed! Order recorded in history.', 'success')
+            onUpdateStatus={(id: string, status: BookingStatus, coords?: [number, number], paymentData?: PaymentCollectionData, trackingData?: any) => {
+              if (isShopOrder) {
+                const shopStatus: ShopOrderStatus =
+                  status === 'completed'
+                    ? 'delivered'
+                    : status === 'in_progress' || status === 'en_route'
+                    ? 'en_route'
+                    : 'accepted'
+                handleUpdateShopOrderStatus(id, shopStatus, coords, trackingData)
+                if (status === 'completed') {
+                  setSelectedBookingForMap(null)
+                  showToast('Delivery completed! Order marked delivered.', 'success')
+                }
+              } else {
+                onUpdateStatus(id, status, coords, paymentData, trackingData)
+                if (status === 'completed') {
+                  setSelectedBookingForMap(null)
+                  showToast('Wash completed! Order recorded in history.', 'success')
+                }
               }
             }}
             driverProfile={profile}
@@ -709,6 +801,11 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Mark Delivered & Confirm Cash Collected</span>
                 </button>
+              ) : selectedDetailShopOrder.status === 'delivered' ? (
+                <div className="w-full py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Delivery Fulfilled & Payment Collected</span>
+                </div>
               ) : null}
             </div>
           </>
@@ -993,7 +1090,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                   ))}
                                   {(order.items?.length || 0) > 3 && (
                                     <span className="text-[10px] text-gray-400 font-bold shrink-0">
-                                      +${order.items.length - 3} more
+                                      +{order.items.length - 3} more
                                     </span>
                                   )}
                                 </div>
@@ -1199,15 +1296,25 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
                               {/* Progress Flow Actions */}
                               <div className="flex flex-col gap-2 pt-1">
-                                <a
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress || order.shippingAddress || '')}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-                                >
-                                  <Navigation className="w-3.5 h-3.5 fill-white" />
-                                  <span>Open Maps Directions</span>
-                                </a>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedBookingForMap(shopOrderToBookingRecord(order))}
+                                    className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                  >
+                                    <Navigation className="w-3.5 h-3.5 fill-white" />
+                                    <span>Live In-App Map</span>
+                                  </button>
+                                  <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress || order.shippingAddress || '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>Google Maps</span>
+                                  </a>
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                   {order.status === 'accepted' && (
@@ -1261,72 +1368,200 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                     <History className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold text-gray-900">Completed Wash History</h3>
-                    <p className="text-xs text-gray-500">Record of all your fulfilled customer dispatches</p>
+                    <h3 className="text-base font-extrabold text-gray-900">Completed Jobs & Orders</h3>
+                    <p className="text-xs text-gray-500">Record of all your fulfilled washes & Bentley shop deliveries</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{completedOrders.length} Washes Completed</span>
+                    <span>{completedOrders.length} Washes</span>
+                  </span>
+                  <span className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs">
+                    <ShoppingBag className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{completedShopOrders.length} Deliveries</span>
                   </span>
                 </div>
               </div>
 
-              {completedOrders.length === 0 ? (
+              {/* Category Filter Pills */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-1.5 bg-gray-100/90 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCategoryFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      historyCategoryFilter === 'all'
+                        ? 'bg-white text-gray-900 shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    All ({completedOrders.length + completedShopOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCategoryFilter('washes')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      historyCategoryFilter === 'washes'
+                        ? 'bg-white text-primary shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Washes ({completedOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCategoryFilter('deliveries')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      historyCategoryFilter === 'deliveries'
+                        ? 'bg-white text-primary shadow-2xs'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Shop Deliveries ({completedShopOrders.length})
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-gray-500 font-medium">
+                  Showing{' '}
+                  {historyCategoryFilter === 'all'
+                    ? `${completedOrders.length + completedShopOrders.length} total fulfilled dispatches`
+                    : historyCategoryFilter === 'washes'
+                    ? `${completedOrders.length} fulfilled car wash services`
+                    : `${completedShopOrders.length} delivered shop orders`}
+                </div>
+              </div>
+
+              {/* Empty state condition */}
+              {((historyCategoryFilter === 'washes' && completedOrders.length === 0) ||
+                (historyCategoryFilter === 'deliveries' && completedShopOrders.length === 0) ||
+                (historyCategoryFilter === 'all' && completedOrders.length === 0 && completedShopOrders.length === 0)) ? (
                 <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
                   <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                  <span className="text-base font-bold text-gray-800">No completed deliveries yet</span>
+                  <span className="text-base font-bold text-gray-800">
+                    {historyCategoryFilter === 'deliveries'
+                      ? 'No completed shop deliveries yet'
+                      : historyCategoryFilter === 'washes'
+                      ? 'No completed car washes yet'
+                      : 'No completed jobs yet'}
+                  </span>
                   <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                    Completed car washes will be recorded here with delivery receipts and COD collection status.
+                    {historyCategoryFilter === 'deliveries'
+                      ? 'Fulfilled Bentley Shop product dispatches will appear here with order summaries and COD collection details.'
+                      : 'Completed car washes and shop deliveries will be recorded here with delivery receipts and COD collection status.'}
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {completedOrders.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[180px]">
-                            {booking.title}
+                  {/* 1. Washes */}
+                  {(historyCategoryFilter === 'all' || historyCategoryFilter === 'washes') &&
+                    completedOrders.map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[180px]">
+                              {booking.title}
+                            </span>
+                          </div>
+                          <span className="text-xs sm:text-sm font-bold text-emerald-600 font-mono">
+                            +{booking.price}
                           </span>
                         </div>
-                        <span className="text-xs sm:text-sm font-bold text-emerald-600 font-mono">
-                          +{booking.price}
-                        </span>
-                      </div>
 
-                      <div className="flex items-center justify-between text-xs text-gray-500 bg-surface-subtle p-2.5 rounded-2xl">
-                        <span>Customer: <strong className="text-gray-800">{booking.customerName}</strong></span>
-                        <span className="truncate">{booking.vehicle}</span>
-                      </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500 bg-surface-subtle p-2.5 rounded-2xl">
+                          <span>Customer: <strong className="text-gray-800">{booking.customerName}</strong></span>
+                          <span className="truncate">{booking.vehicle}</span>
+                        </div>
 
-                      <div className="text-[11px] text-gray-400 truncate">
-                        {booking.address}
-                      </div>
+                        <div className="text-[11px] text-gray-400 truncate">
+                          {booking.address}
+                        </div>
 
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                        <span className="text-gray-400">Completed: {booking.date}</span>
-                        <div className="flex items-center gap-1.5">
-                          {booking.paymentStatus === 'paid' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Paid ({booking.paymentCollectedMethod || 'Cash'}) ✓
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                              Payment Pending
-                            </span>
-                          )}
-                          <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
+                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                          <span className="text-gray-400">Completed: {booking.date}</span>
+                          <div className="flex items-center gap-1.5">
+                            {booking.paymentStatus === 'paid' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Paid ({booking.paymentCollectedMethod || 'Cash'}) ✓
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                Payment Pending
+                              </span>
+                            )}
+                            <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+
+                  {/* 2. Shop Product Deliveries */}
+                  {(historyCategoryFilter === 'all' || historyCategoryFilter === 'deliveries') &&
+                    completedShopOrders.map((order) => {
+                      const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                      return (
+                        <div
+                          key={order.id}
+                          className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3 relative"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                              <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[180px]">
+                                Shop #{order.id.slice(-6).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-xs sm:text-sm font-bold text-emerald-600 font-mono">
+                              +${Number(order.grandTotal).toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-gray-500 bg-surface-subtle p-2.5 rounded-2xl">
+                            <span>Customer: <strong className="text-gray-800">{order.recipientName || order.customerName || 'Customer'}</strong></span>
+                            <span className="text-gray-600 font-medium">
+                              {totalItems} {totalItems === 1 ? 'item' : 'items'}
+                            </span>
+                          </div>
+
+                          {/* Preview product items */}
+                          {order.items && order.items.length > 0 && (
+                            <div className="text-[11px] text-gray-500 bg-gray-50/90 px-2.5 py-1.5 rounded-xl truncate">
+                              📦 {order.items.map(i => `${i.product?.title || (i as any).name || 'Product'} (x${i.quantity || 1})`).join(', ')}
+                            </div>
+                          )}
+
+                          <div className="text-[11px] text-gray-400 truncate">
+                            {order.deliveryAddress || order.shippingAddress || 'Address on file'}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
+                          </div>
+
+                          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                            <span className="text-gray-400">
+                              Completed: {formatDeliveredDate(order.deliveredAt || order.updatedAt || order.createdAt)}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Paid ({order.paymentMethod === 'cod' ? 'Cash' : (order.paymentMethod || 'Cash')}) ✓
+                              </span>
+                              <span className="text-emerald-600 font-bold">Delivered ✓</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDetailShopOrder(order)}
+                            className="mt-0.5 w-full py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Delivery Details</span>
+                          </button>
+                        </div>
+                      )
+                    })}
                 </div>
               )}
             </div>

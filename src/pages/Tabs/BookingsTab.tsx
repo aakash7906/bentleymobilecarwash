@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { getRemainingEtaMinutes } from '@/services/dispatchService'
 import {
   ChevronLeft,
   Calendar,
@@ -87,6 +88,11 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
     return null
   })
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<BookingRecord | null>(null)
+  const [, setWallClockTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setWallClockTick((t) => t + 1), 10000)
+    return () => clearInterval(timer)
+  }, [])
   const { showToast } = useToast()
 
   // Persist tracking modal state across refreshes
@@ -311,9 +317,16 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     </span>
 
                     <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 mt-1">
-                      <Clock className="w-3 h-3 text-neutral-400" />
-                      <span>{booking.date}</span>
+                      <Clock className="w-3 h-3 text-neutral-400 shrink-0" />
+                      <span>{booking.date}{booking.time ? ` • ${booking.time}` : ''}</span>
                     </div>
+
+                    {booking.status === 'en_route' && (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200 mt-0.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        <span>Arriving in ~{getRemainingEtaMinutes(booking) || 10} mins</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
                       <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />

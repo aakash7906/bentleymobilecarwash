@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem } from '@/types'
+import { TabType, ServiceItem, ShopOrder } from '@/types'
+import { db } from '@/firebase'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
 
@@ -74,6 +76,32 @@ const AppContent: React.FC = () => {
     handleAcceptOrder,
     handleUpdateBookingStatus,
   } = useBookings()
+
+  // Real-time active shop delivery orders for customer
+  const [activeShopOrders, setActiveShopOrders] = useState<ShopOrder[]>([])
+  useEffect(() => {
+    if (!currentUser) {
+      setActiveShopOrders([])
+      return
+    }
+    const ordersRef = collection(db, 'orders')
+    const q = query(ordersRef, where('userId', '==', currentUser.uid))
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const loaded: ShopOrder[] = snapshot.docs.map((docSnap) => ({
+          ...(docSnap.data() as ShopOrder),
+          id: docSnap.id,
+        }))
+        const active = loaded.filter(
+          (o) => o.status === 'en_route' || o.status === 'accepted' || o.status === 'pending'
+        )
+        setActiveShopOrders(active)
+      },
+      (err) => console.warn('App shop orders listener warning:', err)
+    )
+    return () => unsub()
+  }, [currentUser])
 
   const {
     cartItems,
@@ -347,6 +375,7 @@ const AppContent: React.FC = () => {
                 onSelectVehicle={handleSelectVehicle}
                 savedVehicles={savedVehicles}
                 activeBookings={bookings}
+                activeShopOrders={activeShopOrders}
                 userProfile={
                   currentUser
                     ? {

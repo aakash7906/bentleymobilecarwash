@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react'
-import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord } from '@/types'
+import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord, ShopOrder } from '@/types'
+import { getRemainingEtaMinutes, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
@@ -29,6 +30,7 @@ interface HomeTabProps {
   onOpenTracking?: (booking?: BookingRecord) => void
   savedVehicles?: SavedVehicle[]
   activeBookings?: BookingRecord[]
+  activeShopOrders?: ShopOrder[]
   userProfile?: {
     name?: string
     email?: string
@@ -71,6 +73,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenTracking,
   savedVehicles,
   activeBookings = [],
+  activeShopOrders = [],
   userProfile,
   cartItems,
   onAddToCart,
@@ -110,6 +113,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     detectedAddress || userProfile?.lastLocation || userProfile?.address || ''
   )
   const [isLocating, setIsLocating] = useState(false)
+  const [, setWallClockTick] = useState(0)
+  React.useEffect(() => {
+    const interval = setInterval(() => setWallClockTick((t) => t + 1), 10000)
+    return () => clearInterval(interval)
+  }, [])
   // Dynamic driving ETA state for en_route booking (in minutes)
   const [dynamicDrivingEtaMins, setDynamicDrivingEtaMins] = useState<number | null>(() => {
     const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
@@ -759,52 +767,59 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 9. FLOATING BOTTOM STATUS POPUP PILL: Dynamic Technician Status & Real-time ETA */}
       {(() => {
-        // Resolve active booking with priority to en_route -> in_progress -> accepted -> scheduled -> pending
-        const liveBooking =
-          activeBookings.find((b) => b.status === 'en_route') ||
-          activeBookings.find((b) => b.status === 'in_progress') ||
-          activeBookings.find((b) => b.status === 'accepted') ||
-          activeBookings.find((b) => b.status === 'scheduled') ||
-          activeBookings.find((b) => b.status === 'pending')
+        // Resolve active dispatch with priority: en_route -> in_progress -> accepted -> scheduled -> pending
+        const enRouteBooking = activeBookings.find((b) => b.status === 'en_route')
+        const enRouteShop = activeShopOrders.find((o) => o.status === 'en_route')
+        const inProgressBooking = activeBookings.find((b) => b.status === 'in_progress')
+        const acceptedBooking = activeBookings.find((b) => b.status === 'accepted')
+        const acceptedShop = activeShopOrders.find((o) => o.status === 'accepted')
+        const scheduledBooking = activeBookings.find((b) => b.status === 'scheduled')
+        const pendingBooking = activeBookings.find((b) => b.status === 'pending')
+        const pendingShop = activeShopOrders.find((o) => o.status === 'pending')
 
-        if (!liveBooking) return null
+        const activeDispatch: ActiveDispatchItem | null =
+          enRouteBooking ? toActiveDispatchItem(enRouteBooking, 'wash') :
+          enRouteShop ? toActiveDispatchItem(enRouteShop, 'shop') :
+          inProgressBooking ? toActiveDispatchItem(inProgressBooking, 'wash') :
+          acceptedBooking ? toActiveDispatchItem(acceptedBooking, 'wash') :
+          acceptedShop ? toActiveDispatchItem(acceptedShop, 'shop') :
+          scheduledBooking ? toActiveDispatchItem(scheduledBooking, 'wash') :
+          pendingBooking ? toActiveDispatchItem(pendingBooking, 'wash') :
+          pendingShop ? toActiveDispatchItem(pendingShop, 'shop') :
+          null
 
-        // ONLY show time when driver accepted the booking and started driving (en_route)
-        const isDriving = liveBooking.status === 'en_route'
-        const rawDriver = (liveBooking.driverName || liveBooking.technicianName || '').trim()
+        if (!activeDispatch) return null
+
+        // ONLY show time when driver accepted the booking/order and started driving (en_route)
+        const isDriving = activeDispatch.status === 'en_route'
+        const rawDriver = (activeDispatch.driverName || '').trim()
         const hasRealDriver = Boolean(rawDriver && rawDriver.toLowerCase() !== 'alex rivera')
         const driverName = hasRealDriver ? rawDriver : ''
 
-        let statusLabel = 'Appointment Scheduled'
-        if (liveBooking.status === 'en_route') {
-          statusLabel = hasRealDriver ? `${driverName} is Arriving` : 'Technician is Arriving'
-        } else if (liveBooking.status === 'in_progress') {
+        let statusLabel = activeDispatch.kind === 'shop' ? 'Order Scheduled' : 'Appointment Scheduled'
+        if (activeDispatch.status === 'en_route') {
+          statusLabel = hasRealDriver
+            ? `${driverName} is Arriving`
+            : activeDispatch.kind === 'shop'
+              ? 'Delivery Driver is Arriving'
+              : 'Technician is Arriving'
+        } else if (activeDispatch.status === 'in_progress') {
           statusLabel = 'Detailing in Progress'
-        } else if (liveBooking.status === 'accepted') {
-          statusLabel = hasRealDriver ? `${driverName} Assigned` : 'Technician Assigned'
-        } else if (liveBooking.status === 'pending') {
+        } else if (activeDispatch.status === 'accepted') {
+          statusLabel = hasRealDriver ? `${driverName} Assigned` : 'Driver Assigned'
+        } else if (activeDispatch.status === 'pending') {
           statusLabel = 'Awaiting Driver Acceptance'
         }
 
-        // Dynamic time strictly in minutes (only when driver has accepted & started driving, no spikes or 1/6949 fluctuation)
-        const rawMins =
-          typeof liveBooking.estimatedMins === 'number' &&
-          liveBooking.estimatedMins > 0 &&
-          liveBooking.estimatedMins <= 45
-            ? liveBooking.estimatedMins
-            : dynamicDrivingEtaMins
-
-        // Ensure time is always a consistent, realistic number of minutes (e.g. 8-15 mins, no 1 or 6949 spikes)
-        const dynamicMins = isDriving
-          ? Math.min(30, Math.max(2, rawMins || 10))
-          : null
+        // Real-time synchronized ETA derived from absolute timestamp
+        const dynamicMins = isDriving ? getRemainingEtaMinutes(activeDispatch) : null
 
         const statusBadgeText =
-          liveBooking.status === 'accepted'
+          activeDispatch.status === 'accepted'
             ? 'Accepted'
-            : liveBooking.status === 'in_progress'
+            : activeDispatch.status === 'in_progress'
               ? 'In Progress'
-              : liveBooking.status === 'scheduled'
+              : activeDispatch.status === 'scheduled'
                 ? 'Scheduled'
                 : 'Pending'
 
@@ -813,10 +828,40 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="w-full max-w-[360px] sm:max-w-md mx-auto pointer-events-auto">
               <div
                 onClick={() => {
-                  setSelectedTrackingBooking(liveBooking)
-                  if (onOpenTracking) {
-                    onOpenTracking(liveBooking)
-                  } else {
+                  if (activeDispatch.rawBooking) {
+                    setSelectedTrackingBooking(activeDispatch.rawBooking)
+                    if (onOpenTracking) {
+                      onOpenTracking(activeDispatch.rawBooking)
+                    } else {
+                      setIsTrackingMapOpen(true)
+                    }
+                  } else if (activeDispatch.rawShopOrder) {
+                    const shopAsBooking: BookingRecord = {
+                      id: activeDispatch.rawShopOrder.id,
+                      title: activeDispatch.title,
+                      category: 'Shop Delivery',
+                      vehicle: 'Product Package',
+                      image: activeDispatch.rawShopOrder.items?.[0]?.product?.image || '',
+                      price: `${Number(activeDispatch.rawShopOrder.grandTotal).toFixed(2)}`,
+                      totalNumeric: Number(activeDispatch.rawShopOrder.grandTotal) || 0,
+                      date: 'Today',
+                      time: 'Now',
+                      status: activeDispatch.rawShopOrder.status === 'en_route' ? 'en_route' : 'accepted',
+                      locationType: 'mobile',
+                      address: activeDispatch.address,
+                      customerName: activeDispatch.customerName || '',
+                      customerPhone: activeDispatch.customerPhone || '',
+                      driverName: activeDispatch.driverName,
+                      driverPhone: activeDispatch.driverPhone,
+                      driverVanNumber: activeDispatch.driverVanNumber,
+                      driverCoords: activeDispatch.driverCoords,
+                      customerCoords: activeDispatch.customerCoords,
+                      estimatedMins: activeDispatch.estimatedMins,
+                      estimatedArrivalTime: activeDispatch.estimatedArrivalTime,
+                      distanceKm: activeDispatch.distanceKm,
+                      createdAt: activeDispatch.rawShopOrder.createdAt,
+                    }
+                    setSelectedTrackingBooking(shopAsBooking)
                     setIsTrackingMapOpen(true)
                   }
                 }}
@@ -825,7 +870,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 {/* Left Content */}
                 <div className="flex flex-col items-start gap-0.5">
                   <span className="px-2.5 py-0.5 rounded-sm bg-white/20 border border-white/30 text-white text-[10px] font-medium leading-none">
-                    {liveBooking.title || 'Car Wash'}
+                    {activeDispatch.title}
                   </span>
                   <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight mt-0.5">
                     {statusLabel}
