@@ -19,6 +19,7 @@ import {
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData, ShopOrder, ShopOrderStatus } from '@/types'
 import { computeEstimatedArrivalTime } from '@/services/dispatchService'
+import { createShopOrderInvoice } from '@/services/invoiceService'
 import { auth, db } from '@/firebase'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { DriverMapView } from './DriverMapView'
@@ -416,6 +417,18 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         updateData.paymentCollectedBy = profile.name
         updateData.paymentCollectedAt = serverTimestamp()
         updateData.estimatedMins = 0
+
+        const targetOrder = shopOrders.find((o) => o.id === orderId)
+        if (targetOrder) {
+          try {
+            const invResult = await createShopOrderInvoice(targetOrder, profile)
+            updateData.invoiceId = invResult.id
+            updateData.invoiceNumber = invResult.invoiceNumber
+            updateData.invoiceGeneratedAt = serverTimestamp()
+          } catch (invErr) {
+            console.warn('Could not generate invoice record on shop order delivery:', invErr)
+          }
+        }
       }
       await updateDoc(orderRef, updateData)
       showToast(newStatus === 'delivered' ? 'Order delivered and payment collected!' : `Delivery status updated to ${newStatus}`, 'success')
@@ -600,22 +613,22 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 )}
                 {selectedDetailBooking.shopItems && selectedDetailBooking.shopItems.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-gray-200 flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-amber-900 uppercase">
-                      <span className="flex items-center gap-1">
-                        <Package className="w-3.5 h-3.5 text-amber-600" />
+                    <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 uppercase">
+                      <span className="flex items-center gap-1.5 text-gray-700">
+                        <Package className="w-3.5 h-3.5 text-primary" />
                         <span>Shop Products to Hand-Deliver ({selectedDetailBooking.shopItems.reduce((a, c) => a + c.quantity, 0)})</span>
                       </span>
                       {selectedDetailBooking.shopItemsTotal && (
-                        <span className="font-mono font-bold text-xs text-amber-900">
+                        <span className="font-mono font-bold text-xs text-primary">
                           +${Number(selectedDetailBooking.shopItemsTotal).toFixed(2)}
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1.5 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/90 divide-y divide-amber-100">
+                    <div className="flex flex-col gap-1.5 bg-white p-2.5 rounded-xl border border-gray-200/90 divide-y divide-gray-100 shadow-2xs">
                       {selectedDetailBooking.shopItems.map((item, idx) => (
-                        <div key={idx} className="pt-1 first:pt-0 flex items-center justify-between text-xs text-gray-800">
+                        <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs text-gray-900">
                           <span className="font-medium truncate max-w-[200px]">{item.product.title}</span>
-                          <span className="font-bold text-amber-950 text-[11px] bg-amber-100/90 px-1.5 py-0.5 rounded font-mono">
+                          <span className="font-bold text-gray-700 text-[11px] bg-gray-100 px-2 py-0.5 rounded-md font-mono border border-gray-200/60">
                             x{item.quantity} (${((item.product.priceNumeric || 0) * item.quantity).toFixed(2)})
                           </span>
                         </div>
@@ -1035,13 +1048,13 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                 <span className="font-semibold text-gray-700">{booking.title}</span>
                               </div>
                               {booking.shopItems && booking.shopItems.length > 0 && (
-                                <div className="mt-1 pt-1.5 border-t border-gray-200/80 flex items-center justify-between text-[11px] text-amber-900 font-bold">
-                                  <span className="flex items-center gap-1">
-                                    <Package className="w-3 h-3 text-amber-600" />
+                                <div className="mt-1 pt-1.5 border-t border-gray-200/80 flex items-center justify-between text-[11px] text-gray-700 font-semibold">
+                                  <span className="flex items-center gap-1.5">
+                                    <Package className="w-3.5 h-3.5 text-primary shrink-0" />
                                     <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
                                   </span>
                                   {booking.shopItemsTotal && (
-                                    <span className="font-mono text-amber-950">
+                                    <span className="font-mono font-bold text-primary">
                                       +${Number(booking.shopItemsTotal).toFixed(2)}
                                     </span>
                                   )}
@@ -1210,13 +1223,13 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                   {booking.address}
                                 </p>
                                 {booking.shopItems && booking.shopItems.length > 0 && (
-                                  <div className="mt-2 flex items-center justify-between text-[11px] text-amber-900 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200 font-bold">
+                                  <div className="mt-2 flex items-center justify-between text-[11px] text-gray-800 bg-surface-subtle px-2.5 py-1.5 rounded-xl border border-gray-200 font-semibold">
                                     <span className="flex items-center gap-1.5">
-                                      <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <Package className="w-3.5 h-3.5 text-primary shrink-0" />
                                       <span>+{booking.shopItems.reduce((a, c) => a + c.quantity, 0)} Shop Products</span>
                                     </span>
                                     {booking.shopItemsTotal && (
-                                      <span className="font-mono text-amber-950">
+                                      <span className="font-mono font-bold text-primary">
                                         +${Number(booking.shopItemsTotal).toFixed(2)}
                                       </span>
                                     )}
@@ -1534,8 +1547,9 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                         </div>
 
                         {booking.shopItems && booking.shopItems.length > 0 && (
-                          <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1.5 rounded-xl border border-amber-200/60 truncate">
-                            📦 Delivered {booking.shopItems.reduce((a, c) => a + c.quantity, 0)} shop items ({booking.shopItems.map(i => i.product?.title || 'Product').join(', ')})
+                          <div className="text-[11px] text-gray-700 bg-surface-subtle px-2.5 py-1.5 rounded-xl border border-gray-200/80 truncate flex items-center gap-1.5 font-medium">
+                            <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span>Delivered {booking.shopItems.reduce((a, c) => a + c.quantity, 0)} shop items ({booking.shopItems.map(i => i.product?.title || 'Product').join(', ')})</span>
                           </div>
                         )}
 

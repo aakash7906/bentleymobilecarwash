@@ -145,6 +145,9 @@ export interface ShopOrder {
   deliveredAt?: any
   paymentCollectedAt?: any
   paymentCollectedMethod?: string
+  invoiceId?: string
+  invoiceNumber?: string
+  invoiceGeneratedAt?: any
 }
 
 export interface UserProfile {
@@ -234,6 +237,50 @@ export interface BookingRecord {
   createdAt: any
   rating?: number
   review?: string
+  invoiceId?: string
+  invoiceNumber?: string
+  invoiceGeneratedAt?: any
+}
+
+export interface InvoiceItem {
+  title: string
+  category?: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+export interface InvoiceRecord {
+  id: string
+  invoiceNumber: string
+  referenceType: 'carwash_booking' | 'shop_order'
+  referenceId: string
+  customerName: string
+  customerPhone?: string
+  customerEmail?: string
+  serviceAddress?: string
+  items: InvoiceItem[]
+  subtotal: number
+  taxAmount: number
+  totalAmount: number
+  currency: 'CAD' | string
+  paymentMethod: string
+  paymentStatus: 'paid' | 'pending' | 'failed'
+  paymentCollectedBy?: string
+  paymentCollectedAt?: any
+  paymentCollectedMethod?: string
+  driverId?: string
+  driverName?: string
+  driverPhone?: string
+  driverVanNumber?: string
+  vehicleDetails?: {
+    model?: string
+    licensePlate?: string
+    vehicleType?: string
+  }
+  issuedAt: any
+  completedAt: any
+  createdAt: any
 }
 
 export interface PaymentCollectionData {

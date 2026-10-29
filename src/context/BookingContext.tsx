@@ -12,6 +12,7 @@ import {
 import { db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
 import { BookingRecord, BookingStatus, PaymentCollectionData } from '@/types'
+import { createBookingInvoice } from '@/services/invoiceService'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -407,6 +408,28 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         if (newStatus === 'completed') {
           updatePayload.completedAt = serverTimestamp()
+          const existing = bookings.find((b) => b.id === bookingId)
+          if (existing) {
+            try {
+              const invResult = await createBookingInvoice(existing, paymentData)
+              updatePayload.invoiceId = invResult.id
+              updatePayload.invoiceNumber = invResult.invoiceNumber
+              updatePayload.invoiceGeneratedAt = serverTimestamp()
+              setBookings((prev) =>
+                prev.map((b) =>
+                  b.id === bookingId
+                    ? {
+                        ...b,
+                        invoiceId: invResult.id,
+                        invoiceNumber: invResult.invoiceNumber,
+                      }
+                    : b
+                )
+              )
+            } catch (invErr) {
+              console.warn('Could not generate invoice record on booking completion:', invErr)
+            }
+          }
         }
         if (paymentData) {
           if (paymentData.paymentStatus) updatePayload.paymentStatus = paymentData.paymentStatus

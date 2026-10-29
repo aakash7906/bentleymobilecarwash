@@ -43,7 +43,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
           })
         }
       }
-    } catch {}
+    } catch { }
     return new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -58,13 +58,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
         const y = new Date(booking.createdAt).getFullYear()
         if (!isNaN(y)) return y
       }
-    } catch {}
+    } catch { }
     return new Date().getFullYear()
   }, [booking.createdAt])
 
-  // Clean, official invoice reference number
-  const cleanId = booking.id ? booking.id.replace(/^bkg-/, '').toUpperCase() : 'REC'
-  const invoiceNumber = `INV-${cleanId.slice(0, 8)}-${invoiceYear}`
+  // Clean, official invoice reference number (uses stored invoiceNumber from invoices collection if fulfilled)
+  const cleanId = booking.id
+    ? booking.id.replace(/^bkg-/, '').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()
+    : 'REC'
+  const invoiceNumber = booking.invoiceNumber || `INV-BW-${cleanId}-${invoiceYear}`
 
   // Financial calculations: Canadian Standard 5% GST
   const taxRate = 0.05
@@ -219,7 +221,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
       setTimeout(() => {
         try {
           iframe.remove()
-        } catch {}
+        } catch { }
       }, 2000)
     }, 200)
   }
@@ -328,7 +330,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 pb-3 sm:pb-4 border-b border-gray-100">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+
                     <h2 className="font-black text-base sm:text-xl tracking-tight text-gray-900">
                       Bentley Mobile Car Wash
                     </h2>
@@ -337,7 +339,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                     Ontario &amp; Greater Toronto Area, Canada
                   </p>
                   <p className="text-[11px] sm:text-xs text-gray-500">
-                    support@bentleymobilecarwash.com • GST # 849201948RT0001
+                    support@bentleymobilecarwash.com
                   </p>
                 </div>
 
@@ -367,10 +369,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                     Billed To
                   </span>
                   <span className="font-black text-gray-900 text-xs sm:text-base mt-0.5">
-                    {booking.customerName || 'Valued Customer'}
+                    {booking.customerName}
                   </span>
                   <span className="text-gray-600 mt-0.5 font-medium text-[11px] sm:text-xs">
-                    {booking.customerPhone || 'Phone on file'}
+                    {booking.customerPhone}
                   </span>
                   {booking.customerEmail && (
                     <span className="text-gray-500 text-[11px] sm:text-xs truncate">
@@ -500,15 +502,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                     booking.shopItems.map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex justify-between items-center p-2 sm:p-2.5 bg-amber-50/70 text-xs border-t border-amber-100/80"
+                        className="flex justify-between items-center p-2 sm:p-2.5 bg-gray-50/60 text-xs border-t border-gray-100"
                       >
                         <div className="flex items-center gap-1.5 text-gray-800">
-                          <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span className="text-[11px] sm:text-xs">
+                          <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="text-[11px] sm:text-xs font-medium">
                             Shop Item: {item.product?.title || 'Product'} (×{item.quantity})
                           </span>
                         </div>
-                        <span className="font-mono font-bold text-amber-950 text-xs">
+                        <span className="font-mono font-bold text-gray-900 text-xs">
                           ${((Number(item.product?.priceNumeric) || 0) * (item.quantity || 1)).toFixed(2)}
                         </span>
                       </div>

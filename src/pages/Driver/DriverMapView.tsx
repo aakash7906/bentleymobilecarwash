@@ -840,21 +840,21 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
 
           {booking.shopItems && booking.shopItems.length > 0 && (
-            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/90 text-xs flex flex-col gap-1">
-              <div className="flex items-center justify-between font-bold text-amber-950">
+            <div className="p-2.5 rounded-xl bg-surface-subtle border border-gray-200 text-xs flex flex-col gap-1.5 shadow-2xs">
+              <div className="flex items-center justify-between font-bold text-gray-900">
                 <span className="flex items-center gap-1.5 text-[11px]">
-                  <Package className="w-3.5 h-3.5 text-amber-600" />
+                  <Package className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span>Hand-Deliver Shop Products ({booking.shopItems.reduce((a, c) => a + c.quantity, 0)})</span>
                 </span>
-                <span className="text-[9px] bg-amber-200/90 text-amber-950 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                <span className="text-[9px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-extrabold uppercase">
                   With Wash
                 </span>
               </div>
-              <ul className="text-gray-700 text-[11px] space-y-0.5">
+              <ul className="text-gray-700 text-[11px] space-y-0.5 pt-1 border-t border-gray-100">
                 {booking.shopItems.map((item, idx) => (
                   <li key={idx} className="flex justify-between items-center">
-                    <span>• {item.product.title} <strong className="text-amber-900">×{item.quantity}</strong></span>
-                    <span className="font-mono text-gray-500">${(item.product.priceNumeric * item.quantity).toFixed(2)}</span>
+                    <span>• {item.product.title} <strong className="text-gray-900">×{item.quantity}</strong></span>
+                    <span className="font-mono text-gray-600 font-semibold">${(item.product.priceNumeric * item.quantity).toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
