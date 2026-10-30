@@ -19,7 +19,7 @@ import { CartItem, DeliveryAddress } from '@/types'
 import { getSafeProductImage } from '@/data/productsData'
 import { isValidPhone } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
-import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
+import { DeliveryAddressModal } from '@/components/modals'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
 import { Button } from '@/components/ui/button'
@@ -421,12 +421,6 @@ export const CartPage: React.FC<CartPageProps> = ({
                   ${grandTotal}
                 </span>
               </div>
-            </div>
-
-            {/* Quality & Return Guarantee */}
-            <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 font-medium py-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Official Bentley Certified Products • 30-Day Guarantee</span>
             </div>
           </div>
         )}

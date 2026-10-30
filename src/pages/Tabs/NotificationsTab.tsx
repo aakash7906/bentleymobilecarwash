@@ -7,21 +7,6 @@ interface NotificationsTabProps {
   bookings?: BookingRecord[]
 }
 
-const SERVICE_ANNOUNCEMENTS = [
-  {
-    id: 'ann-1',
-    title: 'On-Site Mobile Detailing Live',
-    description: 'Bentley Mobile Car Wash arrives fully equipped with spot-free deionized water and power generators.',
-    time: 'Bentley Care',
-  },
-  {
-    id: 'ann-2',
-    title: 'Safe 100% Biodegradable Shampoos',
-    description: 'All foam washes, ceramic coats, and tire treatments are environmentally friendly and clear-coat safe.',
-    time: 'Quality Guarantee',
-  },
-]
-
 export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [] }) => {
   // Generate dynamic live notifications based on user bookings
   const liveBookingNotifications = bookings.slice(0, 5).map((b) => {
@@ -65,9 +50,6 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
           <Bell className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-bold text-gray-900">Activity &amp; Updates</h2>
         </div>
-        <span className="text-[11px] text-gray-400">
-          {liveBookingNotifications.length + SERVICE_ANNOUNCEMENTS.length} alerts
-        </span>
       </div>
 
       <div className="mt-4 flex flex-col gap-3.5">
@@ -106,29 +88,6 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ bookings = [
             })}
           </>
         )}
-
-        <span className="text-xs font-semibold text-gray-700 mt-2">
-          System &amp; Care Announcements
-        </span>
-
-        {SERVICE_ANNOUNCEMENTS.map((item) => (
-          <div
-            key={item.id}
-            className="p-3.5 rounded-2xl bg-surface-alt border border-gray-200/60 flex flex-col gap-1 shadow-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-bold text-gray-900">
-                {item.title}
-              </span>
-              <span className="text-[11px] text-gray-400 font-mono">
-                {item.time}
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 line-clamp-2">
-              {item.description}
-            </p>
-          </div>
-        ))}
       </div>
     </div>
   )

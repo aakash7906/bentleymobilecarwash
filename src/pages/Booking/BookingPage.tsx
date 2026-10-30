@@ -6,13 +6,11 @@ import {
   Clock,
   MapPin,
   Car,
-  CheckCircle2,
   Banknote,
   ShieldCheck,
   Check,
   Truck,
   Building2,
-  Receipt,
   LocateFixed,
   Loader2,
   AlertCircle,
@@ -20,12 +18,14 @@ import {
 import { ServiceItem, SavedVehicle, BookingRecord } from '@/types'
 import { isValidPhone, isValidEmail, sanitizeText } from '@/lib/utils'
 import { SERVICES_CATALOG } from '@/data/mockData'
-import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
 import { useToast } from '@/context/ToastContext'
 import { auth, db } from '@/firebase'
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { Select, SelectOption } from '@/components/ui/select'
 import { getLiveGPSLocation } from '@/services/locationService'
+import { BookingServicePreview } from './components/BookingServicePreview'
+import { BookingPriceBreakdown } from './components/BookingPriceBreakdown'
+import { BookingSuccessScreen } from './components/BookingSuccessScreen'
 
 interface BookingPageProps {
   initialService?: ServiceItem | null
@@ -268,8 +268,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       setSelectedVehicle(vehicleOptions[0].value)
     }
   }, [currentVehicle, vehicleOptions])
-
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null)
 
   // Helper to parse address, city & postal code from raw address string if missing
@@ -570,105 +568,19 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
   // Confirmation Success View
   if (isSuccess) {
+    const formattedDate = `${dateSlots[selectedDateIndex].dayName}, ${dateSlots[selectedDateIndex].month} ${dateSlots[selectedDateIndex].dayNumber}`
     return (
-      <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col justify-between p-6 w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto">
-        <div className="flex flex-col items-center text-center pt-8">
-          <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5 animate-in zoom-in duration-300">
-            <CheckCircle2 className="w-12 h-12 stroke-[2.2]" />
-          </div>
-
-          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold tracking-wider uppercase mb-2">
-            Appointment Confirmed
-          </span>
-
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-            Booking Scheduled!
-          </h1>
-          <p className="text-xs text-gray-500 mt-1.5 max-w-xs">
-            We will arrive on time with our fully-equipped eco-friendly mobile detailing unit.
-          </p>
-
-          {/* Reference Card */}
-          <div className="mt-6 w-full p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col gap-3 text-left">
-
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Service:</span>
-              <span className="font-semibold text-gray-900">{selectedService.title}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Vehicle:</span>
-              <span className="font-semibold text-gray-900">{effectiveVehicle}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Date & Time:</span>
-              <span className="font-semibold text-gray-900">
-                {dateSlots[selectedDateIndex].dayName}, {dateSlots[selectedDateIndex].month} {dateSlots[selectedDateIndex].dayNumber} at {selectedTimeSlot}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Location:</span>
-              <span className="font-semibold text-gray-900 text-right truncate max-w-[180px]">
-                {createdBooking?.address || fullAddress}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Payment Option:</span>
-              <span className="font-mono text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Cash on Delivery (Due after wash)
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
-              <span className="font-bold text-gray-900">Total Estimated:</span>
-              <span className="text-sm font-bold text-primary font-mono">${grandTotal} CAD</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Actions */}
-        <div className="mt-8 flex flex-col gap-2.5 pb-6">
-          <button
-            onClick={() => {
-              if (onTrackOrder) {
-                onTrackOrder()
-              } else {
-                onBack()
-              }
-            }}
-            className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md active:scale-98 transition-all cursor-pointer text-center"
-          >
-            Track Order &gt;
-          </button>
-          {createdBooking && (
-            <button
-              onClick={() => setShowInvoiceModal(true)}
-              className="w-full py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <Receipt className="w-3.5 h-3.5 text-primary" />
-              <span>View Receipt / Invoice</span>
-            </button>
-          )}
-          <button
-            onClick={onBack}
-            className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold active:scale-98 transition-all cursor-pointer text-center"
-          >
-            Back to Home
-          </button>
-        </div>
-
-        {/* Invoice Modal */}
-        {showInvoiceModal && createdBooking && (
-          <InvoiceModal
-            booking={createdBooking}
-            onClose={() => setShowInvoiceModal(false)}
-          />
-        )}
-      </div>
+      <BookingSuccessScreen
+        createdBooking={createdBooking}
+        selectedService={selectedService}
+        effectiveVehicle={effectiveVehicle}
+        dateSlotText={formattedDate}
+        selectedTimeSlot={selectedTimeSlot}
+        addressText={createdBooking?.address || fullAddress}
+        grandTotal={grandTotal}
+        onTrackOrder={onTrackOrder}
+        onBack={onBack}
+      />
     )
   }
 
@@ -694,29 +606,10 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         {/* Booking Form Content */}
         <div className="screen-padding py-5 flex flex-col gap-5">
           {/* 1. Selected Service Preview */}
-          <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-              <img
-                src={selectedService.image}
-                alt={selectedService.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-bold text-primary uppercase tracking-wide">
-                {selectedService.category}
-              </span>
-              <h2 className="text-sm font-bold text-gray-900 truncate">
-                {selectedService.title}
-              </h2>
-              <span className="text-xs text-gray-500 mt-0.5">
-                Est. {selectedService.estTime}
-              </span>
-              <span className="text-sm font-extrabold text-primary font-mono mt-1">
-                ${basePrice}.00
-              </span>
-            </div>
-          </div>
+          <BookingServicePreview
+            selectedService={selectedService}
+            basePrice={basePrice}
+          />
 
           {/* 2. Vehicle Selector (Using Select component from select.tsx) */}
           <div className="flex flex-col gap-2">
@@ -1060,69 +953,21 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           </div>
 
           {/* 9. Price Breakdown Box */}
-          <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col gap-2">
-            <span className="text-xs font-bold text-gray-900">Summary & Pricing</span>
-
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span className="flex items-center gap-1">
-                <span>{selectedService.title}</span>
-                {isTieredService && (
-                  <span className="text-[10px] text-primary font-bold bg-primary-light px-1.5 py-0.5 rounded">
-                    {vehicleType} Rate
-                  </span>
-                )}
-              </span>
-              <span className="font-mono">
-                ${basePrice}.00
-              </span>
-            </div>
-
-            {vehicleSizeSurcharge > 0 && (
-              <div className="flex items-center justify-between text-xs text-gray-600">
-                <span>+ {vehicleType} Size Surcharge</span>
-                <span className="font-mono">+${vehicleSizeSurcharge}.00</span>
-              </div>
-            )}
-
-
-
-
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Mobile Dispatch Fee {city ? `(${city})` : ''}</span>
-              <span className="font-semibold text-emerald-600">Free</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>GST (5%)</span>
-              <span className="font-mono">${tax}</span>
-            </div>
-
-            <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
-              <span className="text-sm font-bold text-gray-900">Total Amount</span>
-              <span className="text-base font-extrabold text-primary font-mono">
-                ${grandTotal} CAD
-              </span>
-            </div>
-
-            {isUnderMobileMinimum && (
-              <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col gap-1.5 animate-in fade-in">
-                <div className="flex items-center gap-1.5 font-bold text-amber-800">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Mobile Dispatch Minimum: ${MOBILE_MINIMUM_DISPATCH_AMOUNT}.00</span>
-                </div>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Mobile doorstep service requires a minimum order of ${MOBILE_MINIMUM_DISPATCH_AMOUNT}.00 (current subtotal: ${preDiscountSubtotal}.00). Add ${mobileDispatchShortfall.toFixed(2)} in add-ons above, or switch to Bentley Studio Drop-off (no minimum required).
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setLocationType('shop')}
-                  className="self-start text-[11px] font-bold text-primary hover:underline cursor-pointer"
-                >
-                  Switch to Bentley Studio Drop-off &rarr;
-                </button>
-              </div>
-            )}
-          </div>
+          <BookingPriceBreakdown
+            selectedService={selectedService}
+            isTieredService={isTieredService}
+            vehicleType={vehicleType}
+            basePrice={basePrice}
+            vehicleSizeSurcharge={vehicleSizeSurcharge}
+            city={city}
+            tax={tax}
+            grandTotal={grandTotal}
+            isUnderMobileMinimum={isUnderMobileMinimum}
+            MOBILE_MINIMUM_DISPATCH_AMOUNT={MOBILE_MINIMUM_DISPATCH_AMOUNT}
+            preDiscountSubtotal={preDiscountSubtotal}
+            mobileDispatchShortfall={mobileDispatchShortfall}
+            onSwitchToShop={() => setLocationType('shop')}
+          />
         </div>
 
         {/* Sticky Bottom Bar */}

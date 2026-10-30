@@ -225,9 +225,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   />
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center border border-white shadow-xs">
-                <span className="material-symbols-outlined text-[12px]">edit</span>
-              </div>
             </div>
 
             <div className="flex flex-col min-w-0 justify-center">

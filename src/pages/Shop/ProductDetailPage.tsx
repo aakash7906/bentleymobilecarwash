@@ -18,7 +18,7 @@ import {
 import { ProductItem, DeliveryAddress } from '@/types'
 import { isValidPhone } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
-import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
+import { DeliveryAddressModal } from '@/components/modals'
 import { db } from '@/firebase'
 import { collection, doc } from 'firebase/firestore'
 import { Button } from '@/components/ui/button'

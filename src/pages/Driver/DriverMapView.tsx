@@ -20,7 +20,7 @@ import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } fr
 import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { Dialog } from '@/components/ui/dialog'
-import { CodPaymentModal } from '@/components/CodPaymentModal'
+import { CodPaymentModal } from '@/components/modals'
 
 // Haversine formula to compute distance in km
 function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {

@@ -28,7 +28,7 @@ import { DriverMapView } from './DriverMapView'
 import { DriverProfilePage } from './DriverProfilePage'
 import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
-import { CodPaymentModal } from '@/components/CodPaymentModal'
+import { CodPaymentModal } from '@/components/modals'
 import { DriverBottomNav, DriverTabType } from '@/components/DriverBottomNav'
 
 interface DriverDashboardProps {

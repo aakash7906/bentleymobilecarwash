@@ -18,7 +18,7 @@ import { sanitizeText } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { OrderTrackingMapPage } from '@/pages/Orders/OrderTrackingMapPage'
-import { InvoiceModal } from '@/pages/Orders/InvoiceModal'
+import { InvoiceModal } from '@/components/modals'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 

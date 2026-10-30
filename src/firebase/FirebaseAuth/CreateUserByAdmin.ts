@@ -1,5 +1,4 @@
-import { isValidEmail } from '@/lib/utils';
-﻿import { initializeApp, deleteApp } from "firebase/app";
+import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from "firebase/auth";
 import { firebaseConfig } from "../firebase";
 
