@@ -205,6 +205,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
               grandTotal: Number(((newBooking.shopItemsTotal || 0) * 1.05).toFixed(2)),
               paymentMethod: newBooking.paymentMethod || 'Cash on Delivery (COD)',
               paymentStatus: newBooking.paymentStatus || 'pending',
+              status: 'pending',
               deliveryType: 'technician_carwash_dispatch',
               shippingAddress: newBooking.address,
               customerName: newBooking.customerName,

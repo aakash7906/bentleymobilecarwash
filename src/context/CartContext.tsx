@@ -166,6 +166,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const orderId = orderDocRef.id
 
       const payload = cleanUndefined({
+        status: 'pending',
         ...orderData,
         id: orderId,
         userId: currentUser ? currentUser.uid : '',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TabType, ServiceItem, ShopOrder } from '@/types'
+import { TabType, ServiceItem, ShopOrder, ShopOrderStatus } from '@/types'
 import { db } from '@/firebase'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { Header } from '@/components/Header'
@@ -92,6 +92,7 @@ const AppContent: React.FC = () => {
         const loaded: ShopOrder[] = snapshot.docs.map((docSnap) => ({
           ...(docSnap.data() as ShopOrder),
           id: docSnap.id,
+          status: (docSnap.data().status || 'pending') as ShopOrderStatus,
         }))
         const active = loaded.filter(
           (o) => o.status === 'en_route' || o.status === 'accepted' || o.status === 'pending'

@@ -146,6 +146,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           grandTotal,
           paymentMethod: 'Cash on Delivery (COD)',
           paymentStatus: 'pending',
+          status: 'pending',
           shippingAddress: `${selectedAddress.streetAddress}, ${selectedAddress.city} ${selectedAddress.postalCode}`,
           deliveryNotes: selectedAddress.deliveryNotes || '',
           customerName: selectedAddress.recipientName || userProfile?.name || 'Customer',
