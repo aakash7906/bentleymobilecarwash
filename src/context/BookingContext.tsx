@@ -29,7 +29,11 @@ export interface BookingContextType {
   bookings: BookingRecord[]
   setBookings: React.Dispatch<React.SetStateAction<BookingRecord[]>>
   handleBookingComplete: (newBooking: BookingRecord) => Promise<void>
-  handleCancelBooking: (bookingId: string) => Promise<void>
+  handleCancelBooking: (
+    bookingId: string,
+    cancelledBy?: 'customer' | 'driver',
+    cancelReason?: string
+  ) => Promise<void>
   handleRescheduleBooking: (
     bookingId: string,
     newDate: string,
@@ -195,25 +199,62 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   // Cancel booking
-  const handleCancelBooking = async (bookingId: string) => {
+  const handleCancelBooking = async (
+    bookingId: string,
+    cancelledBy: 'customer' | 'driver' = 'customer',
+    cancelReason?: string
+  ) => {
     const existing = bookings.find((b) => b.id === bookingId)
-    if (existing && (existing.status === 'en_route' || existing.status === 'in_progress')) {
-      showToast('Cancellation not allowed once technician starts riding or service has begun.', 'error')
+    if (
+      cancelledBy === 'customer' &&
+      existing &&
+      ((existing.status !== 'scheduled' && existing.status !== 'pending') || Boolean(existing.driverId))
+    ) {
+      showToast('Cancellation not allowed once driver has accepted the booking.', 'error')
+      return
+    }
+
+    if (
+      cancelledBy === 'driver' &&
+      existing &&
+      (existing.status === 'en_route' || existing.status === 'in_progress' || existing.status === 'completed')
+    ) {
+      showToast('Cancellation not allowed once you are en route or service has started.', 'error')
       return
     }
 
     setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' as const } : b))
+      prev.map((b) =>
+        b.id === bookingId
+          ? {
+              ...b,
+              status: 'cancelled' as const,
+              cancelledBy,
+              cancelledAt: new Date().toISOString(),
+              ...(cancelReason ? { cancelReason } : {}),
+            }
+          : b
+      )
     )
-    showToast(`Your booking #${bookingId.slice(0, 8)} has been cancelled.`, 'info')
+    showToast(
+      cancelledBy === 'driver'
+        ? `Booking #${bookingId.slice(0, 8)} has been cancelled by driver.`
+        : `Your booking #${bookingId.slice(0, 8)} has been cancelled.`,
+      'info'
+    )
 
     if (currentUser) {
       try {
         const bookingDocRef = doc(db, 'bookings', bookingId)
-        await updateDoc(bookingDocRef, {
+        const updatePayload: Record<string, any> = {
           status: 'cancelled',
+          cancelledBy,
           cancelledAt: serverTimestamp(),
-        })
+        }
+        if (cancelReason) {
+          updatePayload.cancelReason = cancelReason
+        }
+        await updateDoc(bookingDocRef, updatePayload)
 
         // Also cancel any mirrored shop orders associated with this booking
         try {
@@ -222,8 +263,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const updatePromises = orderSnap.docs.map((d) =>
             updateDoc(d.ref, {
               status: 'cancelled',
+              cancelledBy,
               cancelledAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
+              ...(cancelReason ? { cancelReason } : {}),
             })
           )
           await Promise.all(updatePromises)

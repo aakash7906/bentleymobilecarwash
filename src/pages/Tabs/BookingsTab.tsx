@@ -29,7 +29,7 @@ interface BookingsTabProps {
   currentVehicle: string
   bookings?: BookingRecord[]
   driverProfile?: DriverProfile
-  onCancelBooking?: (bookingId: string) => void
+  onCancelBooking?: (bookingId: string, cancelledBy?: 'customer' | 'driver', reason?: string) => void
   onRescheduleBooking?: (bookingId: string, newDate: string, newTime: string) => void
   onRateBooking?: (bookingId: string, rating: number, review: string) => void
 }
@@ -146,8 +146,14 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
       b.status === 'pending' ||
       b.status === 'accepted'
   )
+  const canCustomerCancel = (b: BookingRecord) => {
+    return (b.status === 'scheduled' || b.status === 'pending') && !b.driverId
+  }
+
   const pastBookings = bookings.filter(
-    (b) => b.status === 'completed' || b.status === 'cancelled'
+    (b) =>
+      b.status === 'completed' ||
+      (b.status === 'cancelled' && b.cancelledBy === 'driver')
   )
 
   const getDynamicDriverName = (booking: BookingRecord) => {
@@ -189,12 +195,12 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
 
   const handleConfirmCancel = () => {
     if (cancelTarget && onCancelBooking) {
-      if (cancelTarget.status === 'en_route' || cancelTarget.status === 'in_progress') {
-        showToast('Cancellation not allowed once technician starts riding or service has begun.', 'error')
+      if (!canCustomerCancel(cancelTarget)) {
+        showToast('Cancellation not allowed once driver has accepted the booking.', 'error')
         setCancelTarget(null)
         return
       }
-      onCancelBooking(cancelTarget.id)
+      onCancelBooking(cancelTarget.id, 'customer')
     }
     setCancelTarget(null)
   }
@@ -400,7 +406,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     <span>Reschedule</span>
                   </Button>
 
-                  {booking.status !== 'en_route' && booking.status !== 'in_progress' ? (
+                  {canCustomerCancel(booking) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -413,7 +419,7 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
                     </Button>
                   ) : (
                     <div
-                      title="Cancellation unavailable once the technician is en route or service is in progress"
+                      title="Cancellation unavailable once a driver has accepted or started the job"
                       className="flex-1 h-8 px-2 rounded-lg bg-neutral-100/90 border border-neutral-200 text-neutral-400 font-semibold text-[10px] flex items-center justify-center gap-1 cursor-not-allowed select-none"
                     >
                       <Ban className="w-3 h-3 text-neutral-400 shrink-0" />

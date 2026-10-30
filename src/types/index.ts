@@ -149,6 +149,9 @@ export interface ShopOrder {
   invoiceId?: string
   invoiceNumber?: string
   invoiceGeneratedAt?: any
+  cancelledBy?: 'customer' | 'driver' | string
+  cancelledAt?: any
+  cancelReason?: string
 }
 
 export interface UserProfile {
@@ -240,6 +243,9 @@ export interface BookingRecord {
   invoiceId?: string
   invoiceNumber?: string
   invoiceGeneratedAt?: any
+  cancelledBy?: 'customer' | 'driver' | string
+  cancelledAt?: any
+  cancelReason?: string
 }
 
 export interface InvoiceItem {

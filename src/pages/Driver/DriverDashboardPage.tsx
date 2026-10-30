@@ -15,6 +15,7 @@ import {
   Calendar,
   Package,
   ShoppingBag,
+  Ban,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { getSafeProductImage } from '@/data/productsData'
@@ -44,6 +45,7 @@ interface DriverDashboardProps {
       distanceKm?: number
     }
   ) => void
+  onCancelBooking?: (bookingId: string, cancelledBy?: 'customer' | 'driver', reason?: string) => void
   onLogout: () => void
   driverName?: string
   driverEmail?: string
@@ -71,6 +73,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   bookings,
   onAcceptOrder,
   onUpdateStatus,
+  onCancelBooking,
   onLogout,
   driverName = '',
   driverEmail = '',
@@ -119,6 +122,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   const [selectedDetailBooking, setSelectedDetailBooking] = useState<BookingRecord | null>(null)
   const [selectedDetailShopOrder, setSelectedDetailShopOrder] = useState<ShopOrder | null>(null)
   const [codPaymentBooking, setCodPaymentBooking] = useState<BookingRecord | null>(null)
+  const [driverCancelBookingTarget, setDriverCancelBookingTarget] = useState<BookingRecord | null>(null)
+  const [driverCancelShopTarget, setDriverCancelShopTarget] = useState<ShopOrder | null>(null)
 
   // Persist driver navigation tabs
   React.useEffect(() => {
@@ -450,6 +455,30 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       console.error('Failed to update delivery status:', err)
       showToast('Failed to update delivery status.', 'error')
     }
+  }
+
+  // Handle Driver Cancelling Shop Order
+  const handleConfirmCancelShopOrder = async () => {
+    if (!driverCancelShopTarget) return
+    if (driverCancelShopTarget.status !== 'accepted') {
+      showToast('Cancellation not allowed once you are en route or delivery has started.', 'error')
+      setDriverCancelShopTarget(null)
+      return
+    }
+    try {
+      const orderRef = doc(db, 'orders', driverCancelShopTarget.id)
+      await updateDoc(orderRef, {
+        status: 'cancelled',
+        cancelledBy: 'driver',
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      showToast(`Shop order #${driverCancelShopTarget.id.slice(-6).toUpperCase()} cancelled by driver.`, 'info')
+    } catch (err) {
+      console.error('Failed to cancel shop delivery:', err)
+      showToast('Failed to cancel shop delivery order.', 'error')
+    }
+    setDriverCancelShopTarget(null)
   }
 
   // Handle saving driver profile updates
@@ -870,6 +899,105 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               ) : null}
             </div>
           </>
+        )}
+      </Dialog>
+
+      {/* 3.2 DRIVER CANCEL WASH BOOKING MODAL */}
+      <Dialog
+        isOpen={!!driverCancelBookingTarget}
+        onClose={() => setDriverCancelBookingTarget(null)}
+        zIndex="z-60"
+        position="center"
+        maxWidth="sm"
+        contentClassName="p-5 sm:p-6"
+      >
+        {driverCancelBookingTarget && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <Ban className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <h3 className="text-base font-bold text-gray-900">Cancel Service Job?</h3>
+                <p className="text-xs text-gray-500">
+                  Are you sure you want to cancel {driverCancelBookingTarget.title} for {driverCancelBookingTarget.customerName}?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200">
+              Note: This service job will be marked as cancelled by technician and recorded in service history.
+            </p>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDriverCancelBookingTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs cursor-pointer"
+              >
+                Keep Job
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (driverCancelBookingTarget && onCancelBooking) {
+                    onCancelBooking(driverCancelBookingTarget.id, 'driver')
+                  }
+                  setDriverCancelBookingTarget(null)
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* 3.3 DRIVER CANCEL SHOP ORDER MODAL */}
+      <Dialog
+        isOpen={!!driverCancelShopTarget}
+        onClose={() => setDriverCancelShopTarget(null)}
+        zIndex="z-60"
+        position="center"
+        maxWidth="sm"
+        contentClassName="p-5 sm:p-6"
+      >
+        {driverCancelShopTarget && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <Ban className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <h3 className="text-base font-bold text-gray-900">Cancel Shop Delivery?</h3>
+                <p className="text-xs text-gray-500">
+                  Are you sure you want to cancel delivery of Order #{driverCancelShopTarget.id.slice(-6).toUpperCase()}?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200">
+              Note: This delivery order will be marked as cancelled by driver.
+            </p>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDriverCancelShopTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs cursor-pointer"
+              >
+                Keep Delivery
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancelShopOrder}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
         )}
       </Dialog>
 
@@ -1324,6 +1452,17 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                   Details
                                 </button>
                               </div>
+
+                              {booking.status === 'accepted' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDriverCancelBookingTarget(booking)}
+                                  className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                >
+                                  <Ban className="w-3 h-3" />
+                                  <span>Cancel Job</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1432,6 +1571,17 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                                     Details
                                   </button>
                                 </div>
+
+                                {order.status === 'accepted' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDriverCancelShopTarget(order)}
+                                    className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                  >
+                                    <Ban className="w-3 h-3" />
+                                    <span>Cancel Delivery</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           )

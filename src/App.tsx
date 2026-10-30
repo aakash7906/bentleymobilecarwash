@@ -333,6 +333,7 @@ const AppContent: React.FC = () => {
             bookings={bookings}
             onAcceptOrder={handleAcceptOrder}
             onUpdateStatus={handleUpdateBookingStatus}
+            onCancelBooking={handleCancelBooking}
             onLogout={handleLogout}
             driverName={driverProfile.name}
             driverEmail={driverProfile.email}
