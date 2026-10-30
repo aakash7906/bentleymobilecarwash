@@ -235,6 +235,26 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
     return [initialCustomerCoords[0] - 0.015, initialCustomerCoords[1] + 0.012]
   })
 
+  // Synchronize technician position with real live driver coordinates from Firestore / props
+  useEffect(() => {
+    const liveCoords = booking?.driverCoords || driverCoords
+    if (liveCoords && liveCoords.length === 2) {
+      const distMoved = calculateDistanceKm(technicianCoordsState, liveCoords)
+      if (distMoved > 0.01) {
+        setTechnicianCoordsState(liveCoords)
+      }
+    }
+  }, [booking?.driverCoords, driverCoords])
+
+  // Recalculate distance and ETA when technician moves in real life
+  useEffect(() => {
+    const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
+    const realisticDist = dist > 35 ? 3.2 : dist
+    setLiveDistanceKm(parseFloat(realisticDist.toFixed(1)))
+    const calcMins = Math.min(45, Math.max(1, Math.round(realisticDist * 2)))
+    setLiveEstimatedMins(calcMins)
+  }, [technicianCoordsState, customerCoordsState])
+
   // Synchronize technician position if customer address changes to a completely different region
   useEffect(() => {
     const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
@@ -278,12 +298,26 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
     return liveEstimatedMins
   }, [booking, activeStatus, liveEstimatedMins, clockTick])
 
+  // Throttling references for OSRM road route fetching
+  const lastFetchedRoutePosRef = useRef<[number, number] | null>(null)
+  const lastRouteFetchTimeRef = useRef<number>(0)
+
   // Fetch real-world turn-by-turn road route from OSRM
   useEffect(() => {
     let isSubscribed = true
     const controller = new AbortController()
 
     const fetchRealRoute = async () => {
+      const now = Date.now()
+      if (lastFetchedRoutePosRef.current && routeCoordinates.length > 1) {
+        const movedKm = calculateDistanceKm(lastFetchedRoutePosRef.current, technicianCoordsState)
+        if (movedKm < 0.1 || now - lastRouteFetchTimeRef.current < 15000) {
+          return
+        }
+      }
+      lastFetchedRoutePosRef.current = technicianCoordsState
+      lastRouteFetchTimeRef.current = now
+
       const [techLon, techLat] = technicianCoordsState
       const [custLon, custLat] = customerCoordsState
 
@@ -338,25 +372,6 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
       controller.abort()
     }
   }, [technicianCoordsState, customerCoordsState])
-
-  // 5. Live Simulation: Van dynamically drives towards customer when status is 'en_route'
-  useEffect(() => {
-    if (activeStatus !== 'en_route' || routeCoordinates.length < 3) return
-
-    let stepIndex = 0
-    const movementInterval = setInterval(() => {
-      stepIndex++
-      if (stepIndex < routeCoordinates.length - 1) {
-        const nextCoord = routeCoordinates[stepIndex]
-        setTechnicianCoordsState(nextCoord)
-        const remainingFraction = 1 - stepIndex / (routeCoordinates.length - 1)
-        setLiveDistanceKm(parseFloat((liveDistanceKm * remainingFraction).toFixed(1)))
-        setLiveEstimatedMins(Math.max(1, Math.round(liveEstimatedMins * remainingFraction)))
-      }
-    }, 4500)
-
-    return () => clearInterval(movementInterval)
-  }, [activeStatus, routeCoordinates])
 
   // Map Controls & Style
   const mapRef = useRef<MapRef>(null)
