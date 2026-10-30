@@ -20,7 +20,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { ServiceItem, SavedVehicle, BookingRecord, ProductItem } from '@/types'
-import { BENTLEY_PRODUCTS } from '@/data/productsData'
+import { BENTLEY_PRODUCTS, getSafeProductImage } from '@/data/productsData'
 import { useCart } from '@/context/CartContext'
 import { isValidPhone, isValidEmail, sanitizeText } from '@/lib/utils'
 import { SERVICES_CATALOG } from '@/data/mockData'
@@ -585,6 +585,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     setBookingRef(ref)
     setCreatedBooking(newBooking)
     setIsSuccess(true)
+    if (handleClearCart) {
+      handleClearCart()
+    }
     if (onBookingComplete) {
       onBookingComplete(newBooking)
     }
@@ -1081,19 +1084,37 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                       <span className="text-xs sm:text-sm font-bold text-gray-900">
                         Shop Products Add-On
                       </span>
-                      <span className="px-2 py-0.2 rounded-full bg-primary-light text-primary text-[10px] font-bold border border-primary-border/60 uppercase tracking-wider">
-                        Delivered With Wash
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 uppercase tracking-wider">
+                        Free Delivery With Wash
                       </span>
                     </div>
                     <span className="text-[11px] text-gray-500 truncate mt-0.5">
                       {shopItemsCount > 0
                         ? `${shopItemsCount} ${shopItemsCount === 1 ? 'item' : 'items'} added (+${shopItemsSubtotal.toFixed(2)})`
-                        : 'Select detailing products & apparel to deliver with your wash'}
+                        : 'Select detailing products to deliver with wash (Save $5.99 shipping)'}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {/* Collapsed mini thumbnail strip */}
+                  {shopItemsCount > 0 && (
+                    <div className="flex items-center -space-x-2">
+                      {shopAddonsList.slice(0, 3).map((item) => (
+                        <div
+                          key={item.product.id}
+                          className="w-6 h-6 rounded-full border border-white bg-slate-100 overflow-hidden shadow-2xs"
+                        >
+                          <img
+                            src={getSafeProductImage(item.product)}
+                            alt={item.product?.title || 'Product'}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {shopItemsCount > 0 && !isShopDropdownOpen && (
                     <span className="px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-mono font-bold">
                       +${shopItemsSubtotal.toFixed(2)}
@@ -1126,7 +1147,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 p-1 shrink-0 flex items-center justify-center overflow-hidden">
-                              <img src={prod.image} alt={prod.title} className="w-full h-full object-contain" />
+                              <img src={getSafeProductImage(prod)} alt={prod.title} className="w-full h-full object-contain" />
                             </div>
                             <div className="flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">

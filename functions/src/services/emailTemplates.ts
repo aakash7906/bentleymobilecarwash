@@ -109,7 +109,6 @@ export const bookingConfirmationEmailTemplate = (booking: {
   address: string;
   price: string;
   paymentMethod?: string;
-  stripePaymentId?: string;
   technicianName?: string;
 }) => {
   return renderEmailWrapper(`
@@ -154,12 +153,7 @@ export const bookingConfirmationEmailTemplate = (booking: {
         <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
         <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
       </tr>
-      ${booking.stripePaymentId ? `
-      <tr>
-        <td style="padding: 8px 18px 14px; font-size: 11px; color: #94a3b8;" colspan="2">
-          Stripe Payment Authorization: <span style="font-family: monospace; color: #64748b;">${booking.stripePaymentId}</span>
-        </td>
-      </tr>` : ''}
+
     </table>
 
     <div style="background-color: #f1f5f9; padding: 16px; border-radius: 12px; margin-top: 20px; font-size: 12px; color: #475569; line-height: 1.5;">
@@ -179,7 +173,6 @@ export const orderConfirmationEmailTemplate = (order: {
   items: Array<{ title: string; quantity: number; price: string }>;
   grandTotal: string;
   shippingAddress: string;
-  stripePaymentId?: string;
 }) => {
   const itemsHtml = order.items.map((item) => `
     <tr>

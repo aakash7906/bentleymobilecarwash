@@ -5,7 +5,6 @@ import {
   Trash2,
   Plus,
   Minus,
-  Tag,
   Truck,
   ShieldCheck,
   CheckCircle2,
@@ -63,11 +62,7 @@ export const CartPage: React.FC<CartPageProps> = ({
   // Global Toast Hook
   const { showToast } = useToast()
 
-  const [promoCode, setPromoCode] = useState('')
-  const [discountPercent, setDiscountPercent] = useState(0)
-  const [promoError, setPromoError] = useState<string | null>(null)
-  const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
-
+  
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
   const paymentMethod = 'cod'
   const [isProcessing, setIsProcessing] = useState(false)
@@ -78,11 +73,11 @@ export const CartPage: React.FC<CartPageProps> = ({
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress>(() => ({
     id: 'addr-default',
     label: 'Home',
-    recipientName: userProfile?.name || 'Customer',
-    streetAddress: userProfile?.address || '1420 Water Street, Apt 304',
-    city: userProfile?.city || 'Kelowna, BC',
-    postalCode: userProfile?.postalCode || 'V1Y 1J4',
-    phone: userProfile?.phone || '(250) 555-0192',
+    recipientName: userProfile?.name || '',
+    streetAddress: userProfile?.address || '',
+    city: userProfile?.city || '',
+    postalCode: userProfile?.postalCode || '',
+    phone: userProfile?.phone || '',
     isDefault: true,
   }))
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
@@ -109,49 +104,18 @@ export const CartPage: React.FC<CartPageProps> = ({
     (acc, curr) => acc + curr.product.priceNumeric * curr.quantity,
     0
   )
-  const discountAmount = itemsSubtotal * discountPercent
   const freeShippingThreshold = 50
   const isFreeShipping = itemsSubtotal >= freeShippingThreshold || items.length === 0
   const shippingFee = isFreeShipping ? 0 : 5.99
-  const taxableAmount = Math.max(0, itemsSubtotal - discountAmount)
-  const taxFee = taxableAmount * 0.05
-  const grandTotal = Math.max(0, taxableAmount + shippingFee + taxFee).toFixed(2)
+  const taxFee = Number((itemsSubtotal * 0.05).toFixed(2))
+  const grandTotal = Math.max(0, itemsSubtotal + shippingFee + taxFee).toFixed(2)
 
   const progressPercentage = Math.min(
     100,
     Math.round((itemsSubtotal / freeShippingThreshold) * 100)
   )
 
-  const handleApplyPromo = (e: React.FormEvent) => {
-    e.preventDefault()
-    setPromoError(null)
-    setPromoSuccess(null)
-
-    const cleaned = promoCode.trim().toUpperCase()
-    if (!cleaned) {
-      setPromoError('Please enter a coupon code')
-      showToast('Please enter a coupon code', 'warning')
-      return
-    }
-
-    if (cleaned === 'BENTLEY10' || cleaned === 'VIP10') {
-      setDiscountPercent(0.1)
-      setPromoSuccess('Promo code "BENTLEY10" applied: 10% OFF!')
-      showToast('Promo code BENTLEY10 applied! 10% saved.', 'success')
-    } else if (cleaned === 'BENTLEY20') {
-      setDiscountPercent(0.2)
-      setPromoSuccess('Promo code "BENTLEY20" applied: 20% OFF!')
-      showToast('Promo code BENTLEY20 applied! $15 saved.', 'success')
-    } else if (cleaned === 'FREESHIP') {
-      setDiscountPercent(0.05)
-      setPromoSuccess('Special 5% loyalty coupon applied!')
-      showToast('Special 5% loyalty coupon applied!', 'success')
-    } else {
-      setPromoError('Invalid coupon code. Try "BENTLEY10"')
-      showToast('Invalid or expired promo code.', 'error')
-    }
-  }
-
+  
   const handleConfirmOrder = async () => {
     if (!items || items.length === 0) {
       showToast('Your cart is empty. Please add items to checkout.', 'error')
@@ -180,7 +144,7 @@ export const CartPage: React.FC<CartPageProps> = ({
         const orderData = {
           items,
           itemsSubtotal,
-          discountAmount,
+          discountAmount: 0,
           shippingFee,
           taxFee,
           grandTotal,
@@ -428,40 +392,6 @@ export const CartPage: React.FC<CartPageProps> = ({
               ))}
             </div>
 
-            {/* Promo Code Input */}
-            <div className="bg-surface-alt rounded-2xl p-3 border border-gray-200/80">
-              <form onSubmit={handleApplyPromo} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Tag className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Coupon code (e.g. BENTLEY10)"
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-9 pr-3 text-xs uppercase font-semibold text-gray-800 placeholder:normal-case placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary-hover text-secondary-foreground text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0"
-                >
-                  Apply
-                </button>
-              </form>
-
-              {promoSuccess && (
-                <p className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  {promoSuccess}
-                </p>
-              )}
-              {promoError && (
-                <p className="text-[11px] text-primary font-semibold mt-2">
-                  {promoError}
-                </p>
-              )}
-            </div>
-
             {/* Order Cost Breakdown */}
             <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs flex flex-col gap-2 text-xs">
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-1">
@@ -472,12 +402,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                 <span className="font-mono font-semibold">${itemsSubtotal.toFixed(2)}</span>
               </div>
 
-              {discountPercent > 0 && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>Promo Discount ({(discountPercent * 100).toFixed(0)}%)</span>
-                  <span className="font-mono">-${discountAmount.toFixed(2)}</span>
-                </div>
-              )}
+              
 
               <div className="flex justify-between text-gray-600">
                 <span>Technician Dispatch Delivery</span>

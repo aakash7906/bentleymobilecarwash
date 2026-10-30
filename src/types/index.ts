@@ -130,6 +130,7 @@ export interface ShopOrder {
   paymentStatus: 'pending' | 'paid' | 'failed'
   status: ShopOrderStatus
   deliveryType?: string
+  bookingId?: string
   driverId?: string
   driverName?: string
   driverPhone?: string
@@ -224,7 +225,6 @@ export interface BookingRecord {
   shopItems?: CartItem[]
   shopItemsTotal?: number
   paymentMethod?: string
-  stripePaymentId?: string
   paymentStatus?: 'pending' | 'paid' | 'failed'
   paymentCollectedBy?: string
   paymentCollectedAt?: string

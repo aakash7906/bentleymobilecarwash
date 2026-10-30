@@ -65,11 +65,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress>(() => ({
     id: 'addr-default',
     label: 'Home',
-    recipientName: userProfile?.name || 'Customer',
-    streetAddress: userProfile?.address || '1420 Water Street, Apt 304',
-    city: userProfile?.city || 'Kelowna, BC',
-    postalCode: userProfile?.postalCode || 'V1Y 1J4',
-    phone: userProfile?.phone || '(250) 555-0192',
+    recipientName: userProfile?.name || '',
+    streetAddress: userProfile?.address || '',
+    city: userProfile?.city || '',
+    postalCode: userProfile?.postalCode || '',
+    phone: userProfile?.phone || '',
     isDefault: true,
   }))
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)

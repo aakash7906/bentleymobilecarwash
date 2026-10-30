@@ -34,7 +34,7 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || isDriver());
       allow delete: if false;
     }
 
@@ -42,7 +42,7 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || isDriver());
       allow delete: if false;
     }
 

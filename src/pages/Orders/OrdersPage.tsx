@@ -363,6 +363,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                 const isPending = order.status === 'pending'
                 const isEnRoute = order.status === 'en_route'
                 const isAccepted = order.status === 'accepted'
+                const isMirroredWashOrder = order.deliveryType === 'technician_carwash_dispatch' || Boolean(order.bookingId)
 
                 return (
                   <div
@@ -377,6 +378,14 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                       </span>
                       {renderStatusBadge(order.status)}
                     </div>
+
+                    {/* Bundled with Car Wash Notice */}
+                    {isMirroredWashOrder && (
+                      <div className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200/60 flex items-center gap-1.5 text-[10px] text-blue-800 font-semibold">
+                        <Truck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span>Delivered with Car Wash Appointment {order.bookingId ? `(#BW-${order.bookingId.slice(-6).toUpperCase()})` : ''}</span>
+                      </div>
+                    )}
 
                     {/* Assigned Driver Pill (if driver accepted) */}
                     {(isAccepted || isEnRoute || isDelivered) && order.driverName && (
@@ -474,18 +483,24 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
 
                       <div className="flex items-center gap-1.5">
                         {isPending && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setCancellingOrderId(order.id)
-                              setIsCancelConfirmOpen(true)
-                            }}
-                            className="h-8 border-gray-200 text-red-600 hover:bg-red-50 text-[11px] font-bold cursor-pointer"
-                          >
-                            Cancel
-                          </Button>
+                          isMirroredWashOrder ? (
+                            <span className="text-[10px] text-gray-500 font-medium px-2 py-1 rounded-md bg-gray-100">
+                              Managed with Booking
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setCancellingOrderId(order.id)
+                                setIsCancelConfirmOpen(true)
+                              }}
+                              className="h-8 border-gray-200 text-red-600 hover:bg-red-50 text-[11px] font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </Button>
+                          )
                         )}
 
                         <Button
@@ -537,6 +552,16 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Bundled Car Wash Banner */}
+            {(selectedOrder.deliveryType === 'technician_carwash_dispatch' || Boolean(selectedOrder.bookingId)) && (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/80 text-blue-900 text-xs flex items-center gap-2">
+                <Truck className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>
+                  This order is bundled with your mobile car wash appointment. Your detailing technician will hand-deliver these items upon arrival.
+                </span>
+              </div>
+            )}
 
             {/* Live Progress Stepper */}
             <div className="p-3.5 rounded-2xl bg-surface-alt border border-gray-200 flex flex-col gap-2">
