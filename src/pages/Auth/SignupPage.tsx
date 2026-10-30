@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { Eye, EyeOff, Loader2, Truck, Check } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
+import { isValidPhone } from '@/lib/utils'
 // STEP 1 INTEGRATION: Import Firebase auth and registration functions
 import { auth, db } from '@/firebase'
 import {
@@ -33,6 +34,7 @@ export const Signup: React.FC<SignupProps> = ({
 
   // Signup Form States
   const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -40,7 +42,6 @@ export const Signup: React.FC<SignupProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Driver-specific fields
-  const [driverPhone, setDriverPhone] = useState('')
   const [driverVan, setDriverVan] = useState('')
   const [driverPlate, setDriverPlate] = useState('')
 
@@ -50,10 +51,10 @@ export const Signup: React.FC<SignupProps> = ({
   // Field errors state for inline warning below inputs
   const [errors, setErrors] = useState<{
     fullName?: string
+    phone?: string
     email?: string
     password?: string
     confirmPassword?: string
-    driverPhone?: string
     driverVan?: string
     driverPlate?: string
   }>({})
@@ -91,12 +92,12 @@ export const Signup: React.FC<SignupProps> = ({
 
     const newTouched: Record<string, boolean> = {
       fullName: true,
+      phone: true,
       email: true,
       password: true,
       confirmPassword: true,
     }
     if (selectedRole === 'driver') {
-      newTouched.driverPhone = true
       newTouched.driverVan = true
       newTouched.driverPlate = true
     }
@@ -106,6 +107,12 @@ export const Signup: React.FC<SignupProps> = ({
 
     if (!fullName.trim()) {
       newErrors.fullName = 'Please enter your full name'
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = selectedRole === 'driver' ? 'Please enter driver phone number' : 'Please enter your phone number'
+    } else if (!isValidPhone(phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number'
     }
 
     if (!signupEmail.trim()) {
@@ -128,7 +135,6 @@ export const Signup: React.FC<SignupProps> = ({
     }
 
     if (selectedRole === 'driver') {
-      if (!driverPhone.trim()) newErrors.driverPhone = 'Please enter phone number'
       if (!driverVan.trim()) newErrors.driverVan = 'Please enter van/unit ID'
       if (!driverPlate.trim()) newErrors.driverPlate = 'Please enter license plate'
     }
@@ -138,10 +144,10 @@ export const Signup: React.FC<SignupProps> = ({
     // Trigger toast for the first error encountered
     const firstErrorMessage =
       newErrors.fullName ||
+      newErrors.phone ||
       newErrors.email ||
       newErrors.password ||
       newErrors.confirmPassword ||
-      newErrors.driverPhone ||
       newErrors.driverVan ||
       newErrors.driverPlate
 
@@ -181,9 +187,9 @@ export const Signup: React.FC<SignupProps> = ({
         name: fullName.trim(),
         fullName: fullName.trim(),
         email: user.email || signupEmail.trim(),
-        phone: driverPhone.trim() || '+1 (800) 555-9274',
+        phone: phone.trim(),
         role: selectedRole,
-        driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
+        driverPhone: selectedRole === 'driver' ? phone.trim() : undefined,
         driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
         driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
         driverDetails: selectedRole === 'driver' ? {
@@ -257,9 +263,9 @@ export const Signup: React.FC<SignupProps> = ({
           name: user.displayName || 'Google User',
           fullName: user.displayName || 'Google User',
           email: user.email || '',
-          phone: '',
+          phone: phone.trim() || '',
           role: selectedRole,
-          driverPhone: selectedRole === 'driver' ? driverPhone.trim() : undefined,
+          driverPhone: selectedRole === 'driver' ? phone.trim() : undefined,
           driverVan: selectedRole === 'driver' ? driverVan.trim() : undefined,
           driverPlate: selectedRole === 'driver' ? driverPlate.trim() : undefined,
           driverDetails: selectedRole === 'driver' ? {
@@ -360,78 +366,97 @@ export const Signup: React.FC<SignupProps> = ({
                 )}
               </div>
 
+              {/* Phone Number* (Available for both Customer and Driver) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
+                  {selectedRole === 'driver' ? 'Driver Phone Number' : 'Phone Number'}<span className="text-[var(--primary)]">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setPhone(val)
+                    if (val.trim()) {
+                      if (!isValidPhone(val)) {
+                        setErrors((prev) => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }))
+                      } else {
+                        setErrors((prev) => ({ ...prev, phone: undefined }))
+                      }
+                    } else if (touched.phone) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        phone: selectedRole === 'driver' ? 'Please enter driver phone number' : 'Please enter your phone number',
+                      }))
+                    } else {
+                      setErrors((prev) => ({ ...prev, phone: undefined }))
+                    }
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, phone: true }))
+                    if (!phone.trim()) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        phone: selectedRole === 'driver' ? 'Please enter driver phone number' : 'Please enter your phone number',
+                      }))
+                    } else if (!isValidPhone(phone)) {
+                      setErrors((prev) => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }))
+                    } else {
+                      setErrors((prev) => ({ ...prev, phone: undefined }))
+                    }
+                  }}
+                  placeholder="+1 (800) 555-9274"
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                    touched.phone && errors.phone
+                      ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                      : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                  }`}
+                />
+                {touched.phone && errors.phone && (
+                  <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                    {errors.phone}
+                  </p>
+                )}
+              </div>
+
               {/* Extra Driver Fields when selectedRole === 'driver' */}
               {selectedRole === 'driver' && (
-                <>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-[var(--text-main)]">
-                        Phone Number<span className="text-[var(--primary)]">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={driverPhone}
-                        onChange={(e) => {
-                          setDriverPhone(e.target.value)
-                          if (errors.driverPhone) {
-                            setErrors((prev) => ({ ...prev, driverPhone: undefined }))
-                          }
-                        }}
-                        onBlur={() => {
-                          setTouched((prev) => ({ ...prev, driverPhone: true }))
-                          if (!driverPhone.trim()) {
-                            setErrors((prev) => ({ ...prev, driverPhone: 'Please enter phone number' }))
-                          } else {
-                            setErrors((prev) => ({ ...prev, driverPhone: undefined }))
-                          }
-                        }}
-                        placeholder="+1 (800) 555-9274"
-                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.driverPhone && errors.driverPhone
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[var(--text-main)]">
+                      Van / Unit ID<span className="text-[var(--primary)]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={driverVan}
+                      onChange={(e) => {
+                        setDriverVan(e.target.value)
+                        if (errors.driverVan) {
+                          setErrors((prev) => ({ ...prev, driverVan: undefined }))
+                        }
+                      }}
+                      onBlur={() => {
+                        setTouched((prev) => ({ ...prev, driverVan: true }))
+                        if (!driverVan.trim()) {
+                          setErrors((prev) => ({ ...prev, driverVan: 'Please enter van/unit ID' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, driverVan: undefined }))
+                        }
+                      }}
+                      placeholder="e.g. Van #04"
+                      className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                        touched.driverVan && errors.driverVan
                           ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                           : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                          }`}
-                      />
-                      {touched.driverPhone && errors.driverPhone && (
-                        <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
-                          {errors.driverPhone}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-[var(--text-main)]">
-                        Van / Unit ID<span className="text-[var(--primary)]">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={driverVan}
-                        onChange={(e) => {
-                          setDriverVan(e.target.value)
-                          if (errors.driverVan) {
-                            setErrors((prev) => ({ ...prev, driverVan: undefined }))
-                          }
-                        }}
-                        onBlur={() => {
-                          setTouched((prev) => ({ ...prev, driverVan: true }))
-                          if (!driverVan.trim()) {
-                            setErrors((prev) => ({ ...prev, driverVan: 'Please enter van/unit ID' }))
-                          } else {
-                            setErrors((prev) => ({ ...prev, driverVan: undefined }))
-                          }
-                        }}
-                        placeholder="e.g. Van #04"
-                        className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${touched.driverVan && errors.driverVan
-                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                          }`}
-                      />
-                      {touched.driverVan && errors.driverVan && (
-                        <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
-                          {errors.driverVan}
-                        </p>
-                      )}
-                    </div>
+                      }`}
+                    />
+                    {touched.driverVan && errors.driverVan && (
+                      <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
+                        {errors.driverVan}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -457,10 +482,11 @@ export const Signup: React.FC<SignupProps> = ({
                         }
                       }}
                       placeholder="e.g. BC-9042-DRV"
-                      className={`w-full px-4 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors uppercase font-mono ${touched.driverPlate && errors.driverPlate
-                        ? 'border-[var(--primary)] focus:border-[var(--primary)]'
-                        : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                        }`}
+                      className={`w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border text-sm text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors uppercase font-mono ${
+                        touched.driverPlate && errors.driverPlate
+                          ? 'border-[var(--primary)] focus:border-[var(--primary)]'
+                          : 'border-[var(--border-light)] focus:border-[var(--primary)]'
+                      }`}
                     />
                     {touched.driverPlate && errors.driverPlate && (
                       <p className="text-xs text-[var(--primary)] font-normal mt-0.5 animate-in fade-in duration-150">
@@ -468,7 +494,7 @@ export const Signup: React.FC<SignupProps> = ({
                       </p>
                     )}
                   </div>
-                </>
+                </div>
               )}
 
               {/* Email Address* */}
