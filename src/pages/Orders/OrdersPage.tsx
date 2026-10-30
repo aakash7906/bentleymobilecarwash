@@ -380,12 +380,12 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                     </div>
 
                     {/* Bundled with Car Wash Notice */}
-                    {isMirroredWashOrder && (
+                    {/* {isMirroredWashOrder && (
                       <div className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200/60 flex items-center gap-1.5 text-[10px] text-blue-800 font-semibold">
                         <Truck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                         <span>Delivered with Car Wash Appointment {order.bookingId ? `(#BW-${order.bookingId.slice(-6).toUpperCase()})` : ''}</span>
                       </div>
-                    )}
+                    )} */}
 
                     {/* Assigned Driver Pill (if driver accepted) */}
                     {(isAccepted || isEnRoute || isDelivered) && order.driverName && (

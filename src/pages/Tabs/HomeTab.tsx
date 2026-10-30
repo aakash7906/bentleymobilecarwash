@@ -1043,12 +1043,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         }}
         onCheckoutOrder={onCheckoutOrder}
         onContinueShopping={() => setIsCartOpen(false)}
-        onBundleWithBooking={() => {
-          setIsCartOpen(false)
-          if (onBookNow) {
-            onBookNow(SERVICES_CATALOG[0])
-          }
-        }}
       />
     </div>
   )

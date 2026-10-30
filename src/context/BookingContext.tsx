@@ -188,37 +188,6 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           serverTimestamp: serverTimestamp(),
         })
         await setDoc(bookingDocRef, payload)
-
-        // If booking contains bundled shop items, dynamically record in Firestore orders collection
-        if (newBooking.shopItems && newBooking.shopItems.length > 0) {
-          try {
-            const orderDocRef = doc(collection(db, 'orders'))
-            const orderPayload = cleanUndefined({
-              id: orderDocRef.id,
-              bookingId: newBooking.id,
-              items: newBooking.shopItems,
-              totalItemsCount: newBooking.shopItems.reduce((acc, c) => acc + c.quantity, 0),
-              itemsSubtotal: newBooking.shopItemsTotal || 0,
-              discountAmount: 0,
-              shippingFee: 0,
-              taxFee: Number(((newBooking.shopItemsTotal || 0) * 0.05).toFixed(2)),
-              grandTotal: Number(((newBooking.shopItemsTotal || 0) * 1.05).toFixed(2)),
-              paymentMethod: newBooking.paymentMethod || 'Cash on Delivery (COD)',
-              paymentStatus: newBooking.paymentStatus || 'pending',
-              status: 'pending',
-              deliveryType: 'technician_carwash_dispatch',
-              shippingAddress: newBooking.address,
-              customerName: newBooking.customerName,
-              customerPhone: newBooking.customerPhone,
-              customerEmail: newBooking.customerEmail || currentUser.email || '',
-              userId: currentUser.uid,
-              createdAt: serverTimestamp(),
-            })
-            await setDoc(orderDocRef, orderPayload)
-          } catch (orderErr) {
-            console.warn('Could not mirror shop items into orders collection:', orderErr)
-          }
-        }
       } catch (err) {
         console.error('Failed to sync booking to Firestore:', err)
       }

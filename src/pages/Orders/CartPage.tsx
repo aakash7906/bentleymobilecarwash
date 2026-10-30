@@ -43,7 +43,6 @@ interface CartPageProps {
     postalCode?: string
   }
   onCheckoutOrder?: (orderData: any) => Promise<string>
-  onBundleWithBooking?: () => void
 }
 
 export const CartPage: React.FC<CartPageProps> = ({
@@ -57,7 +56,6 @@ export const CartPage: React.FC<CartPageProps> = ({
   onContinueShopping,
   userProfile,
   onCheckoutOrder,
-  onBundleWithBooking,
 }) => {
   // Global Toast Hook
   const { showToast } = useToast()
