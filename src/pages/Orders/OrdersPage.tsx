@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { ShopOrder, ShopOrderStatus } from '@/types'
 import { getRemainingEtaMinutes } from '@/services/dispatchService'
+import { getSafeProductImage } from '@/data/productsData'
 import { auth, db } from '@/firebase'
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useToast } from '@/context/ToastContext'
@@ -368,17 +369,12 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                     key={order.id}
                     className="p-4 rounded-2xl bg-white border border-gray-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3"
                   >
-                    {/* Top Row: Order ID, Date & Status */}
-                    <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-2.5">
-                      <div className="flex flex-col">
-                        <span className="font-mono text-xs font-extrabold text-gray-900 tracking-tight">
-                          #BW-{order.id.slice(-6).toUpperCase()}
-                        </span>
-                        <span className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3 text-gray-400" />
-                          {formatOrderDate(order.createdAt)}
-                        </span>
-                      </div>
+                    {/* Top Row: Date & Status (Order ID is exclusively shown in Order Details slide) */}
+                    <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                      <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                        {formatOrderDate(order.createdAt)}
+                      </span>
                       {renderStatusBadge(order.status)}
                     </div>
 
@@ -423,11 +419,15 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                             className="flex items-center justify-between gap-2.5 p-2 rounded-xl bg-surface-alt/70 border border-gray-100"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200/80 p-0.5 shrink-0 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200/80 p-0.5 shrink-0 flex items-center justify-center overflow-hidden">
                                 <img
-                                  src={item.product?.image}
-                                  alt={item.product?.title}
+                                  src={getSafeProductImage(item.product)}
+                                  alt={item.product?.title || 'Detailing Product'}
                                   className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = getSafeProductImage(null);
+                                  }}
                                 />
                               </div>
                               <div className="truncate">
@@ -641,9 +641,13 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       <img
-                        src={item.product?.image}
-                        alt={item.product?.title}
-                        className="w-9 h-9 rounded-lg object-contain bg-slate-50 border border-gray-200 p-0.5"
+                        src={getSafeProductImage(item.product)}
+                        alt={item.product?.title || 'Product'}
+                        className="w-9 h-9 rounded-lg object-contain bg-slate-50 border border-gray-200 p-0.5 shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = getSafeProductImage(null);
+                        }}
                       />
                       <div>
                         <span className="font-semibold text-gray-900 block text-xs">

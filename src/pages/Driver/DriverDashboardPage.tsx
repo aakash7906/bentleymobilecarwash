@@ -17,6 +17,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
+import { getSafeProductImage } from '@/data/productsData'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData, ShopOrder, ShopOrderStatus } from '@/types'
 import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { createShopOrderInvoice } from '@/services/invoiceService'
@@ -629,16 +630,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                     Plate: {selectedDetailBooking.licensePlate}
                   </span>
                 )}
-                {selectedDetailBooking.addons && selectedDetailBooking.addons.length > 0 && (
-                  <div className="mt-1 pt-1 border-t border-gray-200">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Add-ons:</span>
-                    <ul className="list-disc list-inside text-gray-700 mt-0.5">
-                      {selectedDetailBooking.addons.map((a, i) => (
-                        <li key={i}>{a}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+
                 {selectedDetailBooking.shopItems && selectedDetailBooking.shopItems.length > 0 && (
                   <div className="mt-2 p-3 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between font-bold text-amber-950 text-xs">
@@ -797,7 +789,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                     <div key={idx} className="flex items-center justify-between gap-3 bg-white p-2 rounded-xl border border-gray-100">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {item.product?.image ? (
-                          <img src={item.product.image} alt={item.product.title} className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0" />
+                          <img src={getSafeProductImage(item.product)} alt={item.product?.title || 'Product'} className="w-9 h-9 rounded-lg object-contain bg-white border border-gray-100 p-0.5 shrink-0" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getSafeProductImage(null); }} />
                         ) : (
                           <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center text-primary shrink-0">
                             <Package className="w-4 h-4" />

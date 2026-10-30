@@ -15,22 +15,7 @@ function cleanUndefined<T extends Record<string, any>>(obj: T): T {
   return result
 }
 
-const ADDON_PRICING: Record<string, number> = {
-  'Engine Bay Deep Clean': 35,
-  'Ozone Odor Treatment': 40,
-  'Ceramic Glass Shield': 25,
-  'Heavy Pet Hair Removal': 30,
-}
 
-function getAddonPrice(addonName: string): number {
-  if (ADDON_PRICING[addonName]) return ADDON_PRICING[addonName]
-  const lower = addonName.toLowerCase()
-  if (lower.includes('engine')) return 35
-  if (lower.includes('ozone')) return 40
-  if (lower.includes('glass') || lower.includes('shield') || lower.includes('windshield')) return 25
-  if (lower.includes('pet') || lower.includes('hair')) return 30
-  return 25
-}
 
 /**
  * Creates or retrieves an existing official invoice for a completed Car Wash Booking.
@@ -83,10 +68,7 @@ export async function createBookingInvoice(
         0
       )
     : 0
-  const addonsSum = Array.isArray(booking.addons)
-    ? booking.addons.reduce((sum, addon) => sum + getAddonPrice(addon), 0)
-    : 0
-  const baseServicePrice = Math.max(0, Number((subtotal - shopItemsSum - addonsSum).toFixed(2)))
+  const baseServicePrice = Math.max(0, Number((subtotal - shopItemsSum).toFixed(2)))
 
   items.push({
     title: booking.title,
@@ -96,19 +78,7 @@ export async function createBookingInvoice(
     totalPrice: baseServicePrice,
   })
 
-  // 2. Add-ons
-  if (Array.isArray(booking.addons)) {
-    booking.addons.forEach((addon) => {
-      const price = getAddonPrice(addon)
-      items.push({
-        title: `Add-on: ${addon}`,
-        category: 'Service Add-on',
-        quantity: 1,
-        unitPrice: price,
-        totalPrice: price,
-      })
-    })
-  }
+
 
   // 3. Bundled Shop Products
   if (Array.isArray(booking.shopItems)) {

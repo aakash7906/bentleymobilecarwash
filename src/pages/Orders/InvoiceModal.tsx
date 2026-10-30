@@ -85,10 +85,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
     )
   }, [booking.shopItems])
 
-  const serviceBaseNet = Math.max(
-    0,
-    subtotal - shopItemsSum - (booking.addons?.length ? booking.addons.length * 15 : 0)
-  )
+  const serviceBaseNet = Math.max(0, subtotal - shopItemsSum)
 
   // Payment status derivation
   const isPaid =
@@ -479,21 +476,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
                     </span>
                   </div>
 
-                  {/* Selected Add-ons */}
-                  {booking.addons &&
-                    booking.addons.length > 0 &&
-                    booking.addons.map((addon, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center p-2 sm:p-2.5 bg-gray-50/50 text-xs"
-                      >
-                        <div className="flex items-center gap-1.5 text-gray-700">
-                          <Sparkles className="w-3 h-3 text-primary shrink-0" />
-                          <span className="text-[11px] sm:text-xs">Add-on: {addon}</span>
-                        </div>
-                        <span className="font-semibold text-gray-800 text-[10px] sm:text-xs">Included</span>
-                      </div>
-                    ))}
+
 
                   {/* Bundled Shop Delivery Products */}
                   {booking.shopItems &&

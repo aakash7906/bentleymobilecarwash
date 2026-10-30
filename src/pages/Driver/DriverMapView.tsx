@@ -1197,21 +1197,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
                 </span>
               </div>
 
-              {booking.addons && booking.addons.length > 0 && (
-                <div className="pt-2 border-t border-gray-200">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Add-ons:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {booking.addons.map((add, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-700 text-[11px]"
-                      >
-                        {add}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               {booking.shopItems && booking.shopItems.length > 0 && (
                 <div className="pt-2 border-t border-gray-200">

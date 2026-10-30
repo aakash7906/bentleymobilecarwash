@@ -51,39 +51,7 @@ interface BookingPageProps {
   }
 }
 
-interface AddOnOption {
-  id: string
-  title: string
-  description: string
-  price: number
-}
 
-const AVAILABLE_ADDONS: AddOnOption[] = [
-  {
-    id: 'addon-engine',
-    title: 'Engine Bay Deep Clean',
-    description: 'Degrease & protect plastics under the hood',
-    price: 35,
-  },
-  {
-    id: 'addon-ozone',
-    title: 'Ozone Odor Treatment',
-    description: 'Neutralizes smoke, pet, & organic smells permanently',
-    price: 40,
-  },
-  {
-    id: 'addon-windshield',
-    title: 'Ceramic Glass Shield',
-    description: 'High-hydrophobic water repellent for all glass',
-    price: 25,
-  },
-  {
-    id: 'addon-pethair',
-    title: 'Heavy Pet Hair Removal',
-    description: 'Specialized pumice & vacuum extraction for fur',
-    price: 30,
-  },
-]
 
 // Generate next 7 days for the date selector
 const generateDateSlots = () => {
@@ -440,8 +408,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     setSelectedTimeSlot(time)
   }
 
-  // Add-ons
-  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
 
   // Customer Contact Info (Autofilled dynamically from Firestore profile)
   const [customerName, setCustomerName] = useState(userProfile?.name || '')
@@ -539,11 +505,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         ? 25
         : 0
 
-  const toggleAddon = (id: string) => {
-    setSelectedAddonIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
-  }
+
 
   const isPackage =
     selectedService.category === 'Cleaning Packages' ||
@@ -566,11 +528,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
           ? selectedService.tieredPricing.truck
           : selectedService.tieredPricing.car
       : selectedService.priceNumeric || 0
-  const addonsTotal = selectedAddonIds.reduce((sum, id) => {
-    const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
-    return sum + (addon ? addon.price : 0)
-  }, 0)
-  const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + addonsTotal + shopItemsSubtotal
+  const preDiscountSubtotal = basePrice + vehicleSizeSurcharge + shopItemsSubtotal
   const mobileFee = 0 // Free mobile dispatch in service area
   const subtotal = Math.max(0, preDiscountSubtotal + mobileFee)
   const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
@@ -614,9 +572,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
       customerName: customerName || 'Valued Customer',
       customerPhone: customerPhone || '',
       customerEmail: customerEmail || '',
-      addons: selectedAddonIds
-        .map((id) => AVAILABLE_ADDONS.find((a) => a.id === id)?.title)
-        .filter(Boolean) as string[],
+
       shopItems: shopAddonsList.length > 0 ? shopAddonsList : undefined,
       shopItemsTotal: shopItemsSubtotal > 0 ? shopItemsSubtotal : undefined,
       paymentMethod: 'Cash on Delivery (Pay on Completion)',
@@ -1105,46 +1061,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             )}
           </div>
 
-          {/* 6. Popular Add-Ons */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <span>Recommended Add-Ons</span>
-            </label>
 
-            <div className="flex flex-col gap-2">
-              {AVAILABLE_ADDONS.map((addon) => {
-                const isChecked = selectedAddonIds.includes(addon.id)
-                return (
-                  <div
-                    key={addon.id}
-                    onClick={() => toggleAddon(addon.id)}
-                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${isChecked
-                      ? 'bg-primary-light/30 border-primary'
-                      : 'bg-white border-gray-200 hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${isChecked ? 'bg-primary text-primary-foreground' : 'border border-gray-300 bg-white'
-                          }`}
-                      >
-                        {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-gray-900">{addon.title}</span>
-                        <span className="text-[10px] text-gray-500 leading-tight">
-                          {addon.description}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-primary font-mono shrink-0 ml-2">
-                      +${addon.price}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
 
           {/* Shop Products as Add-Ons (Dropdown Menu) */}
           <div className="flex flex-col gap-2 mt-1">
@@ -1385,16 +1302,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               </div>
             )}
 
-            {selectedAddonIds.map((id) => {
-              const addon = AVAILABLE_ADDONS.find((a) => a.id === id)
-              if (!addon) return null
-              return (
-                <div key={id} className="flex items-center justify-between text-xs text-gray-600">
-                  <span>+ {addon.title}</span>
-                  <span className="font-mono">${addon.price}.00</span>
-                </div>
-              )
-            })}
+
 
 
             <div className="flex items-center justify-between text-xs text-gray-600">

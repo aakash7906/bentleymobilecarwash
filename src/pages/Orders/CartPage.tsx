@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react'
 import { CartItem, DeliveryAddress } from '@/types'
+import { getSafeProductImage } from '@/data/productsData'
 import { isValidPhone } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
 import { DeliveryAddressModal } from '@/components/DeliveryAddressModal'
@@ -355,9 +356,10 @@ export const CartPage: React.FC<CartPageProps> = ({
                   {/* Thumbnail */}
                   <div className="w-20 h-20 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-center p-1.5 shrink-0">
                     <img
-                      src={item.product.image}
-                      alt={item.product.title}
+                      src={getSafeProductImage(item.product)}
+                      alt={item.product?.title || 'Product'}
                       className="w-full h-full object-contain"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getSafeProductImage(null); }}
                     />
                   </div>
 
@@ -575,9 +577,10 @@ export const CartPage: React.FC<CartPageProps> = ({
                         title={item.product.title}
                       >
                         <img
-                          src={item.product.image}
-                          alt={item.product.title}
+                          src={getSafeProductImage(item.product)}
+                          alt={item.product?.title || 'Product'}
                           className="w-full h-full object-contain"
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getSafeProductImage(null); }}
                         />
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[9px] font-bold flex items-center justify-center shadow-xs">
                           {item.quantity}

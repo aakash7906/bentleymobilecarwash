@@ -124,3 +124,43 @@ export const BENTLEY_PRODUCTS: ProductItem[] = [
     ],
   },
 ]
+
+/**
+ * Resolves a reliable, active bundled image asset for any product reference.
+ * Prevents broken images caused by obsolete Vite development paths (e.g. "/src/assets/...")
+ * or stale build hash fingerprints persisted in Firestore documents or localStorage.
+ */
+export function getSafeProductImage(product?: { id?: string; title?: string; image?: string } | null): string {
+  if (!product) return product3Img
+
+  // 1. Exact or normalized ID match
+  if (product.id) {
+    const match = BENTLEY_PRODUCTS.find((p) => p.id === product.id)
+    if (match?.image) return match.image
+  }
+
+  // 2. Title matching (case-insensitive substring or exact match)
+  if (product.title) {
+    const targetTitle = product.title.trim().toLowerCase()
+    const match = BENTLEY_PRODUCTS.find((p) => {
+      const currentTitle = p.title.trim().toLowerCase()
+      return (
+        currentTitle === targetTitle ||
+        currentTitle.includes(targetTitle) ||
+        targetTitle.includes(currentTitle)
+      )
+    })
+    if (match?.image) return match.image
+  }
+
+  // 3. Fallback to image string only if not a dev /src/ path and not empty
+  if (product.image && typeof product.image === 'string') {
+    if (!product.image.startsWith('/src/') && !product.image.includes('/src/assets/')) {
+      return product.image
+    }
+  }
+
+  // 4. Default fallback asset
+  return product3Img
+}
+
