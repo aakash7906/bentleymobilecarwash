@@ -1,12 +1,13 @@
 import React from 'react'
-import { Truck, History, User } from 'lucide-react'
+import { Truck, Navigation, History, User } from 'lucide-react'
 
-export type DriverTabType = 'orders' | 'history' | 'profile'
+export type DriverTabType = 'orders' | 'my_jobs' | 'history' | 'profile'
 
 interface DriverBottomNavProps {
   currentTab: DriverTabType
   onTabChange: (tab: DriverTabType) => void
   ordersBadge?: number
+  myJobsBadge?: number
   historyBadge?: number
 }
 
@@ -14,14 +15,21 @@ export const DriverBottomNav: React.FC<DriverBottomNavProps> = ({
   currentTab,
   onTabChange,
   ordersBadge = 0,
+  myJobsBadge = 0,
   historyBadge = 0,
 }) => {
   const tabs = [
     {
       id: 'orders' as DriverTabType,
-      label: 'Orders',
+      label: 'Requests',
       icon: Truck,
       badge: ordersBadge,
+    },
+    {
+      id: 'my_jobs' as DriverTabType,
+      label: 'My Jobs',
+      icon: Navigation,
+      badge: myJobsBadge,
     },
     {
       id: 'history' as DriverTabType,
@@ -52,7 +60,7 @@ export const DriverBottomNav: React.FC<DriverBottomNavProps> = ({
 
           {/* Navigation Body */}
           <div className="bg-secondary w-full">
-            <div className="max-w-md sm:max-w-lg md:max-w-xl mx-auto px-4 sm:px-6 pt-1 sm:pt-1.5 pb-3.5 sm:pb-4.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] flex items-center justify-around">
+            <div className="max-w-md sm:max-w-lg md:max-w-xl mx-auto px-2 sm:px-6 pt-1 sm:pt-1.5 pb-3.5 sm:pb-4.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] flex items-center justify-around">
               {tabs.map((tab) => {
                 const isActive = currentTab === tab.id
                 const IconComponent = tab.icon
@@ -66,7 +74,7 @@ export const DriverBottomNav: React.FC<DriverBottomNavProps> = ({
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                     aria-label={tab.label}
-                    className="relative flex flex-col items-center justify-center py-1 px-3 sm:px-4 min-w-[70px] sm:min-w-[80px] cursor-pointer transition-transform active:scale-90 group"
+                    className="relative flex flex-col items-center justify-center py-1 px-2.5 sm:px-4 min-w-[64px] sm:min-w-[80px] cursor-pointer transition-transform active:scale-90 group"
                   >
                     <div
                       className={`relative flex items-center justify-center transition-all ${

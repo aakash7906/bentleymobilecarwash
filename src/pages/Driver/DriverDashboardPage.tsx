@@ -10,7 +10,7 @@ import {
   X,
   ExternalLink,
   MessageSquare,
-  Radio,
+  Zap,
   History,
   Calendar,
   Package,
@@ -83,27 +83,16 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 }) => {
   const { showToast } = useToast()
 
-  // 1. PRIMARY DRIVER NAVIGATION TABS: 'orders' | 'history' | 'profile'
-  // Always default to 'orders' on fresh load or login so driver lands directly on Live Requests
+  // 1. PRIMARY DRIVER NAVIGATION TABS: 'orders' (Requests) | 'my_jobs' (Active Jobs) | 'history' | 'profile'
+  // Always default to 'orders' on fresh load or login so driver lands directly on Active Requests
   const [driverTab, setDriverTab] = useState<DriverTabType>(() => {
     try {
       const stored = localStorage.getItem('bentley_driver_current_tab')
-      if (stored === 'orders' || stored === 'history') {
+      if (stored === 'orders' || stored === 'my_jobs' || stored === 'history') {
         return stored as DriverTabType
       }
     } catch {}
     return 'orders'
-  })
-
-  // 2. SUB-TAB INSIDE ORDERS: 'available' (Live Requests) | 'active' (My Active)
-  const [ordersSubTab, setOrdersSubTab] = useState<'available' | 'active'>(() => {
-    try {
-      const stored = localStorage.getItem('bentley_driver_orders_subtab')
-      if (stored === 'available' || stored === 'active') {
-        return stored
-      }
-    } catch {}
-    return 'available'
   })
 
   const [selectedBookingForMap, setSelectedBookingForMap] = useState<BookingRecord | null>(() => {
@@ -132,11 +121,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     } catch {}
   }, [driverTab])
 
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('bentley_driver_orders_subtab', ordersSubTab)
-    } catch {}
-  }, [ordersSubTab])
 
   // Persist driver map view state
   React.useEffect(() => {
@@ -371,7 +355,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
         })
       })
       showToast(`Shop order #${order.id.slice(-6).toUpperCase()} accepted for delivery!`, 'success')
-      setOrdersSubTab('active')
+      setDriverTab('my_jobs')
     } catch (err: any) {
       console.error('Failed to accept shop order:', err)
       showToast(err?.message || 'Could not accept delivery. Please try again.', 'error')
@@ -517,7 +501,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
     showToast(`Order #${booking.id} accepted! Opening live route navigation.`, 'success')
     // Seamlessly focus on My Active
-    setOrdersSubTab('active')
+    setDriverTab('my_jobs')
     // Open map right away for live dispatch
     setSelectedBookingForMap({
       ...booking,
@@ -1019,120 +1003,59 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
 
         {/* RESPONSIVE ORDER CARDS CONTAINER */}
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 flex-1">
-          {/* TAB 1: ORDERS WORKSPACE (Live Requests & My Active) */}
+          {/* TAB 1: INCOMING REQUESTS WORKSPACE */}
           {driverTab === 'orders' && (
             <div className="flex flex-col gap-5">
-              {/* Top Sub-tab Switcher Pills */}
+              {/* Category Filter Strip */}
               <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-3">
-                <div className="inline-flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/80 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOrdersSubTab('available')
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
-                    className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-                      ordersSubTab === 'available'
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Radio className={`w-3.5 h-3.5 ${ordersSubTab === 'available' ? 'animate-pulse' : ''}`} />
-                    <span>Live Requests</span>
-                    <span
-                      className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-black rounded-full leading-none ${
-                        ordersSubTab === 'available'
-                          ? 'bg-white text-primary'
-                          : 'bg-primary/10 text-primary'
-                      }`}
-                    >
-                      {availableOrders.length + availableShopOrders.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOrdersSubTab('active')
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
-                    className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-                      ordersSubTab === 'active'
-                        ? 'bg-secondary text-white shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>My Active</span>
-                    <span
-                      className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-black rounded-full leading-none ${
-                        ordersSubTab === 'active'
-                          ? 'bg-white text-secondary'
-                          : 'bg-secondary/10 text-secondary'
-                      }`}
-                    >
-                      {myActiveOrders.length + myActiveShopOrders.length}
-                    </span>
-                  </button>
-                </div>
-
                 <div className="flex items-center gap-1.5 bg-gray-100/90 p-1 rounded-xl text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                       jobCategoryFilter === 'all'
-                        ? 'bg-white text-gray-900 shadow-2xs'
+                        ? 'bg-white text-gray-900 shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    All Jobs ({ordersSubTab === 'available' ? availableOrders.length + availableShopOrders.length : myActiveOrders.length + myActiveShopOrders.length})
+                    All Jobs ({availableOrders.length + availableShopOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('washes')}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                       jobCategoryFilter === 'washes'
-                        ? 'bg-white text-primary shadow-2xs'
+                        ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    Washes ({ordersSubTab === 'available' ? availableOrders.length : myActiveOrders.length})
+                    Washes ({availableOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('deliveries')}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                       jobCategoryFilter === 'deliveries'
-                        ? 'bg-white text-primary shadow-2xs'
+                        ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    Shop Deliveries ({ordersSubTab === 'available' ? availableShopOrders.length : myActiveShopOrders.length})
+                    Shop Deliveries ({availableShopOrders.length})
                   </button>
                 </div>
 
-                <div className="text-[11px] text-gray-500 font-medium">
-                  {ordersSubTab === 'available'
-                    ? `${
-                        jobCategoryFilter === 'all'
-                          ? availableOrders.length + availableShopOrders.length
-                          : jobCategoryFilter === 'washes'
-                          ? availableOrders.length
-                          : availableShopOrders.length
-                      } incoming customer requests`
-                    : `${
-                        jobCategoryFilter === 'all'
-                          ? myActiveOrders.length + myActiveShopOrders.length
-                          : jobCategoryFilter === 'washes'
-                          ? myActiveOrders.length
-                          : myActiveShopOrders.length
-                      } orders currently assigned to you`}
+                <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>
+                    {jobCategoryFilter === 'all'
+                      ? availableOrders.length + availableShopOrders.length
+                      : jobCategoryFilter === 'washes'
+                      ? availableOrders.length
+                      : availableShopOrders.length}{' '}
+                    incoming customer requests
+                  </span>
                 </div>
               </div>
-
-              {/* Sub-tab 1: Available Live Orders */}
-              {ordersSubTab === 'available' && (
                 <>
                   {((jobCategoryFilter === 'washes' && availableOrders.length === 0) ||
                     (jobCategoryFilter === 'deliveries' && availableShopOrders.length === 0) ||
@@ -1323,27 +1246,87 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                     </div>
                   )}
                 </>
-              )}
+            </div>
+          )}
 
-              {/* Sub-tab 2: My Active Accepted Orders */}
-              {ordersSubTab === 'active' && (
-                <>
-                  {((jobCategoryFilter === 'washes' && myActiveOrders.length === 0) ||
-                    (jobCategoryFilter === 'deliveries' && myActiveShopOrders.length === 0) ||
-                    (jobCategoryFilter === 'all' && myActiveOrders.length === 0 && myActiveShopOrders.length === 0)) ? (
-                    <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
-                      <Truck className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                      <span className="text-base font-bold text-gray-800">
-                        {jobCategoryFilter === 'deliveries'
-                          ? 'No active shop deliveries in progress'
-                          : jobCategoryFilter === 'washes'
-                          ? 'No active washes in progress'
-                          : 'No active jobs in progress'}
-                      </span>
-                      <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                        Accept a live order from the "Live Requests" tab to start your delivery route.
-                      </p>
-                    </div>
+          {/* TAB 2: MY ACTIVE JOBS WORKSPACE */}
+          {driverTab === 'my_jobs' && (
+            <div className="flex flex-col gap-5">
+              {/* Category Filter Strip */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-3">
+                <div className="flex items-center gap-1.5 bg-gray-100/90 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'all'
+                        ? 'bg-white text-gray-900 shadow-2xs font-black'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    All Jobs ({myActiveOrders.length + myActiveShopOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('washes')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'washes'
+                        ? 'bg-white text-primary shadow-2xs font-black'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Washes ({myActiveOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobCategoryFilter('deliveries')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      jobCategoryFilter === 'deliveries'
+                        ? 'bg-white text-primary shadow-2xs font-black'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Shop Deliveries ({myActiveShopOrders.length})
+                  </button>
+                </div>
+
+                <div className="text-xs text-gray-500 font-medium">
+                  {jobCategoryFilter === 'all'
+                    ? myActiveOrders.length + myActiveShopOrders.length
+                    : jobCategoryFilter === 'washes'
+                    ? myActiveOrders.length
+                    : myActiveShopOrders.length}{' '}
+                  orders currently assigned to you
+                </div>
+              </div>
+
+              {((jobCategoryFilter === 'washes' && myActiveOrders.length === 0) ||
+                (jobCategoryFilter === 'deliveries' && myActiveShopOrders.length === 0) ||
+                (jobCategoryFilter === 'all' && myActiveOrders.length === 0 && myActiveShopOrders.length === 0)) ? (
+                <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
+                  <Truck className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
+                  <span className="text-base font-bold text-gray-800">
+                    {jobCategoryFilter === 'deliveries'
+                      ? 'No active shop deliveries in progress'
+                      : jobCategoryFilter === 'washes'
+                      ? 'No active washes in progress'
+                      : 'No active jobs in progress'}
+                  </span>
+                  <p className="text-xs text-gray-400 mt-1 max-w-sm mb-4">
+                    Accept incoming customer requests from the Requests tab to start your delivery route.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDriverTab('orders')
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Browse Requests ({availableOrders.length + availableShopOrders.length})</span>
+                  </button>
+                </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                       {/* Active Washes */}
@@ -1588,8 +1571,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                         })}
                     </div>
                   )}
-                </>
-              )}
             </div>
           )}
 
@@ -1820,6 +1801,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
           ordersBadge={availableOrders.length + availableShopOrders.length}
+          myJobsBadge={myActiveOrders.length + myActiveShopOrders.length}
           historyBadge={completedOrders.length + completedShopOrders.length}
         />
       )}
