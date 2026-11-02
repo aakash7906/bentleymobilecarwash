@@ -4,10 +4,13 @@ import {
   collection,
   setDoc,
   serverTimestamp,
+  query,
+  where,
+  onSnapshot,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
-import { CartItem } from '@/types'
+import { CartItem, ShopOrder, ShopOrderStatus } from '@/types'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -19,6 +22,7 @@ export interface CartContextType {
   handleRemoveCartItem: (productId: string) => void
   handleClearCart: () => void
   handleCheckoutOrder: (orderData: any) => Promise<string>
+  activeShopOrders: ShopOrder[]
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -34,6 +38,33 @@ export const useCart = (): CartContextType => {
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, userProfileData, isDeletingAccountRef } = useAuth()
   const { showToast } = useToast()
+
+  // Real-time active shop delivery orders for customer
+  const [activeShopOrders, setActiveShopOrders] = useState<ShopOrder[]>([])
+  useEffect(() => {
+    if (!currentUser) {
+      setActiveShopOrders([])
+      return
+    }
+    const ordersRef = collection(db, 'orders')
+    const q = query(ordersRef, where('userId', '==', currentUser.uid))
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const loaded: ShopOrder[] = snapshot.docs.map((docSnap) => ({
+          ...(docSnap.data() as ShopOrder),
+          id: docSnap.id,
+          status: (docSnap.data().status || 'pending') as ShopOrderStatus,
+        }))
+        const active = loaded.filter(
+          (o) => o.status === 'en_route' || o.status === 'accepted' || o.status === 'pending'
+        )
+        setActiveShopOrders(active)
+      },
+      (err) => console.warn('CartProvider shop orders listener warning:', err)
+    )
+    return () => unsub()
+  }, [currentUser])
 
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
@@ -192,6 +223,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         handleRemoveCartItem,
         handleClearCart,
         handleCheckoutOrder,
+        activeShopOrders,
       }}
     >
       {children}

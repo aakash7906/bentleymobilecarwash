@@ -30,8 +30,10 @@ import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
 import { CodPaymentModal } from '@/components/modals'
 import { DriverBottomNav, DriverTabType } from '@/components/DriverBottomNav'
+import { DriverDashboardSkeleton } from '@/components/ui/skeleton'
 
 interface DriverDashboardProps {
+  isLoading?: boolean
   bookings: BookingRecord[]
   onAcceptOrder: (bookingId: string, initialCoords?: [number, number]) => void
   onUpdateStatus: (
@@ -70,6 +72,7 @@ const DEFAULT_DRIVER_PROFILE: DriverProfile = {
 }
 
 export const DriverDashboard: React.FC<DriverDashboardProps> = ({
+  isLoading,
   bookings,
   onAcceptOrder,
   onUpdateStatus,
@@ -511,6 +514,21 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
       driverVanNumber: profile.licensePlate,
       driverVehicle: profile.vanModel,
     })
+  }
+
+  // Initial smooth skeleton entrance state
+  const [isInitialReady, setIsInitialReady] = useState<boolean>(isLoading !== undefined ? !isLoading : false)
+  useEffect(() => {
+    if (isLoading !== undefined) {
+      setIsInitialReady(!isLoading)
+      return
+    }
+    const timer = setTimeout(() => setIsInitialReady(true), 400)
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
+  if ((isLoading || !isInitialReady) && !selectedBookingForMap) {
+    return <DriverDashboardSkeleton />
   }
 
   return (

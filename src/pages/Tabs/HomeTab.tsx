@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord, ShopOrder, BookingStatus } from '@/types'
 import { getRemainingEtaMinutes, computeEstimatedArrivalTime, calculateEtaMinsFromDistance, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
 import { SERVICES_CATALOG } from '@/data/mockData'
@@ -28,8 +28,10 @@ import { Button } from '@/components/ui/button'
 import { auth, db } from '@/firebase'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getLiveGPSLocation } from '@/services/locationService'
+import { HomeTabSkeleton } from '@/components/ui/skeleton'
 
 interface HomeTabProps {
+  isLoading?: boolean
   onSelectService: (service: ServiceItem) => void
   onBookNow?: (service: ServiceItem) => void
   onAddCar: () => void
@@ -73,6 +75,7 @@ function calculateDistanceKm(c1: [number, number], c2: [number, number]): number
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
+  isLoading,
   onSelectService,
   onBookNow,
   onAddCar,
@@ -364,6 +367,21 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   pendingShop ? toActiveDispatchItem(pendingShop, 'shop') :
                     null
   }, [activeBookings, activeShopOrders])
+
+  // Initial smooth skeleton entrance state
+  const [isInitialReady, setIsInitialReady] = useState<boolean>(isLoading !== undefined ? !isLoading : false)
+  useEffect(() => {
+    if (isLoading !== undefined) {
+      setIsInitialReady(!isLoading)
+      return
+    }
+    const timer = setTimeout(() => setIsInitialReady(true), 400)
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
+  if (isLoading || !isInitialReady) {
+    return <HomeTabSkeleton />
+  }
 
   return (
     <div className={`flex flex-col w-full ${activeDispatch ? 'pb-32 sm:pb-36' : 'pb-28 sm:pb-32'} relative select-none`}>
