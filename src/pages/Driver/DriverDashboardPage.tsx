@@ -909,10 +909,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               </div>
             </div>
 
-            <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200">
-              Note: This service job will be marked as cancelled by technician and recorded in service history.
-            </p>
-
             <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
