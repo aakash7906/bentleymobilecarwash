@@ -34,7 +34,7 @@ interface HomeTabProps {
   onBookNow?: (service: ServiceItem) => void
   onAddCar: () => void
   currentVehicle: string
-  onSelectVehicle: (vehicle: string) => void
+  onSelectVehicle: (vehicle: string, vehicleId?: string) => void
   onOpenTracking?: (booking?: BookingRecord) => void
   savedVehicles?: SavedVehicle[]
   activeBookings?: BookingRecord[]
@@ -494,14 +494,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </span>
               <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
                 {savedVehicles && savedVehicles.length > 0 ? (
-                  savedVehicles.map((veh) => (
+                  [...savedVehicles]
+                    .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                    .map((veh) => (
                     <div
                       key={veh.id}
                       onClick={() => {
-                        onSelectVehicle(veh.name)
+                        onSelectVehicle(veh.name, veh.id)
                         setIsDropdownOpen(false)
                       }}
-                      className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${veh.name === currentVehicle
+                      className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${veh.isPrimary
                         ? 'bg-primary-light text-primary font-bold'
                         : 'hover:bg-gray-50 text-gray-800 font-medium'
                         }`}

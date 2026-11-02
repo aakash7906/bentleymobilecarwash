@@ -8,7 +8,7 @@ interface SavedVehiclesModalProps {
   onClose: () => void
   vehicles: SavedVehicle[]
   currentVehicleName: string
-  onSelectVehicle: (vehicleName: string) => void
+  onSelectVehicle: (vehicleName: string, vehicleId?: string) => void
   onDeleteVehicle: (vehicleId: string) => void
   onOpenAddVehicle: () => void
 }
@@ -27,7 +27,7 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
   if (!isOpen) return null
 
   const handleSetActive = (vehicle: SavedVehicle) => {
-    onSelectVehicle(vehicle.name)
+    onSelectVehicle(vehicle.name, vehicle.id)
   }
 
   const confirmDelete = () => {
@@ -94,8 +94,10 @@ export const SavedVehiclesModal: React.FC<SavedVehiclesModalProps> = ({
                 </button>
               </div>
             ) : (
-              vehicles.map((veh) => {
-                const isActive = veh.name === currentVehicleName
+              [...vehicles]
+                .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                .map((veh) => {
+                const isActive = Boolean(veh.isPrimary)
 
               return (
                 <div

@@ -7,6 +7,7 @@ import {
 import { SavedVehicle, VehicleCategory } from '@/types'
 import { isValidLicensePlate } from '@/lib/utils'
 import { useToast } from '@/context/ToastContext'
+import { useVehicles } from '@/context/VehicleContext'
 import { ChevronLeft, Car } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -82,6 +83,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   onVehicleAdded,
 }) => {
   const { showToast } = useToast()
+  const { savedVehicles } = useVehicles()
   const [mode, setMode] = useState<'guided' | 'quick'>('guided')
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
 
@@ -124,12 +126,23 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   }
 
   const handleFinalAdd = () => {
+    const cleanPlate = licensePlate.trim().toUpperCase()
+    if (cleanPlate) {
+      const isAlreadyRegistered = savedVehicles.some(
+        (v) => v.licensePlate && v.licensePlate.toUpperCase() === cleanPlate
+      )
+      if (isAlreadyRegistered) {
+        showToast('Yeh gadi (License Plate) pehle se aapke garage me registered hai!', 'error')
+        return
+      }
+    }
+
     const brand = customBrand.trim() || selectedBrand
     const model = customModel.trim() || selectedModel
     const name = `${brand} ${model}${selectedVariant ? ` (${selectedVariant})` : ''}`
 
     const newVehicle: SavedVehicle = {
-      id: `veh-${Date.now()}`,
+      id: `car_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name,
       brand,
       model,

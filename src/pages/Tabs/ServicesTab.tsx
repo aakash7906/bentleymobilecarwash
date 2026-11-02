@@ -7,7 +7,7 @@ interface ServicesTabProps {
   onSelectService: (service: ServiceItem) => void
   onAddCar: () => void
   currentVehicle: string
-  onSelectVehicle: (vehicle: string) => void
+  onSelectVehicle: (vehicle: string, vehicleId?: string) => void
   savedVehicles?: SavedVehicle[]
 }
 
@@ -128,14 +128,16 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
             </span>
             <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
               {savedVehicles && savedVehicles.length > 0 ? (
-                savedVehicles.map((veh) => (
+                [...savedVehicles]
+                  .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                  .map((veh) => (
                   <div
                     key={veh.id}
                     onClick={() => {
-                      onSelectVehicle(veh.name)
+                      onSelectVehicle(veh.name, veh.id)
                       setIsDropdownOpen(false)
                     }}
-                    className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${veh.name === currentVehicle
+                    className={`flex items-center justify-between py-2 px-3 rounded-xl cursor-pointer transition-colors ${veh.isPrimary
                       ? 'bg-primary-light text-primary font-bold'
                       : 'hover:bg-gray-50 text-gray-800 font-medium'
                       }`}
@@ -151,7 +153,7 @@ export const ServicesTab: React.FC<ServicesTabProps> = ({
                         )}
                       </div>
                     </div>
-                    {veh.name === currentVehicle && (
+                    {veh.isPrimary && (
                       <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2" />
                     )}
                   </div>

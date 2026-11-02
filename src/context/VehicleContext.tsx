@@ -20,7 +20,7 @@ export interface VehicleContextType {
   setSavedVehicles: React.Dispatch<React.SetStateAction<SavedVehicle[]>>
   setCurrentVehicle: React.Dispatch<React.SetStateAction<string>>
   handleVehicleAdded: (newVehicle: SavedVehicle) => Promise<void>
-  handleSelectVehicle: (vehicleName: string) => Promise<void>
+  handleSelectVehicle: (vehicleName: string, vehicleId?: string) => Promise<void>
   handleDeleteVehicle: (vehicleId: string) => Promise<void>
 }
 
@@ -44,7 +44,7 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed)) {
-          return parsed.filter((v) => v && !v.id?.startsWith('veh-'))
+          return parsed.filter((v) => v && v.id !== 'veh-1' && v.id !== 'veh-2')
         }
       }
     } catch {}
@@ -87,16 +87,32 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (userProfileData.vehicles && typeof userProfileData.vehicles === 'object') {
       const mapVehicles = (Object.values(userProfileData.vehicles) as SavedVehicle[]).filter(
-        (v) => v && !v.id?.startsWith('veh-')
+        (v) => v && v.id !== 'veh-1' && v.id !== 'veh-2'
       )
-      setSavedVehicles(mapVehicles)
       if (mapVehicles.length > 0) {
-        const hasActive = mapVehicles.some((v) => v.name === currentVehicle)
-        if (!hasActive) {
-          const primaryVeh = mapVehicles.find((v) => v.isPrimary) || mapVehicles[0]
-          setCurrentVehicle(userProfileData.preferredVehicle || primaryVeh.name)
+        // Enforce strictly ONE primary vehicle based on v.id and current/preferred vehicle
+        let foundPrimary = false
+        const normalizedVehicles = mapVehicles.map((v) => {
+          const isMatch =
+            (currentVehicle && (v.name === currentVehicle || v.id === currentVehicle)) ||
+            (userProfileData.preferredVehicle && (v.name === userProfileData.preferredVehicle || v.id === userProfileData.preferredVehicle))
+          if (isMatch && !foundPrimary) {
+            foundPrimary = true
+            return { ...v, isPrimary: true }
+          }
+          return { ...v, isPrimary: false }
+        })
+        if (!foundPrimary && normalizedVehicles.length > 0) {
+          normalizedVehicles[0].isPrimary = true
         }
+
+        // Always sort primary vehicle to index 0 (top)
+        const sortedVehicles = [...normalizedVehicles].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+        setSavedVehicles(sortedVehicles)
+        const activeVeh = sortedVehicles.find((v) => v.isPrimary) || sortedVehicles[0]
+        setCurrentVehicle(activeVeh ? activeVeh.name : '')
       } else {
+        setSavedVehicles([])
         setCurrentVehicle('')
       }
     }
@@ -116,10 +132,10 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ...(docSnap.data() as SavedVehicle),
               id: docSnap.id,
             }))
-            .filter((v) => v && !v.id?.startsWith('veh-'))
+            .filter((v) => v && v.id !== 'veh-1' && v.id !== 'veh-2')
 
           setSavedVehicles((prev) => {
-            const merged = [...prev.filter((v) => !v.id?.startsWith('veh-'))]
+            const merged = [...prev.filter((v) => v && v.id !== 'veh-1' && v.id !== 'veh-2')]
             loadedVehicles.forEach((v) => {
               if (!merged.some((m) => m.id === v.id)) {
                 merged.push(v)
@@ -129,11 +145,23 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
           })
 
           if (loadedVehicles.length > 0) {
-            const hasActive = loadedVehicles.some((v) => v.name === currentVehicle)
-            if (!hasActive) {
-              const primaryVeh = loadedVehicles.find((v) => v.isPrimary) || loadedVehicles[0]
-              setCurrentVehicle(primaryVeh.name)
-            }
+            let foundPrimary = false
+            setSavedVehicles((prev) => {
+              const merged = [...prev.filter((v) => v && v.id !== 'veh-1' && v.id !== 'veh-2')]
+              loadedVehicles.forEach((v) => {
+                if (!merged.some((m) => m.id === v.id)) {
+                  merged.push(v)
+                }
+              })
+              return merged.map((v) => {
+                const isMatch = v.name === currentVehicle || v.id === currentVehicle
+                if (isMatch && !foundPrimary) {
+                  foundPrimary = true
+                  return { ...v, isPrimary: true }
+                }
+                return { ...v, isPrimary: false }
+              })
+            })
           }
         }
       },
@@ -149,7 +177,7 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!currentUser || isDeletingAccountRef.current) return
 
-    const realVehicles = savedVehicles.filter((v) => v && !v.id?.startsWith('veh-'))
+    const realVehicles = savedVehicles.filter((v) => v && v.id !== 'veh-1' && v.id !== 'veh-2')
     if (realVehicles.length > 0) {
       const userDocRef = doc(db, 'users', currentUser.uid)
       const vehiclesMap: Record<string, any> = {}
@@ -176,15 +204,29 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Add vehicle
   const handleVehicleAdded = async (newVehicle: SavedVehicle) => {
+    // 1. Validation: Duplicate License Plate check
+    if (newVehicle.licensePlate && newVehicle.licensePlate.trim()) {
+      const cleanPlate = newVehicle.licensePlate.trim().toUpperCase()
+      const isAlreadyRegistered = savedVehicles.some(
+        (v) => v.licensePlate && v.licensePlate.trim().toUpperCase() === cleanPlate
+      )
+      if (isAlreadyRegistered) {
+        showToast('Yeh gadi (License Plate) pehle se aapke garage me registered hai!', 'error')
+        return
+      }
+    }
+
     const updatedVehicle: SavedVehicle = {
       ...newVehicle,
       isPrimary: true,
     }
 
-    setSavedVehicles((prev) => [
+    const updatedList: SavedVehicle[] = [
       updatedVehicle,
-      ...prev.filter((v) => v.id !== newVehicle.id).map((v) => ({ ...v, isPrimary: false })),
-    ])
+      ...savedVehicles.filter((v) => v.id !== newVehicle.id).map((v) => ({ ...v, isPrimary: false })),
+    ]
+
+    setSavedVehicles(updatedList)
     setCurrentVehicle(updatedVehicle.name)
     showToast(`${updatedVehicle.name} added to your garage!`, 'success')
 
@@ -206,12 +248,18 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (updatedVehicle.licensePlate) cleanVehicle.licensePlate = updatedVehicle.licensePlate
         if (updatedVehicle.specs) cleanVehicle.specs = updatedVehicle.specs
 
+        const vehiclesMap: Record<string, any> = {}
+        updatedList.forEach((v) => {
+          const cleanV = Object.fromEntries(
+            Object.entries(v).filter(([_, val]) => val !== undefined)
+          )
+          vehiclesMap[v.id] = cleanV
+        })
+
         await setDoc(
           userDocRef,
           {
-            vehicles: {
-              [cleanVehicle.id]: cleanVehicle,
-            },
+            vehicles: vehiclesMap,
             preferredVehicle: cleanVehicle.name,
             updatedAt: serverTimestamp(),
           },
@@ -235,15 +283,30 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }
 
-  // Select active vehicle
-  const handleSelectVehicle = async (vehicleName: string) => {
-    setCurrentVehicle(vehicleName)
+  // Select active vehicle (Identified by v.id and license number)
+  const handleSelectVehicle = async (vehicleName: string, vehicleId?: string) => {
+    // Find the exact targeted vehicle by v.id first, then by licensePlate, then by name
+    const target = savedVehicles.find((v) =>
+      (vehicleId && v.id === vehicleId) ||
+      (v.id === vehicleName) ||
+      (v.licensePlate && v.licensePlate.toUpperCase() === vehicleName.toUpperCase()) ||
+      v.name === vehicleName
+    )
+
+    const activeId = target ? target.id : vehicleId || vehicleName
+    const activeName = target ? target.name : vehicleName
+
+    setCurrentVehicle(activeName)
+
+    // Strictly enforce that ONLY the targeted vehicle gets isPrimary: true
     const updated = savedVehicles.map((v) => ({
       ...v,
-      isPrimary: v.name === vehicleName,
+      isPrimary: v.id === activeId,
     }))
-    setSavedVehicles(updated)
-    showToast(`Active vehicle switched to ${vehicleName}.`, 'info')
+    // Always sort the newly selected primary vehicle to index 0 (top)
+    const sorted = [...updated].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+    setSavedVehicles(sorted)
+    showToast(`Active vehicle switched to ${activeName}.`, 'info')
 
     if (currentUser) {
       try {
