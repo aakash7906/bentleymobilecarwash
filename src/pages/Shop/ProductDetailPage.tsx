@@ -247,6 +247,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <img
               src={product.image}
               alt={product.title}
+              loading="eager"
+              decoding="async"
               className="w-full h-full object-contain p-2 sm:p-4 hover:scale-105 transition-transform duration-300"
             />
 

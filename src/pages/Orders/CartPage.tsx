@@ -321,6 +321,8 @@ export const CartPage: React.FC<CartPageProps> = ({
                     <img
                       src={getSafeProductImage(item.product)}
                       alt={item.product?.title || 'Product'}
+                      loading="eager"
+                      decoding="async"
                       className="w-full h-full object-contain"
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getSafeProductImage(null); }}
                     />

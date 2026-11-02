@@ -762,6 +762,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <img
                   src={prod.image}
                   alt={prod.title}
+                  loading="eager"
+                  decoding="async"
                   className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
 

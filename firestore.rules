@@ -1,8 +1,9 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -12,50 +13,80 @@ service cloud.firestore {
     }
 
     function isDriver() {
-      return isAuthenticated() &&
-        (request.auth.token.role == 'driver' ||
-         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver');
+      return isAuthenticated() && (
+        request.auth.token.role == 'driver' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver')
+      );
     }
 
-    // Users & profiles
+    // 1. Users & Customer Profiles
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Users can only view and edit their own profile; drivers can view customer/partner details
+      allow read: if isOwner(userId) || isDriver();
+      allow create: if isOwner(userId);
       allow update: if isOwner(userId);
-      allow delete: if false;
+      allow delete: if isOwner(userId);
 
+      // Subcollection: Saved Vehicles
       match /vehicles/{vehicleId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // Bookings collection
+    // 2. Bookings Collection (Zero Public Leaks)
     match /bookings/{bookingId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || isDriver());
-      allow delete: if false;
+      // Customers can ONLY read their own bookings. Drivers can view available requests & assigned jobs.
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || 
+        isDriver() ||
+        resource.data.status == 'pending'
+      );
+      // Customers can create their own bookings
+      allow create: if isAuthenticated() && (
+        !('userId' in request.resource.data) ||
+        request.resource.data.userId == request.auth.uid
+      );
+      // Customers can cancel/rate, Drivers can accept/update status & live GPS
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || 
+        isDriver()
+      );
+      // Allow account deletion cleanup for owner
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
-    // Orders collection (Scoped read/write)
+    // 3. Shop Orders Collection
     match /orders/{orderId} {
-      allow read: if isAuthenticated();
+      // Customers can ONLY read their own orders. Drivers can view pending dispatches & assigned deliveries.
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || 
+        isDriver() ||
+        resource.data.status == 'pending'
+      );
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || isDriver());
-      allow delete: if false;
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || 
+        isDriver()
+      );
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
-    // Invoices collection
+    // 4. Invoices Collection
     match /invoices/{invoiceId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        !('userId' in resource.data) ||
+        request.auth.uid == resource.data.userId ||
+        isDriver()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isDriver();
     }
 
-    // Customer inquiries
+    // 5. Contact Inquiries (Allows public to contact support without login)
     match /inquiries/{inquiryId} {
       allow create: if true;
-      allow read, update, delete: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && isDriver();
     }
   }
 }

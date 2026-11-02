@@ -92,7 +92,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   })
 
-  const [userProfileData, setUserProfileData] = useState<any>(null)
+  // Cached user profile state initialized instantly from localStorage
+  const [userProfileData, setUserProfileData] = useState<any>(() => {
+    try {
+      const stored = localStorage.getItem('bentley_user_profile_cache')
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return null
+  })
+
+  // Synchronize user profile updates to local cache for instant 0ms hydration on refresh
+  useEffect(() => {
+    try {
+      if (userProfileData) {
+        localStorage.setItem('bentley_user_profile_cache', JSON.stringify(userProfileData))
+      } else if (!currentUser) {
+        localStorage.removeItem('bentley_user_profile_cache')
+      }
+    } catch {}
+  }, [userProfileData, currentUser])
 
   const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
     try {
@@ -174,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfileData(null)
         setDetectedAddress('')
         try {
+          localStorage.removeItem('bentley_user_profile_cache')
           localStorage.removeItem('bentley_detected_address')
           localStorage.removeItem('bentley_saved_vehicles')
           localStorage.removeItem('bentley_active_vehicle')
@@ -389,6 +408,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfileData(null)
     setDetectedAddress('')
     try {
+      localStorage.removeItem('bentley_user_profile_cache')
       localStorage.removeItem('bentley_detected_address')
       localStorage.removeItem('bentley_saved_vehicles')
       localStorage.removeItem('bentley_active_vehicle')
@@ -413,6 +433,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleDeleteAccount = async (): Promise<boolean> => {
     if (!currentUser) {
       try {
+        localStorage.removeItem('bentley_user_profile_cache')
         localStorage.removeItem('bentley_user_profile')
         localStorage.removeItem('bentley_driver_profile')
         localStorage.removeItem('bentley_saved_vehicles')

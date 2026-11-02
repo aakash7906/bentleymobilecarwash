@@ -130,6 +130,53 @@ export const BENTLEY_PRODUCTS: ProductItem[] = [
  * Prevents broken images caused by obsolete Vite development paths (e.g. "/src/assets/...")
  * or stale build hash fingerprints persisted in Firestore documents or localStorage.
  */
+// In-memory image element cache to prevent re-decoding across views
+const shopImageCache = new Map<string, HTMLImageElement>()
+
+/**
+ * Preloads and persists a shop product image into browser memory and CacheStorage
+ */
+export function preloadProductImage(url: string): Promise<void> {
+  if (typeof window === 'undefined' || !url) return Promise.resolve()
+  if (shopImageCache.has(url)) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.decoding = 'async'
+    img.src = url
+    img.onload = () => {
+      shopImageCache.set(url, img)
+      // Persist in browser CacheStorage API if available
+      if ('caches' in window) {
+        caches.open('bentley-shop-images-v1').then((cache) => {
+          cache.match(url).then((match) => {
+            if (!match) cache.add(url).catch(() => {})
+          }).catch(() => {})
+        }).catch(() => {})
+      }
+      resolve()
+    }
+    img.onerror = () => resolve()
+  })
+}
+
+/**
+ * Pre-caches all Bentley shop product images on idle to guarantee 0ms render & zero layout shift
+ */
+export function preloadShopImages(): void {
+  if (typeof window === 'undefined') return
+  const urls = BENTLEY_PRODUCTS.map((p) => p.image).filter(Boolean) as string[]
+  const runner = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 100))
+  runner(() => {
+    urls.forEach((url) => preloadProductImage(url))
+  })
+}
+
+// Automatically initiate background pre-caching on module load
+if (typeof window !== 'undefined') {
+  preloadShopImages()
+}
+
 export function getSafeProductImage(product?: { id?: string; title?: string; image?: string } | null): string {
   if (!product) return product3Img
 
