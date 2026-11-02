@@ -17,7 +17,7 @@ import {
   Package,
 } from 'lucide-react'
 import { BookingRecord, BookingStatus, DriverProfile, PaymentCollectionData } from '@/types'
-import { computeEstimatedArrivalTime } from '@/services/dispatchService'
+import { computeEstimatedArrivalTime, calculateEtaMinsFromDistance } from '@/services/dispatchService'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { Dialog } from '@/components/ui/dialog'
 import { CodPaymentModal } from '@/components/modals'
@@ -265,8 +265,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 2500,
-          timeout: 2800,
+          maximumAge: 4000,
+          timeout: 4500,
         }
       )
     }
@@ -274,8 +274,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     // Immediate first fetch on mount
     fetchLiveGpsLocation()
 
-    // Regular interval: 3 seconds (3000ms)
-    const intervalId = setInterval(fetchLiveGpsLocation, 3000)
+    // Regular interval: 5 seconds (5000ms)
+    const intervalId = setInterval(fetchLiveGpsLocation, 5000)
 
     return () => {
       isMounted = false
@@ -329,7 +329,7 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
     const liveCalculatedMins =
       currentStatus === 'in_progress' || currentStatus === 'completed'
         ? 0
-        : Math.min(30, Math.max(1, Math.round(realisticDist * 2.2)))
+        : calculateEtaMinsFromDistance(realisticDist)
 
     setDistanceKm(parseFloat(realisticDist.toFixed(1)))
     setEtaMins(liveCalculatedMins)
@@ -469,8 +469,8 @@ export const DriverMapView: React.FC<DriverMapViewProps> = ({
 
     const handleStepStatus = (newStatus: BookingStatus, paymentData?: PaymentCollectionData) => {
     const tracking = newStatus === 'en_route' ? {
-      estimatedMins: etaMins || (distanceKm ? Math.round(distanceKm * 1.12) : 15),
-      estimatedArrivalTime: computeEstimatedArrivalTime(etaMins || (distanceKm ? Math.round(distanceKm * 1.12) : 15)),
+      estimatedMins: etaMins || (distanceKm ? calculateEtaMinsFromDistance(distanceKm) : 15),
+      estimatedArrivalTime: computeEstimatedArrivalTime(etaMins || (distanceKm ? calculateEtaMinsFromDistance(distanceKm) : 15)),
       distanceKm: distanceKm || undefined,
     } : undefined
     onUpdateStatus(booking.id, newStatus, driverPos, paymentData, tracking)

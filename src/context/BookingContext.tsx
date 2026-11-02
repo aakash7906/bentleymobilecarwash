@@ -15,7 +15,7 @@ import { db } from '@/firebase'
 import { cleanUndefined } from '@/firebase/CloudFirestore/SetData'
 import { BookingRecord, BookingStatus, PaymentCollectionData } from '@/types'
 import { createBookingInvoice } from '@/services/invoiceService'
-import { computeEstimatedArrivalTime } from '@/services/dispatchService'
+import { computeEstimatedArrivalTime, calculateEtaMinsFromDistance, calculateDistanceKm } from '@/services/dispatchService'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -478,8 +478,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const estMins =
             trackingData?.estimatedMins ||
             currentBooking?.estimatedMins ||
-            (trackingData?.distanceKm ? Math.round(trackingData.distanceKm * 1.12) : undefined) ||
-            (currentBooking?.distanceKm ? Math.round(currentBooking.distanceKm * 1.12) : undefined) ||
+            (trackingData?.distanceKm ? calculateEtaMinsFromDistance(trackingData.distanceKm) : undefined) ||
+            (currentBooking?.distanceKm ? calculateEtaMinsFromDistance(currentBooking.distanceKm) : undefined) ||
+            (currentBooking?.driverCoords && currentBooking?.customerCoords ? calculateEtaMinsFromDistance(calculateDistanceKm(currentBooking.driverCoords, currentBooking.customerCoords)) : undefined) ||
             15
           if (updatePayload.estimatedMins === undefined && !currentBooking?.estimatedMins) {
             updatePayload.estimatedMins = estMins

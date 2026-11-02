@@ -20,6 +20,16 @@ export function calculateDistanceKm(c1: [number, number], c2: [number, number]):
 }
 
 /**
+ * Standardized ETA calculation from road or straight-line distance in km.
+ * 2.0 mins per km represents typical city driving and traffic (~30 km/h) for mobile wash vans.
+ */
+export function calculateEtaMinsFromDistance(distanceKm: number): number {
+  if (typeof distanceKm !== 'number' || isNaN(distanceKm) || distanceKm <= 0) return 15
+  const realisticDist = distanceKm > 35 ? 3.5 : distanceKm
+  return Math.min(60, Math.max(1, Math.round(realisticDist * 2.0)))
+}
+
+/**
  * Compute an absolute target arrival timestamp (ISO string) given estimated duration in minutes
  */
 export function computeEstimatedArrivalTime(estimatedMins: number): string {
@@ -46,12 +56,31 @@ export function getRemainingEtaMinutes(
     return null
   }
 
+  // Derive live physical distance if available
+  const currentDistanceKm: number | null =
+    typeof record.distanceKm === 'number' && record.distanceKm > 0
+      ? record.distanceKm
+      : record.driverCoords && record.customerCoords
+      ? calculateDistanceKm(record.driverCoords, record.customerCoords)
+      : null
+
   // 1. Primary: Exact absolute arrival timestamp countdown
   if (record.estimatedArrivalTime) {
     const targetMs = new Date(record.estimatedArrivalTime).getTime()
     if (!isNaN(targetMs)) {
       const diffMs = targetMs - Date.now()
       const remaining = Math.round(diffMs / 60000)
+
+      // Guard against stale timestamp:
+      // If vehicle is physically far (> 2 km away, e.g. 10.7 km taking ~21 mins),
+      // and the stored arrival timestamp drifted significantly (> 3 mins apart, e.g. showing 12 mins),
+      // synchronize to the expected travel time for the real distance!
+      if (currentDistanceKm !== null && currentDistanceKm > 2) {
+        const expectedMins = calculateEtaMinsFromDistance(currentDistanceKm)
+        if (Math.abs(remaining - expectedMins) > 3) {
+          return expectedMins
+        }
+      }
 
       // If active countdown is still in the future (> 1 min)
       if (remaining > 1) {
@@ -60,14 +89,7 @@ export function getRemainingEtaMinutes(
 
       // If arrival timestamp has elapsed or reached <= 1 min:
       // Only lock to 1 min ("Arriving now") if vehicle is actually nearby (<= 0.5 km) or distance is unknown
-      const dist =
-        typeof record.distanceKm === 'number' && record.distanceKm > 0
-          ? record.distanceKm
-          : record.driverCoords && record.customerCoords
-          ? calculateDistanceKm(record.driverCoords, record.customerCoords)
-          : null
-
-      if (dist === null || dist <= 0.5) {
+      if (currentDistanceKm === null || currentDistanceKm <= 0.5) {
         return 1
       }
       // Stale timestamp detected (technician still far away > 0.5 km).
@@ -77,25 +99,15 @@ export function getRemainingEtaMinutes(
 
   // 2. Direct synchronized ETA minutes from driver or live route calculation
   if (typeof record.estimatedMins === 'number' && record.estimatedMins > 0) {
-    const isStale = typeof record.distanceKm === 'number' && record.distanceKm > 2 && record.estimatedMins <= 1
+    const isStale = typeof currentDistanceKm === 'number' && currentDistanceKm > 2 && record.estimatedMins <= 1
     if (!isStale) {
       return Math.min(60, Math.max(1, Math.round(record.estimatedMins)))
     }
   }
 
-  // 3. Derived from real road distance if distanceKm is present (e.g. 10.8 km -> ~22 mins)
-  if (typeof record.distanceKm === 'number' && record.distanceKm > 0) {
-    const calculated = Math.round(record.distanceKm * 2.0)
-    return Math.min(60, Math.max(1, calculated))
-  }
-
-  // 4. Derived from driverCoords & customerCoords if available
-  if (record.driverCoords && record.customerCoords) {
-    const dist = calculateDistanceKm(record.driverCoords, record.customerCoords)
-    if (dist > 0) {
-      const realisticDist = dist > 35 ? 3.5 : dist
-      return Math.min(60, Math.max(1, Math.round(realisticDist * 2.0)))
-    }
+  // 3. Derived from real road distance if distanceKm is present (e.g. 10.7 km -> 21 mins)
+  if (currentDistanceKm !== null && currentDistanceKm > 0) {
+    return calculateEtaMinsFromDistance(currentDistanceKm)
   }
 
   return 15

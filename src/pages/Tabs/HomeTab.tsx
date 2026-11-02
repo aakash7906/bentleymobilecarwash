@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { ServiceItem, ProductItem, CartItem, SavedVehicle, BookingRecord, ShopOrder, BookingStatus } from '@/types'
-import { getRemainingEtaMinutes, computeEstimatedArrivalTime, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
+import { getRemainingEtaMinutes, computeEstimatedArrivalTime, calculateEtaMinsFromDistance, toActiveDispatchItem, ActiveDispatchItem } from '@/services/dispatchService'
 import { SERVICES_CATALOG } from '@/data/mockData'
 import { BENTLEY_PRODUCTS } from '@/data/productsData'
 import logoBentley from '@/assets/Logo_Bentley.png'
@@ -196,7 +196,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       }
       if (isSubscribed) {
         const distKm = calculateDistanceKm(driverCoords, customerCoords)
-        const calculatedMins = Math.min(30, Math.max(3, Math.round(distKm * 2.2)))
+        const calculatedMins = calculateEtaMinsFromDistance(distKm)
         setDynamicDrivingEtaMins(calculatedMins)
       }
     }
@@ -367,14 +367,24 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className={`flex flex-col w-full ${activeDispatch ? 'pb-32 sm:pb-36' : 'pb-28 sm:pb-32'} relative select-none`}>
-      {/* 1. TOP HEADER: Bentley Mascot Logo & Red Action Buttons */}
-      <div className="screen-padding pt-3 sm:pt-4 flex items-center justify-between">
-        <img
-          src={logoBentley}
-          alt="Bentley Mobile Auto Detail & Car Wash"
-          className="h-9 sm:h-11 md:h-12 w-auto object-contain cursor-pointer active:scale-95 transition-transform drop-shadow-sm"
-        />
-        <div className="flex items-center gap-2 sm:gap-2.5">
+      {/* 1. TOP HEADER: Bentley Mascot Logo, Responsive Brand Name & Action Buttons */}
+      <div className="screen-padding pt-3 sm:pt-4 flex items-center justify-between gap-2.5 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 min-w-0 cursor-pointer active:scale-98 transition-transform">
+          <img
+            src={logoBentley}
+            alt="Bentley Mobile Auto Detail & Car Wash"
+            className="h-9 sm:h-11 md:h-12 w-auto object-contain drop-shadow-sm shrink-0"
+          />
+          <div className="flex flex-col min-w-0 justify-center">
+            <span className="text-sm min-[380px]:text-base sm:text-lg md:text-xl font-black text-gray-900 tracking-tight leading-tight truncate">
+              Bentley Mobile
+            </span>
+            <span className="text-[9px] min-[380px]:text-[10px] sm:text-xs font-bold text-primary tracking-wider uppercase leading-none mt-0.5 truncate">
+              Auto Detail & Car Wash
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
 
           {/* Shopping Cart Button */}
           <button
@@ -869,7 +879,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       driverVanNumber: activeDispatch.driverVanNumber || rawBooking.driverVanNumber,
                       driverCoords: activeDispatch.driverCoords || rawBooking.driverCoords,
                       customerCoords: activeDispatch.customerCoords || rawBooking.customerCoords,
-                      estimatedMins: activeDispatch.estimatedMins ?? rawBooking.estimatedMins,
+                      estimatedMins: dynamicMins ?? activeDispatch.estimatedMins ?? rawBooking.estimatedMins,
                       estimatedArrivalTime: activeDispatch.estimatedArrivalTime ?? rawBooking.estimatedArrivalTime,
                       distanceKm: activeDispatch.distanceKm ?? rawBooking.distanceKm,
                     }
@@ -896,7 +906,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       driverVanNumber: activeDispatch.driverVanNumber,
                       driverCoords: activeDispatch.driverCoords,
                       customerCoords: activeDispatch.customerCoords,
-                      estimatedMins: activeDispatch.estimatedMins,
+                      estimatedMins: dynamicMins ?? activeDispatch.estimatedMins,
                       estimatedArrivalTime: activeDispatch.estimatedArrivalTime,
                       distanceKm: activeDispatch.distanceKm,
                       shopItems: activeDispatch.rawShopOrder.items || [],

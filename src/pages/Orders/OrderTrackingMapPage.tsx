@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ChevronLeft, Navigation, User, Layers, Car, Calendar, Clock, Phone, Sparkles, Package } from 'lucide-react'
 import { Map, MapMarker, MapRoute, MapControls, type MapRef } from '@/components/ui/map'
 import { BookingStatus, BookingRecord } from '@/types'
-import { getRemainingEtaMinutes, computeEstimatedArrivalTime } from '@/services/dispatchService'
+import { getRemainingEtaMinutes, computeEstimatedArrivalTime, calculateEtaMinsFromDistance } from '@/services/dispatchService'
 import { db } from '@/firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 import { Dialog } from '@/components/ui/dialog'
@@ -250,10 +250,24 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   useEffect(() => {
     const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
     const realisticDist = dist > 35 ? 3.2 : dist
-    setLiveDistanceKm(parseFloat(realisticDist.toFixed(1)))
-    const calcMins = Math.min(45, Math.max(1, Math.round(realisticDist * 2)))
+    const roundedDist = parseFloat(realisticDist.toFixed(1))
+    const calcMins = calculateEtaMinsFromDistance(roundedDist)
+    setLiveDistanceKm(roundedDist)
     setLiveEstimatedMins(calcMins)
-  }, [technicianCoordsState, customerCoordsState])
+
+    // Immediately persist synchronized ETA & distance to Firestore so HomeTab & Driver are 100% in sync
+    if (booking?.id && activeStatus === 'en_route') {
+      const arrivalTime = computeEstimatedArrivalTime(calcMins)
+      const collName = (booking as any).kind === 'shop' || booking.category === 'Shop Delivery' ? 'orders' : 'bookings'
+      updateDoc(doc(db, collName, booking.id), {
+        estimatedMins: calcMins,
+        estimatedArrivalTime: arrivalTime,
+        distanceKm: roundedDist,
+        driverCoords: technicianCoordsState,
+        customerCoords: customerCoordsState,
+      }).catch(() => {})
+    }
+  }, [technicianCoordsState, customerCoordsState, booking?.id, activeStatus])
 
   // Synchronize technician position if customer address changes to a completely different region
   useEffect(() => {
@@ -294,16 +308,19 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
   // Universal synchronized ETA shared with HomeTab and DriverMapView
   const synchronizedMins = useMemo(() => {
-    // 1. If live road route or distance is calculated on map, prioritize it for accurate display
-    if (typeof liveEstimatedMins === 'number' && liveEstimatedMins > 0) {
-      return liveEstimatedMins
-    }
     if (booking && activeStatus === 'en_route') {
-      const eta = getRemainingEtaMinutes(booking)
+      const recordForEta = {
+        ...booking,
+        distanceKm: liveDistanceKm,
+        driverCoords: technicianCoordsState,
+        customerCoords: customerCoordsState,
+        estimatedMins: liveEstimatedMins,
+      }
+      const eta = getRemainingEtaMinutes(recordForEta)
       if (typeof eta === 'number' && eta > 0) return eta
     }
-    return liveEstimatedMins
-  }, [booking, activeStatus, liveEstimatedMins, clockTick])
+    return liveEstimatedMins || 15
+  }, [booking, activeStatus, liveDistanceKm, technicianCoordsState, customerCoordsState, liveEstimatedMins, clockTick])
 
   // Throttling references for OSRM road route fetching
   const lastFetchedRoutePosRef = useRef<[number, number] | null>(null)
@@ -362,8 +379,10 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
           setRouteCoordinates(generateCurvedRoute(technicianCoordsState, customerCoordsState))
           const dist = calculateDistanceKm(technicianCoordsState, customerCoordsState)
           const realisticDist = dist > 35 ? 3.2 : dist
-          setLiveDistanceKm(parseFloat(realisticDist.toFixed(1)))
-          setLiveEstimatedMins(Math.min(30, Math.max(2, Math.round(realisticDist * 2.5))))
+          const roundedDist = parseFloat(realisticDist.toFixed(1))
+          const fallbackMins = calculateEtaMinsFromDistance(roundedDist)
+          setLiveDistanceKm(roundedDist)
+          setLiveEstimatedMins(fallbackMins)
         }
       } catch (err: any) {
         if (err?.name === 'AbortError') return
