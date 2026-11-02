@@ -52,19 +52,40 @@ export function getRemainingEtaMinutes(
     if (!isNaN(targetMs)) {
       const diffMs = targetMs - Date.now()
       const remaining = Math.round(diffMs / 60000)
-      // When time is reached or vehicle is outside, lock to 1 min (Arriving now)
-      return Math.min(60, Math.max(1, remaining))
+
+      // If active countdown is still in the future (> 1 min)
+      if (remaining > 1) {
+        return Math.min(60, remaining)
+      }
+
+      // If arrival timestamp has elapsed or reached <= 1 min:
+      // Only lock to 1 min ("Arriving now") if vehicle is actually nearby (<= 0.5 km) or distance is unknown
+      const dist =
+        typeof record.distanceKm === 'number' && record.distanceKm > 0
+          ? record.distanceKm
+          : record.driverCoords && record.customerCoords
+          ? calculateDistanceKm(record.driverCoords, record.customerCoords)
+          : null
+
+      if (dist === null || dist <= 0.5) {
+        return 1
+      }
+      // Stale timestamp detected (technician still far away > 0.5 km).
+      // Fall through to live distance-based calculations below.
     }
   }
 
   // 2. Direct synchronized ETA minutes from driver or live route calculation
   if (typeof record.estimatedMins === 'number' && record.estimatedMins > 0) {
-    return Math.min(60, Math.max(1, Math.round(record.estimatedMins)))
+    const isStale = typeof record.distanceKm === 'number' && record.distanceKm > 2 && record.estimatedMins <= 1
+    if (!isStale) {
+      return Math.min(60, Math.max(1, Math.round(record.estimatedMins)))
+    }
   }
 
-  // 3. Derived from real road distance if distanceKm is present (e.g. 15.2 km -> 17 mins)
+  // 3. Derived from real road distance if distanceKm is present (e.g. 10.8 km -> ~22 mins)
   if (typeof record.distanceKm === 'number' && record.distanceKm > 0) {
-    const calculated = Math.round(record.distanceKm * 1.12)
+    const calculated = Math.round(record.distanceKm * 2.0)
     return Math.min(60, Math.max(1, calculated))
   }
 
@@ -73,7 +94,7 @@ export function getRemainingEtaMinutes(
     const dist = calculateDistanceKm(record.driverCoords, record.customerCoords)
     if (dist > 0) {
       const realisticDist = dist > 35 ? 3.5 : dist
-      return Math.min(60, Math.max(1, Math.round(realisticDist * 1.25)))
+      return Math.min(60, Math.max(1, Math.round(realisticDist * 2.0)))
     }
   }
 

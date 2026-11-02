@@ -278,8 +278,11 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
   })
 
   const [liveEstimatedMins, setLiveEstimatedMins] = useState<number>(() => {
-    if (booking?.estimatedMins && booking.estimatedMins > 0 && booking.estimatedMins <= 45) return booking.estimatedMins
-    return Math.min(30, Math.max(3, Math.round(liveDistanceKm * 2.8))) || 8
+    const isStaleMins = Boolean(booking?.distanceKm && booking.distanceKm > 1.5 && (booking.estimatedMins ?? 0) <= 1)
+    if (booking?.estimatedMins && booking.estimatedMins > 0 && booking.estimatedMins <= 60 && !isStaleMins) {
+      return booking.estimatedMins
+    }
+    return Math.min(60, Math.max(2, Math.round(liveDistanceKm * 2.0))) || 8
   })
 
   // Synchronized countdown ticker
@@ -291,6 +294,10 @@ export const OrderTrackingMapPage: React.FC<OrderTrackingMapPageProps> = ({
 
   // Universal synchronized ETA shared with HomeTab and DriverMapView
   const synchronizedMins = useMemo(() => {
+    // 1. If live road route or distance is calculated on map, prioritize it for accurate display
+    if (typeof liveEstimatedMins === 'number' && liveEstimatedMins > 0) {
+      return liveEstimatedMins
+    }
     if (booking && activeStatus === 'en_route') {
       const eta = getRemainingEtaMinutes(booking)
       if (typeof eta === 'number' && eta > 0) return eta
