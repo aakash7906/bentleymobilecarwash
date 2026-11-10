@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react'
-import { Eye, EyeOff, Check, Loader2, Truck } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2, Truck, ArrowRight } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
 // STEP 1 INTEGRATION: Import Firebase auth & Firestore instances and methods
@@ -426,17 +426,22 @@ export const Login: React.FC<LoginProps> = ({
 
             {/* Quick Driver Portal Switcher Link (Visible in Customer mode) */}
             {selectedRole === 'customer' ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRole('driver')
-                  onRoleChange?.('driver')
-                }}
-                className="mt-4 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1"
-              >
-                <Truck className="w-3.5 h-3.5 text-[var(--primary)]" />
-                <span> Login to Driver Portal →</span>
-              </button>
+              <div className="w-full mt-6 flex flex-col items-center">
+                {/* <p className="text-xs sm:text-sm text-slate-500 font-medium text-center mb-2">
+                  Are you a driver?
+                </p> */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole('driver')
+                    onRoleChange?.('driver')
+                  }}
+                  className="w-full py-2.5 sm:py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80 text-slate-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  <span>Continue as Driver</span>
+                  <ArrowRight className="w-4 h-4 text-slate-600 stroke-[2]" />
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -444,7 +449,7 @@ export const Login: React.FC<LoginProps> = ({
                   setSelectedRole('customer')
                   onRoleChange?.('customer')
                 }}
-                className="mt-4 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
+                className="mt-5 text-xs sm:text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
               >
                 ← Back to Customer Login
               </button>
