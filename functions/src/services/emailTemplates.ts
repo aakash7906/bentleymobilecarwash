@@ -4,7 +4,7 @@
  */
 
 const LOGIN_URL = process.env.APP_URL || "http://localhost:5173";
-const SUPPORT_EMAIL = process.env.SENDGRID_FROM_EMAIL || "concierge@bentleycarwash.com";
+const SUPPORT_EMAIL = process.env.SMTP_USER || "concierge@bentleycarwash.com";
 const PRIMARY_GOLD = "#D4AF37";
 
 /**
@@ -232,5 +232,119 @@ export const passwordResetEmailTemplate = (userName: string, resetUrl: string) =
     <p style="margin: 20px 0 0 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
       If you did not request a password reset, you can safely ignore this email. Your account remains completely secure.
     </p>
+  `);
+};
+
+/**
+ * 4. Car Wash Completed Successfully Email Template
+ */
+export const bookingCompletedEmailTemplate = (booking: {
+  bookingId: string;
+  customerName: string;
+  serviceTitle: string;
+  vehicle: string;
+  date: string;
+  price: string;
+  technicianName?: string;
+  invoiceNumber?: string;
+}) => {
+  return renderEmailWrapper(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
+        Service Completed &bull; Sparkle Guaranteed ✨
+      </span>
+      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Car Wash is Complete!</h2>
+      <p style="margin: 0; font-size: 14px; color: #64748b;">
+        Hello <strong>${booking.customerName}</strong>, your vehicle has been professionally detailed and inspected.
+      </p>
+    </div>
+
+    <!-- Booking Completion Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+      <tr>
+        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Booking Reference</td>
+        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${booking.bookingId}</td>
+      </tr>
+      ${booking.invoiceNumber ? `
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Official Invoice #</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.invoiceNumber}</td>
+      </tr>` : ''}
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Service Package</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.serviceTitle}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Vehicle Detailed</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.vehicle}</td>
+      </tr>
+      ${booking.technicianName ? `
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Completed By</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.technicianName}</td>
+      </tr>` : ''}
+      <tr>
+        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
+        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
+      </tr>
+    </table>
+
+    <div style="background-color: #f1f5f9; padding: 16px; border-radius: 12px; margin-top: 20px; font-size: 12px; color: #475569; line-height: 1.5; text-align: center;">
+      ⭐️ <strong>How was your experience?</strong> Open the Bentley app to rate your detailer and download your PDF invoice.
+    </div>
+
+    ${renderActionButton("View Booking & Rate Service", LOGIN_URL)}
+  `);
+};
+
+/**
+ * 5. Product Store Order Delivered Email Template
+ */
+export const orderDeliveredEmailTemplate = (order: {
+  orderId: string;
+  customerName: string;
+  items: Array<{ title: string; quantity: number; price: string }>;
+  grandTotal: string;
+  shippingAddress: string;
+}) => {
+  const itemsHtml = order.items.map((item) => `
+    <tr>
+      <td style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 600;">
+        ${item.title} <span style="color: #64748b; font-size: 11px;">(Qty: ${item.quantity})</span>
+      </td>
+      <td align="right" style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: 700; color: #0f172a;">
+        ${item.price}
+      </td>
+    </tr>
+  `).join('');
+
+  return renderEmailWrapper(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
+        Delivered Successfully 📦
+      </span>
+      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Order Has Arrived!</h2>
+      <p style="margin: 0; font-size: 14px; color: #64748b;">
+        Hello <strong>${order.customerName}</strong>, your package of Bentley detailing supplies has been delivered.
+      </p>
+    </div>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+      <tr>
+        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Order Number</td>
+        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${order.orderId}</td>
+      </tr>
+      ${itemsHtml}
+      <tr>
+        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Delivered To</td>
+        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${order.shippingAddress}</td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Amount</td>
+        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
+      </tr>
+    </table>
+
+    ${renderActionButton("Open App & View Orders", LOGIN_URL)}
   `);
 };

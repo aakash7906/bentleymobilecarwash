@@ -10,16 +10,17 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "dependencies": {
-    "@sendgrid/mail": "^8.1.6",
     "firebase-admin": "^11.8.0",
-    "firebase-functions": "^4.9.0"
+    "firebase-functions": "^4.9.0",
+    "nodemailer": "^10.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.2",
     "firebase-functions-test": "^3.1.0",
     "typescript": "^5.4.0"
   },
