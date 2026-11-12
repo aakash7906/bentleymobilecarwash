@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { TabType, ServiceItem } from '@/types'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
+import { SmartAppBanner } from '@/components/common/SmartAppBanner'
 
 // Instant Frame-0 Shell Skeletons (Eagerly loaded for zero-blank-screen refresh)
 import { HomeTab } from '@/pages/Tabs/HomeTab'
@@ -142,6 +143,19 @@ const AppContent: React.FC = () => {
   const [_isMembershipOpen, setIsMembershipOpen] = useState(false)
   const [isContactUsOpen, setIsContactUsOpen] = useState(false)
   const [isAboutUsOpen, setIsAboutUsOpen] = useState(false)
+
+  // Handle smart deep-link query parameters from email redirects (?open=booking, ?open=order)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const openTarget = params.get('open')
+      if (openTarget === 'booking') {
+        setCurrentTab('bookings')
+      } else if (openTarget === 'order') {
+        setCurrentTab('home')
+      }
+    } catch {}
+  }, [])
 
   // Sync navigation states to localStorage
   useEffect(() => {
@@ -441,6 +455,7 @@ const AppContent: React.FC = () => {
       {/* 6. Mobile, Tablet & Desktop App Canvas (Customer Portal) */}
       {isAppReady && currentRole === 'customer' && (
         <main className="w-full max-w-full min-h-[100dvh] bg-white relative flex flex-col">
+          <SmartAppBanner />
           {/* Top Header */}
           {currentTab !== 'home' && currentTab !== 'bookings' && (
             <Header

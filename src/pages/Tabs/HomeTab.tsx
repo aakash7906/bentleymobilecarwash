@@ -261,20 +261,20 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     onAddToCart(product, quantity)
   }
 
-  // Detect vehicle type for vehicle-aware pricing
-  const activeVehicleObj = savedVehicles?.find((v) => v.name === currentVehicle)
-  const activeVehicleType = activeVehicleObj?.type || 'Sedan'
-  const premiumPriceNumeric =
-    activeVehicleType === 'SUV'
-      ? 240
-      : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
-        ? 280
-        : 190
-
   // Recommended for you cards featuring Bentley's Official Cleaning Packages
   const supremeItem = SERVICES_CATALOG.find((s) => s.id === 'supreme-package') || SERVICES_CATALOG[1]
   const deluxeItem = SERVICES_CATALOG.find((s) => s.id === 'deluxe-package') || SERVICES_CATALOG[0]
   const premiumItem = SERVICES_CATALOG.find((s) => s.id === 'premium-detail') || SERVICES_CATALOG[2]
+
+  // Detect vehicle type for vehicle-aware pricing (Premium Detail only)
+  const activeVehicleObj = savedVehicles?.find((v) => v.name === currentVehicle)
+  const activeVehicleType = activeVehicleObj?.type || 'Sedan'
+  const premiumPriceNumeric =
+    activeVehicleType === 'SUV'
+      ? (premiumItem.tieredPricing?.suv ?? 240)
+      : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
+        ? (premiumItem.tieredPricing?.truck ?? 280)
+        : (premiumItem.tieredPricing?.car ?? 190)
 
   const recommendedCards: {
     id: string
@@ -301,7 +301,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         id: premiumItem.id,
         title: premiumItem.title,
         category: premiumItem.category,
-        price: `$${premiumPriceNumeric}.00`,
+        price: `$${premiumPriceNumeric}.00+`,
         image: premiumItem.image,
         badge: `${activeVehicleType} Rate`,
         serviceItem: {
@@ -311,7 +311,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             : activeVehicleType === 'Truck' || activeVehicleType === 'Van'
               ? 'truck'
               : 'car') as 'car' | 'suv' | 'truck',
-          price: `$${premiumPriceNumeric}.00`,
+          price: `$${premiumPriceNumeric}.00+`,
           priceNumeric: premiumPriceNumeric,
           vehicleModel: `${activeVehicleType}${currentVehicle ? ` (${currentVehicle})` : ''}`,
         },

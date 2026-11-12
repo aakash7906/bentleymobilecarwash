@@ -436,14 +436,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
     (v) => v.name === effectiveVehicle || v.name === selectedVehicle
   )
   const vehicleType = getInferredVehicleType(effectiveVehicle, selectedVehicleObj)
-  const isTieredService = !!selectedService.tieredPricing
-  const vehicleSizeSurcharge = isTieredService
-    ? 0 // Vehicle size rate is built into the package tiered pricing
-    : vehicleType === 'SUV'
-      ? 15
-      : vehicleType === 'Truck' || vehicleType === 'Van'
-        ? 25
-        : 0
+  const isPremiumDetail = selectedService.id === 'premium-detail' && !!selectedService.tieredPricing
+  const isTieredService = isPremiumDetail
+  const vehicleSizeSurcharge = 0
 
 
 
@@ -461,7 +456,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
         : 'car')
 
   const basePrice =
-    selectedService.tieredPricing
+    isPremiumDetail && selectedService.tieredPricing
       ? effectiveTier === 'suv'
         ? selectedService.tieredPricing.suv
         : effectiveTier === 'truck'
@@ -528,6 +523,12 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   }
 
   const handleConfirmBooking = () => {
+    // 0. Only Cleaning Packages can be ordered
+    if (!isPackage) {
+      showToast('Individual services cannot be ordered separately. Please select a Cleaning Package.', 'error')
+      return
+    }
+
     // 1. Date selection validation
     if (selectedDateIndex < 0 || selectedDateIndex >= dateSlots.length) {
       showToast('Please select a valid booking date.', 'error')
@@ -611,6 +612,18 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             basePrice={basePrice}
           />
 
+          {!isPackage && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+              <span className="text-base">⚠️</span>
+              <div>
+                <p className="font-bold text-gray-900">Cleaning Package Required</p>
+                <p className="text-[11px] text-gray-700 mt-0.5 leading-relaxed">
+                  Individual services are for informational display and cannot be ordered directly. Please return and select an all-inclusive <strong>Cleaning Package</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 2. Vehicle Selector (Using Select component from select.tsx) */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -658,12 +671,17 @@ export const BookingPage: React.FC<BookingPageProps> = ({
               <span className="text-neutral-500">
                 Body Category: <strong className="text-neutral-800">{vehicleType}</strong>
               </span>
-              {vehicleSizeSurcharge > 0 ? (
-                <span className="text-primary font-semibold">
-                  +${vehicleSizeSurcharge}.00 size adjustment applied
-                </span>
+              {isPremiumDetail ? (
+                <div className="flex flex-col items-end">
+                  <span className="text-primary font-semibold">
+                    {effectiveTier.toUpperCase()} tier (${basePrice}.00+)
+                  </span>
+                  <span className="text-[10px] text-amber-800 font-medium">
+                    * Prices may vary depending on the vehicle
+                  </span>
+                </div>
               ) : (
-                <span className="text-emerald-700 font-medium">Standard size ($0 extra)</span>
+                <span className="text-emerald-700 font-medium">Standard rate ($0 extra)</span>
               )}
             </div>
           </div>
@@ -982,10 +1000,11 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <button
               onClick={handleConfirmBooking}
-              className="flex-1 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={!isPackage}
+              className={`flex-1 py-3.5 rounded-xl text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 ${!isPackage ? "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none" : "bg-primary hover:bg-primary-hover text-primary-foreground hover:shadow-lg active:scale-98 cursor-pointer"}`}
             >
               <Check className="w-4 h-4" />
-              <span>Confirm &amp; Schedule (Cash on Delivery)</span>
+              <span>{!isPackage ? 'Cleaning Package Required to Book' : 'Confirm &amp; Schedule (Cash on Delivery)'}</span>
             </button>
           </div>
         </div>

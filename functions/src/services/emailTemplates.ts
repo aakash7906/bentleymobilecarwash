@@ -1,14 +1,17 @@
 /**
  * Bentley Mobile Car Wash & Detailing - HTML Email Templates
- * Fully responsive, cross-client email templates matching Bentley luxury automotive styling.
+ * Minimalist, modern email templates inspired by clean design systems.
+ * Uses brand design tokens: Primary Red (#dc2626), Dark (#111418), Border (#e5e7eb), Background (#f8fafc).
  */
 
-const LOGIN_URL = process.env.APP_URL || "http://localhost:5173";
+const LOGIN_URL = process.env.APP_URL || "https://bentleymobilecarwash.pages.dev";
 const SUPPORT_EMAIL = process.env.SMTP_USER || "concierge@bentleycarwash.com";
-const PRIMARY_GOLD = "#D4AF37";
 
 /**
- * Common HTML wrapper matching the clean modern Bentley luxury branding.
+ * Common HTML wrapper with a minimalist card layout:
+ * - Brand logo / title centered at the top outside the card.
+ * - Clean white card with rounded corners and light border.
+ * - Minimal footer beneath the card.
  */
 function renderEmailWrapper(contentHtml: string) {
   const currentYear = new Date().getFullYear();
@@ -28,52 +31,67 @@ function renderEmailWrapper(contentHtml: string) {
       width: 100% !important;
       background-color: #f8fafc !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
     table, td {
       border-collapse: collapse !important;
     }
-    @media only screen and (max-width: 620px) {
+    a {
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
       .email-container {
         width: 100% !important;
         max-width: 100% !important;
       }
       .card-body {
-        padding: 24px 18px !important;
+        padding: 28px 20px !important;
       }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 20px 0; background-color: #f8fafc;">
+<body style="margin: 0; padding: 32px 12px; background-color: #f8fafc;">
   <center style="width: 100%; background-color: #f8fafc;">
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
       <tr>
-        <td align="center" style="padding: 20px 12px;">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);">
-            <!-- Header -->
+        <td align="center" style="padding: 0 0 20px 0;">
+          <!-- Centered Brand Header Outside Card -->
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
             <tr>
-              <td align="center" style="background-color: #0f172a; padding: 28px 24px; border-bottom: 2px solid ${PRIMARY_GOLD};">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">BENTLEY MOBILE CAR WASH</h1>
-                <p style="margin: 4px 0 0 0; font-size: 11px; color: ${PRIMARY_GOLD}; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Premium Eco-Friendly Detailing</p>
-              </td>
-            </tr>
-            <!-- Content -->
-            <tr>
-              <td class="card-body" style="padding: 36px 32px; background-color: #ffffff;">
-                ${contentHtml}
-              </td>
-            </tr>
-            <!-- Footer -->
-            <tr>
-              <td style="padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
-                <p style="margin: 0 0 6px 0; font-weight: 600; color: #334155;">Bentley Mobile Car Wash &amp; Auto Detailing</p>
-                <p style="margin: 0 0 10px 0;">Kelowna &amp; Okanagan Valley, British Columbia, Canada</p>
-                <p style="margin: 0; font-size: 11px;">
-                  Need assistance? Contact our concierge at <a href="mailto:${SUPPORT_EMAIL}" style="color: #0f172a; font-weight: 700; text-decoration: underline;">${SUPPORT_EMAIL}</a>
-                </p>
-                <p style="margin: 12px 0 0 0; font-size: 11px; color: #94a3b8;">&copy; ${currentYear} Bentley Mobile Car Wash. All rights reserved.</p>
+              <td align="center">
+                <span style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #111418; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                  Bentley<span style="color: #dc2626;">.</span>
+                </span>
+                <div style="font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px;">
+                  Mobile Car Wash &bull; Detailing
+                </div>
               </td>
             </tr>
           </table>
+
+          <!-- Minimalist White Card -->
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; border: 1px solid #e5e7eb; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); overflow: hidden;">
+            <tr>
+              <td class="card-body" style="padding: 40px 36px; background-color: #ffffff;">
+                ${contentHtml}
+              </td>
+            </tr>
+          </table>
+
+          <!-- Minimal Footer Beneath Card -->
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; margin: 24px auto 0 auto; text-align: center;">
+            <tr>
+              <td style="text-align: center; font-size: 12px; color: #9ca3af; line-height: 1.6; padding: 0 16px;">
+                <p style="margin: 0 0 4px 0; font-weight: 600; color: #6b7280;">Bentley Mobile Car Wash &amp; Auto Detailing</p>
+                <p style="margin: 0 0 8px 0; font-size: 11px; color: #9ca3af;">Kelowna &amp; Okanagan Valley, British Columbia</p>
+                <p style="margin: 0 0 12px 0; font-size: 11px;">
+                  Questions? Reach out to <a href="mailto:${SUPPORT_EMAIL}" style="color: #dc2626; font-weight: 600; text-decoration: none;">${SUPPORT_EMAIL}</a>
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #cbd5e1;">&copy; ${currentYear} Bentley Mobile Car Wash. All rights reserved.</p>
+              </td>
+            </tr>
+          </table>
+
         </td>
       </tr>
     </table>
@@ -82,13 +100,16 @@ function renderEmailWrapper(contentHtml: string) {
 </html>`;
 }
 
+/**
+ * Modern minimalist CTA button matching the project's signature red theme.
+ */
 function renderActionButton(buttonText: string, actionUrl: string) {
   return `
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0 10px 0;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 32px 0 8px 0;">
       <tr>
         <td align="center">
-          <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; border-radius: 9999px; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-            ${buttonText} &rarr;
+          <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 36px; background-color: #dc2626; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25); letter-spacing: 0.2px;">
+            ${buttonText}
           </a>
         </td>
       </tr>
@@ -112,55 +133,97 @@ export const bookingConfirmationEmailTemplate = (booking: {
   technicianName?: string;
 }) => {
   return renderEmailWrapper(`
-    <div style="text-align: center; margin-bottom: 24px;">
-      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
-        Appointment Confirmed &amp; Paid
-      </span>
-      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Detail is Scheduled!</h2>
-      <p style="margin: 0; font-size: 14px; color: #64748b;">
-        Hello <strong>${booking.customerName}</strong>, our mobile detailing technician will arrive on time with a fully equipped mobile unit.
-      </p>
-    </div>
+    <!-- Headline & Greeting -->
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
+      Your detailing is confirmed, ${booking.customerName}! 🚗
+    </h1>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+      Thank you for booking with Bentley Mobile Car Wash. Our mobile detailing technician is scheduled to arrive at your address with a fully self-contained unit.
+    </p>
 
-    <!-- Booking Details Card -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+    <!-- Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; margin-bottom: 24px; font-size: 13px;">
       <tr>
-        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Booking Reference</td>
-        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${booking.bookingId}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Booking Reference</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-family: monospace; color: #111418;">${booking.bookingId}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Service Package</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.serviceTitle}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Service Package</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #111418;">${booking.serviceTitle}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Target Vehicle</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.vehicle}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Target Vehicle</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${booking.vehicle}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Scheduled Time</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.date} at ${booking.timeSlot}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Date &amp; Time</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${booking.date} at ${booking.timeSlot}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Location / Dispatch Address</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.address}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Dispatch Address</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${booking.address}</td>
       </tr>
       ${booking.technicianName ? `
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Assigned Technician</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.technicianName}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Assigned Detailer</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #111418;">${booking.technicianName}</td>
       </tr>` : ''}
       <tr>
-        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
-        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
+        <td style="padding: 14px 16px; font-weight: 700; color: #111418;">Total Paid</td>
+        <td align="right" style="padding: 14px 16px; font-weight: 800; font-size: 15px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
       </tr>
-
     </table>
 
-    <div style="background-color: #f1f5f9; padding: 16px; border-radius: 12px; margin-top: 20px; font-size: 12px; color: #475569; line-height: 1.5;">
-      <strong>What to expect next:</strong> Our technician brings 100% pure deionized spot-free water, whisper-quiet generators, and biodegradable pH-neutral chemicals. Please ensure vehicle keys are accessible.
-    </div>
+    <!-- Next Steps List -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 10px;">
+      <tr>
+        <td style="font-size: 14px; font-weight: 700; color: #111418; padding-bottom: 14px;">Next steps for your appointment:</td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">1</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Vehicle Access:</strong> Please ensure keys are accessible and the car is parked with 3-4 feet of clearance.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">2</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Zero Hassle:</strong> Our mobile van carries spot-free pure water, gentle power, and eco-safe detailing chemicals.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 4px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">3</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Track Progress:</strong> View live booking status, track the arrival time, or adjust details directly in the app.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    ${renderActionButton("View Booking in App", LOGIN_URL)}
+    ${renderActionButton("View Booking in App", `${LOGIN_URL}?open=booking&id=${encodeURIComponent(booking.bookingId)}`)}
   `);
 };
 
@@ -176,43 +239,91 @@ export const orderConfirmationEmailTemplate = (order: {
 }) => {
   const itemsHtml = order.items.map((item) => `
     <tr>
-      <td style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 600;">
-        ${item.title} <span style="color: #64748b; font-size: 11px;">(Qty: ${item.quantity})</span>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #111418; font-weight: 600;">
+        ${item.title} <span style="color: #6b7280; font-size: 12px; font-weight: 400;">&times; ${item.quantity}</span>
       </td>
-      <td align="right" style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: 700; color: #0f172a;">
+      <td align="right" style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-family: monospace; font-weight: 700; color: #111418;">
         ${item.price}
       </td>
     </tr>
   `).join('');
 
   return renderEmailWrapper(`
-    <div style="text-align: center; margin-bottom: 24px;">
-      <span style="display: inline-block; background-color: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #bfdbfe;">
-        Order Placed Successfully
-      </span>
-      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Bentley Detailing Products</h2>
-      <p style="margin: 0; font-size: 14px; color: #64748b;">
-        Thank you for ordering, <strong>${order.customerName}</strong>! Your official detailing supplies are being prepped.
-      </p>
-    </div>
+    <!-- Headline & Greeting -->
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
+      Order confirmed, ${order.customerName}! 📦
+    </h1>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+      Thank you for purchasing official Bentley car care supplies. We are preparing your order for fast dispatch.
+    </p>
 
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+    <!-- Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; margin-bottom: 24px; font-size: 13px;">
       <tr>
-        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Order Number</td>
-        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${order.orderId}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Order Reference</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-family: monospace; color: #111418;">${order.orderId}</td>
       </tr>
       ${itemsHtml}
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Delivery Address</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${order.shippingAddress}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Shipping Address</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${order.shippingAddress}</td>
       </tr>
       <tr>
-        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
-        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
+        <td style="padding: 14px 16px; font-weight: 700; color: #111418;">Total Paid</td>
+        <td align="right" style="padding: 14px 16px; font-weight: 800; font-size: 15px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
       </tr>
     </table>
 
-    ${renderActionButton("Track Your Order", LOGIN_URL)}
+    <!-- Next Steps List -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 10px;">
+      <tr>
+        <td style="font-size: 14px; font-weight: 700; color: #111418; padding-bottom: 14px;">Next steps for your delivery:</td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">1</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Packing &amp; Inspection:</strong> Your car care products are carefully packaged to prevent any leaks or transit damage.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">2</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Courier Dispatch:</strong> As soon as the courier scans your package, tracking updates will be accessible.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 4px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">3</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Track in App:</strong> Monitor order milestones, reorder essentials, and view invoices in your app account.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${renderActionButton("Track Your Order", `${LOGIN_URL}?open=order&id=${encodeURIComponent(order.orderId)}`)}
   `);
 };
 
@@ -221,17 +332,20 @@ export const orderConfirmationEmailTemplate = (order: {
  */
 export const passwordResetEmailTemplate = (userName: string, resetUrl: string) => {
   return renderEmailWrapper(`
-    <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 800; color: #0f172a;">Reset Your Password</h2>
-    <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-      Hello <strong>${userName}</strong>,<br/><br/>
-      We received a request to reset the password for your Bentley Mobile Car Wash account. Click the button below to choose a new secure password.
+    <!-- Headline & Greeting -->
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
+      Reset your password 🔐
+    </h1>
+    <p style="margin: 0 0 20px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+      Hello <strong>${userName}</strong>,<br/>
+      We received a request to reset the password for your Bentley Mobile Car Wash account. Click the button below to choose a new password.
     </p>
 
     ${renderActionButton("Reset Password", resetUrl)}
 
-    <p style="margin: 20px 0 0 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-      If you did not request a password reset, you can safely ignore this email. Your account remains completely secure.
-    </p>
+    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #9ca3af; line-height: 1.5; text-align: center;">
+      If you did not request a password reset, you can safely disregard this email. Your account remains completely secure.
+    </div>
   `);
 };
 
@@ -249,51 +363,94 @@ export const bookingCompletedEmailTemplate = (booking: {
   invoiceNumber?: string;
 }) => {
   return renderEmailWrapper(`
-    <div style="text-align: center; margin-bottom: 24px;">
-      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
-        Service Completed &bull; Sparkle Guaranteed ✨
-      </span>
-      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Car Wash is Complete!</h2>
-      <p style="margin: 0; font-size: 14px; color: #64748b;">
-        Hello <strong>${booking.customerName}</strong>, your vehicle has been professionally detailed and inspected.
-      </p>
-    </div>
+    <!-- Headline & Greeting -->
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
+      Your car wash is complete, ${booking.customerName}!
+    </h1>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+      Our detailing specialist has completed servicing your vehicle. We hope you enjoy that showroom finish and fresh interior feel!
+    </p>
 
-    <!-- Booking Completion Details Card -->
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+    <!-- Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; margin-bottom: 24px; font-size: 13px;">
       <tr>
-        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Booking Reference</td>
-        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${booking.bookingId}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Booking Reference</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-family: monospace; color: #111418;">${booking.bookingId}</td>
       </tr>
       ${booking.invoiceNumber ? `
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Official Invoice #</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.invoiceNumber}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Official Invoice #</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #111418;">${booking.invoiceNumber}</td>
       </tr>` : ''}
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Service Package</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.serviceTitle}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Service Package</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #111418;">${booking.serviceTitle}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Vehicle Detailed</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${booking.vehicle}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Vehicle Detailed</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${booking.vehicle}</td>
       </tr>
       ${booking.technicianName ? `
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Completed By</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${booking.technicianName}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Completed By</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #111418;">${booking.technicianName}</td>
       </tr>` : ''}
       <tr>
-        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Paid</td>
-        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
+        <td style="padding: 14px 16px; font-weight: 700; color: #111418;">Total Paid</td>
+        <td align="right" style="padding: 14px 16px; font-weight: 800; font-size: 15px; color: #059669; font-family: monospace;">${booking.price} CAD</td>
       </tr>
     </table>
 
-    <div style="background-color: #f1f5f9; padding: 16px; border-radius: 12px; margin-top: 20px; font-size: 12px; color: #475569; line-height: 1.5; text-align: center;">
-      ⭐️ <strong>How was your experience?</strong> Open the Bentley app to rate your detailer and download your PDF invoice.
-    </div>
+    <!-- Next Steps List -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 10px;">
+      <tr>
+        <td style="font-size: 14px; font-weight: 700; color: #111418; padding-bottom: 14px;">Next steps &amp; feedback:</td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">1</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Inspect Your Vehicle:</strong> Check out the deep-cleaned rims, spot-free exterior glass, and refreshed interior.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">2</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Leave a Review:</strong> Rate your technician and tell us how we did — your feedback keeps our standard high.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 4px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">3</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Download Invoice:</strong> Your PDF receipt and service breakdown are stored securely in your Bentley app profile.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    ${renderActionButton("View Booking & Rate Service", LOGIN_URL)}
+    ${renderActionButton("View Booking & Rate Service", `${LOGIN_URL}?open=booking&id=${encodeURIComponent(booking.bookingId)}`)}
   `);
 };
 
@@ -309,42 +466,90 @@ export const orderDeliveredEmailTemplate = (order: {
 }) => {
   const itemsHtml = order.items.map((item) => `
     <tr>
-      <td style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 600;">
-        ${item.title} <span style="color: #64748b; font-size: 11px;">(Qty: ${item.quantity})</span>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #111418; font-weight: 600;">
+        ${item.title} <span style="color: #6b7280; font-size: 12px; font-weight: 400;">&times; ${item.quantity}</span>
       </td>
-      <td align="right" style="padding: 10px 18px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: 700; color: #0f172a;">
+      <td align="right" style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-family: monospace; font-weight: 700; color: #111418;">
         ${item.price}
       </td>
     </tr>
   `).join('');
 
   return renderEmailWrapper(`
-    <div style="text-align: center; margin-bottom: 24px;">
-      <span style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #a7f3d0;">
-        Delivered Successfully 📦
-      </span>
-      <h2 style="margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Your Order Has Arrived!</h2>
-      <p style="margin: 0; font-size: 14px; color: #64748b;">
-        Hello <strong>${order.customerName}</strong>, your package of Bentley detailing supplies has been delivered.
-      </p>
-    </div>
+    <!-- Headline & Greeting -->
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
+      Your order has arrived, ${order.customerName}! 🎉
+    </h1>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+      Your package of premium Bentley car care products has been delivered to your destination.
+    </p>
 
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 20px 0; font-size: 13px;">
+    <!-- Details Card -->
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; margin-bottom: 24px; font-size: 13px;">
       <tr>
-        <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Order Number</td>
-        <td align="right" style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 800; font-family: monospace; color: #0f172a;">${order.orderId}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Order Reference</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-family: monospace; color: #111418;">${order.orderId}</td>
       </tr>
       ${itemsHtml}
       <tr>
-        <td style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Delivered To</td>
-        <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${order.shippingAddress}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 500;">Delivered To</td>
+        <td align="right" style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #111418;">${order.shippingAddress}</td>
       </tr>
       <tr>
-        <td style="padding: 14px 18px; font-weight: 800; color: #0f172a; font-size: 14px;">Total Amount</td>
-        <td align="right" style="padding: 14px 18px; font-weight: 800; font-size: 16px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
+        <td style="padding: 14px 16px; font-weight: 700; color: #111418;">Total Amount</td>
+        <td align="right" style="padding: 14px 16px; font-weight: 800; font-size: 15px; color: #059669; font-family: monospace;">$${order.grandTotal} CAD</td>
       </tr>
     </table>
 
-    ${renderActionButton("Open App & View Orders", LOGIN_URL)}
+    <!-- Next Steps List -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 10px;">
+      <tr>
+        <td style="font-size: 14px; font-weight: 700; color: #111418; padding-bottom: 14px;">Next steps with your supplies:</td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">1</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Check Package:</strong> Unbox your items and inspect the bottles and microfiber towels.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 12px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">2</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Application Guide:</strong> Check the instructions on each bottle for recommended dilution and application techniques.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 4px;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td valign="top" style="width: 28px;">
+                <div style="width: 22px; height: 22px; border-radius: 50%; background-color: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; text-align: center; line-height: 22px; border: 1px solid #fee2e2;">3</div>
+              </td>
+              <td valign="top" style="padding-left: 10px; font-size: 13px; line-height: 1.5; color: #4b5563;">
+                <strong style="color: #111418;">Easy Reorder:</strong> Running low on spray or shampoo? Reorder anytime with one tap from the Bentley app.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${renderActionButton("Open App & View Orders", `${LOGIN_URL}?open=order&id=${encodeURIComponent(order.orderId)}`)}
   `);
 };

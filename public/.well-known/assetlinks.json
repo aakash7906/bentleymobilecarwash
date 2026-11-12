@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.uxdlab.bentelyMobileAutoDetailCarWash",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:53:C7:E7:5C:38:DF:46:17:34:3B:5C:9E:C6:67:84:82:19:12:F5:2F:3A:4E:91:67:13:B5:12:44:91"
+      ]
+    }
+  }
+]
