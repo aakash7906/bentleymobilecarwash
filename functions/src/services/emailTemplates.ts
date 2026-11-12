@@ -366,6 +366,7 @@ export const bookingCompletedEmailTemplate = (booking: {
     <!-- Headline & Greeting -->
     <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #111418; line-height: 1.3; letter-spacing: -0.3px;">
       Your car wash is complete, ${booking.customerName}!
+      
     </h1>
     <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
       Our detailing specialist has completed servicing your vehicle. We hope you enjoy that showroom finish and fresh interior feel!

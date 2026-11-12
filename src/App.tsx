@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { TabType, ServiceItem } from '@/types'
 import { Header } from '@/components/Header'
 import { BottomNav } from '@/components/BottomNav'
-import { SmartAppBanner } from '@/components/common/SmartAppBanner'
 
 // Instant Frame-0 Shell Skeletons (Eagerly loaded for zero-blank-screen refresh)
 import { HomeTab } from '@/pages/Tabs/HomeTab'
@@ -455,7 +454,6 @@ const AppContent: React.FC = () => {
       {/* 6. Mobile, Tablet & Desktop App Canvas (Customer Portal) */}
       {isAppReady && currentRole === 'customer' && (
         <main className="w-full max-w-full min-h-[100dvh] bg-white relative flex flex-col">
-          <SmartAppBanner />
           {/* Top Header */}
           {currentTab !== 'home' && currentTab !== 'bookings' && (
             <Header

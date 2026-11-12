@@ -174,14 +174,8 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Complete interior and exterior mobile detailing for RVs, travel trailers, and motorhomes. We bring all water, power, and industrial equipment directly to your site.',
     included: [
-      'Full RV exterior pressure foam wash & roof rinse',
-      'Tire shine, rim decontamination & wheel well degrease',
-      'Bug, tar, and road film heavy removal',
-      'Streak-free exterior window & windshield polish',
-      'Complete cockpit & cabin deep vacuuming',
-      'Living quarters floor scrub & mat shampoo',
-      'Interior surface sanitation & odor neutralization',
-      'Exterior protective UV sealant coat',
+      'Exterior Washing & Cleaning',
+      'Interior Washing & Cleaning'
     ],
   },
   {
@@ -190,21 +184,15 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     category: 'Specialty',
     price: '$900.00',
     priceNumeric: 900,
-    estTime: 'Half-Day (3–4+ Hours)',
+    estTime: '3–4+ Hours',
     vehicleModel: 'Watercraft & Boats',
     isSpecialty: true,
     image: '/services_img/boat_cleaning.png',
     description:
       'Professional marine detailing and high-gloss gelcoat polish for speedboats, pontoons, and watercraft. Eliminates waterline stains, oxidization, and protects against lake elements.',
     included: [
-      'Marine-grade hull and deck foam wash',
-      'Waterline scum, algae, and salt deposit removal',
-      'Gelcoat oxidation removal & compound polish',
-      'Marine UV protective wax sealant application',
-      'Vinyl seat deep cleaning and UV conditioning',
-      'Non-skid deck scrubbing and extraction',
-      'Metal & chrome rail brightwork polishing',
-      'Cabin vacuum and interior sanitation',
+      'Exterior Washing & Cleaning',
+      'Interior Washing & Cleaning'
     ],
   },
   {
