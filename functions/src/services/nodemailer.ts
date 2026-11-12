@@ -32,7 +32,7 @@ function getSmtpConfig() {
   const from =
     process.env.SMTP_FROM ||
     configSmtp.from ||
-    `"Bentley Mobile Car Wash" <${user || "concierge@bentleycarwash.com"}>`;
+    `"Bentley Mobile Car Wash" <${user || "bentleymobilecarwash@gmail.com"}>`;
 
   return { host, port, secure, user, pass, service, from };
 }

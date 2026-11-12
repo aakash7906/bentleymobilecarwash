@@ -9,30 +9,34 @@ if (!admin.apps.length) {
 
 const databaseId = process.env.DATABASE_ID || "carwash";
 const projectId = process.env.PROJECT_ID || "nexen-platform";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "bentleymobilecarwash@gmail.com";
+
 const db = new admin.firestore.Firestore({
   databaseId,
   projectId,
 });
 
-// Helper to resolve customer email if not explicitly saved on the document
-async function resolveCustomerEmail(docData: any): Promise<{ email: string; name: string }> {
+// Helper to resolve customer email, name, and phone from document or user profile
+async function resolveCustomerDetails(docData: any): Promise<{ email: string; name: string; phone?: string }> {
   let email = docData.customerEmail || docData.userEmail || docData.email || "";
   let name = docData.customerName || docData.userName || docData.name || "Valued Client";
+  let phone = docData.customerPhone || docData.phone || docData.userPhone || "";
 
-  if (!email && docData.userId) {
+  if ((!email || !phone) && docData.userId) {
     try {
       const userSnap = await db.collection("users").doc(docData.userId).get();
       if (userSnap.exists) {
         const u = userSnap.data();
-        email = u?.email || "";
-        name = u?.name || u?.fullName || u?.displayName || name;
+        if (!email) email = u?.email || "";
+        if (name === "Valued Client") name = u?.name || u?.fullName || u?.displayName || name;
+        if (!phone) phone = u?.phone || u?.phoneNumber || "";
       }
     } catch (e) {
       console.warn("Could not fetch user document for userId:", docData.userId, e);
     }
   }
 
-  return { email: email.trim(), name };
+  return { email: email.trim(), name, phone: phone.trim() };
 }
 
 // ============================================================================
@@ -42,6 +46,7 @@ async function resolveCustomerEmail(docData: any): Promise<{ email: string; name
 /**
  * 1. REAL-TIME TRIGGER: When a new car wash service is booked
  * Triggers instantly on document creation in 'bookings/{bookingId}'
+ * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
  */
 export const onBookingCreated = functions.firestore
   .database(databaseId)
@@ -51,37 +56,64 @@ export const onBookingCreated = functions.firestore
     if (!booking) return;
 
     const bookingId = context.params.bookingId || booking.id || snap.id;
-    const { email: recipientEmail, name: customerName } = await resolveCustomerEmail(booking);
+    const { email: recipientEmail, name: customerName, phone: customerPhone } = await resolveCustomerDetails(booking);
 
-    if (!recipientEmail) {
-      console.warn(`[onBookingCreated] No customer email found for booking #${bookingId}. Skipping email.`);
-      return;
+    const bookingPayload = {
+      bookingId,
+      customerName,
+      customerEmail: recipientEmail,
+      customerPhone,
+      serviceTitle: booking.title || booking.category || "Mobile Car Wash & Detailing",
+      vehicle: booking.vehicle || "Vehicle",
+      date: booking.date || "Scheduled Date",
+      timeSlot: booking.time || "Scheduled Time",
+      address: booking.address || "Client Location",
+      price: String(booking.price || booking.totalNumeric || "0"),
+      paymentMethod: booking.paymentMethod || "Credit Card",
+      technicianName: booking.technicianName || booking.driverName || "Assigned Specialist",
+    };
+
+    const tasks: Promise<any>[] = [];
+
+    // 1. Send confirmation to Customer
+    if (recipientEmail) {
+      const customerHtml = templates.bookingConfirmationEmailTemplate(bookingPayload);
+      tasks.push(
+        dispatchEmail({
+          to: recipientEmail,
+          subject: `Booking Confirmed: Bentley Mobile Detailing (#${bookingId}) 🚗✨`,
+          html: customerHtml,
+        })
+          .then(() => {
+            console.log(`[onBookingCreated] Customer email sent to ${recipientEmail} for booking #${bookingId}`);
+          })
+          .catch((err) => {
+            console.error(`[onBookingCreated] Error sending email to customer ${recipientEmail}:`, err);
+          })
+      );
+    } else {
+      console.warn(`[onBookingCreated] No customer email found for booking #${bookingId}.`);
     }
 
-    try {
-      const html = templates.bookingConfirmationEmailTemplate({
-        bookingId,
-        customerName,
-        serviceTitle: booking.title || booking.category || "Mobile Car Wash & Detailing",
-        vehicle: booking.vehicle || "Vehicle",
-        date: booking.date || "Scheduled Date",
-        timeSlot: booking.time || "Scheduled Time",
-        address: booking.address || "Client Location",
-        price: String(booking.price || booking.totalNumeric || "0"),
-        paymentMethod: booking.paymentMethod || "Credit Card",
-        technicianName: booking.technicianName || booking.driverName || "Assigned Specialist",
-      });
-
-      await dispatchEmail({
-        to: recipientEmail,
-        subject: `Booking Confirmed: Bentley Mobile Detailing (#${bookingId}) 🚗✨`,
-        html,
-      });
-
-      console.log(`[onBookingCreated] Confirmation email dispatched to ${recipientEmail} for booking #${bookingId}`);
-    } catch (error) {
-      console.error(`[onBookingCreated] Error sending email for booking #${bookingId}:`, error);
+    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
+    if (ADMIN_EMAIL) {
+      const adminHtml = templates.adminBookingNotificationEmailTemplate(bookingPayload);
+      tasks.push(
+        dispatchEmail({
+          to: ADMIN_EMAIL,
+          subject: `🚨 New Booking: ${bookingPayload.serviceTitle} (#${bookingId}) - ${customerName}`,
+          html: adminHtml,
+        })
+          .then(() => {
+            console.log(`[onBookingCreated] Admin alert email dispatched to ${ADMIN_EMAIL} for booking #${bookingId}`);
+          })
+          .catch((err) => {
+            console.error(`[onBookingCreated] Error sending alert to admin ${ADMIN_EMAIL}:`, err);
+          })
+      );
     }
+
+    await Promise.allSettled(tasks);
   });
 
 /**
@@ -100,34 +132,33 @@ export const onBookingStatusUpdated = functions.firestore
     // Check if status transitioned to 'completed'
     if (beforeData.status !== "completed" && afterData.status === "completed") {
       const bookingId = context.params.bookingId || afterData.id || change.after.id;
-      const { email: recipientEmail, name: customerName } = await resolveCustomerEmail(afterData);
+      const { email: recipientEmail, name: customerName } = await resolveCustomerDetails(afterData);
 
       if (!recipientEmail) {
         console.warn(`[onBookingStatusUpdated] No email found for completed booking #${bookingId}.`);
-        return;
-      }
+      } else {
+        try {
+          const html = templates.bookingCompletedEmailTemplate({
+            bookingId,
+            customerName,
+            serviceTitle: afterData.title || afterData.category || "Mobile Car Wash",
+            vehicle: afterData.vehicle || "Vehicle",
+            date: afterData.date || new Date().toLocaleDateString(),
+            price: String(afterData.price || afterData.totalNumeric || "0"),
+            technicianName: afterData.technicianName || afterData.driverName,
+            invoiceNumber: afterData.invoiceNumber || afterData.invoiceId,
+          });
 
-      try {
-        const html = templates.bookingCompletedEmailTemplate({
-          bookingId,
-          customerName,
-          serviceTitle: afterData.title || afterData.category || "Mobile Car Wash",
-          vehicle: afterData.vehicle || "Vehicle",
-          date: afterData.date || new Date().toLocaleDateString(),
-          price: String(afterData.price || afterData.totalNumeric || "0"),
-          technicianName: afterData.technicianName || afterData.driverName,
-          invoiceNumber: afterData.invoiceNumber || afterData.invoiceId,
-        });
+          await dispatchEmail({
+            to: recipientEmail,
+            subject: `Car Wash Completed: Bentley Mobile Detailing (#${bookingId}) ✨🚗`,
+            html,
+          });
 
-        await dispatchEmail({
-          to: recipientEmail,
-          subject: `Car Wash Completed: Bentley Mobile Detailing (#${bookingId}) ✨🚗`,
-          html,
-        });
-
-        console.log(`[onBookingStatusUpdated] Completion email sent to ${recipientEmail} for booking #${bookingId}`);
-      } catch (error) {
-        console.error(`[onBookingStatusUpdated] Error sending completion email:`, error);
+          console.log(`[onBookingStatusUpdated] Completion email sent to ${recipientEmail} for booking #${bookingId}`);
+        } catch (error) {
+          console.error(`[onBookingStatusUpdated] Error sending completion email:`, error);
+        }
       }
     }
   });
@@ -135,6 +166,7 @@ export const onBookingStatusUpdated = functions.firestore
 /**
  * 3. REAL-TIME TRIGGER: When a customer buys detailing supplies/products
  * Triggers instantly on document creation in 'orders/{orderId}'
+ * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
  */
 export const onOrderCreated = functions.firestore
   .database(databaseId)
@@ -144,40 +176,68 @@ export const onOrderCreated = functions.firestore
     if (!order) return;
 
     const orderId = context.params.orderId || order.id || snap.id;
-    const { email: recipientEmail, name: customerName } = await resolveCustomerEmail(order);
+    const { email: recipientEmail, name: customerName, phone: customerPhone } = await resolveCustomerDetails(order);
 
-    if (!recipientEmail) {
-      console.warn(`[onOrderCreated] No customer email found for order #${orderId}. Skipping email.`);
-      return;
+    const items = Array.isArray(order.items)
+      ? order.items.map((i: any) => ({
+        title: i.title || i.name || "Detailing Product",
+        quantity: Number(i.quantity || 1),
+        price: typeof i.price === "number" ? `$${i.price.toFixed(2)}` : String(i.price || "$0.00"),
+      }))
+      : [];
+
+    const orderPayload = {
+      orderId,
+      customerName,
+      customerEmail: recipientEmail,
+      customerPhone,
+      items,
+      grandTotal: String(order.grandTotal || "0.00"),
+      shippingAddress: order.shippingAddress || order.deliveryAddress || "Customer Address",
+      paymentMethod: order.paymentMethod || "Credit Card",
+    };
+
+    const tasks: Promise<any>[] = [];
+
+    // 1. Send confirmation to Customer
+    if (recipientEmail) {
+      const customerHtml = templates.orderConfirmationEmailTemplate(orderPayload);
+      tasks.push(
+        dispatchEmail({
+          to: recipientEmail,
+          subject: `Order Confirmation: Bentley Detailing Products (#${orderId}) 🛍️`,
+          html: customerHtml,
+        })
+          .then(() => {
+            console.log(`[onOrderCreated] Customer email sent to ${recipientEmail} for order #${orderId}`);
+          })
+          .catch((err) => {
+            console.error(`[onOrderCreated] Error sending order email to customer ${recipientEmail}:`, err);
+          })
+      );
+    } else {
+      console.warn(`[onOrderCreated] No customer email found for order #${orderId}.`);
     }
 
-    try {
-      const items = Array.isArray(order.items)
-        ? order.items.map((i: any) => ({
-            title: i.title || i.name || "Detailing Product",
-            quantity: Number(i.quantity || 1),
-            price: typeof i.price === "number" ? `$${i.price.toFixed(2)}` : String(i.price || "$0.00"),
-          }))
-        : [];
-
-      const html = templates.orderConfirmationEmailTemplate({
-        orderId,
-        customerName,
-        items,
-        grandTotal: String(order.grandTotal || "0.00"),
-        shippingAddress: order.shippingAddress || order.deliveryAddress || "Customer Address",
-      });
-
-      await dispatchEmail({
-        to: recipientEmail,
-        subject: `Order Confirmation: Bentley Detailing Products (#${orderId}) 🛍️`,
-        html,
-      });
-
-      console.log(`[onOrderCreated] Order email dispatched to ${recipientEmail} for order #${orderId}`);
-    } catch (error) {
-      console.error(`[onOrderCreated] Error sending email for order #${orderId}:`, error);
+    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
+    if (ADMIN_EMAIL) {
+      const adminHtml = templates.adminOrderNotificationEmailTemplate(orderPayload);
+      tasks.push(
+        dispatchEmail({
+          to: ADMIN_EMAIL,
+          subject: `🛍️ New Sale: Store Order (#${orderId}) - $${orderPayload.grandTotal} CAD (${customerName})`,
+          html: adminHtml,
+        })
+          .then(() => {
+            console.log(`[onOrderCreated] Admin alert email dispatched to ${ADMIN_EMAIL} for order #${orderId}`);
+          })
+          .catch((err) => {
+            console.error(`[onOrderCreated] Error sending alert to admin ${ADMIN_EMAIL}:`, err);
+          })
+      );
     }
+
+    await Promise.allSettled(tasks);
   });
 
 /**
@@ -196,76 +256,64 @@ export const onOrderStatusUpdated = functions.firestore
     // Check if status transitioned to 'delivered'
     if (beforeData.status !== "delivered" && afterData.status === "delivered") {
       const orderId = context.params.orderId || afterData.id || change.after.id;
-      const { email: recipientEmail, name: customerName } = await resolveCustomerEmail(afterData);
+      const { email: recipientEmail, name: customerName } = await resolveCustomerDetails(afterData);
 
       if (!recipientEmail) {
         console.warn(`[onOrderStatusUpdated] No email found for delivered order #${orderId}.`);
-        return;
-      }
-
-      try {
-        const items = Array.isArray(afterData.items)
-          ? afterData.items.map((i: any) => ({
+      } else {
+        try {
+          const items = Array.isArray(afterData.items)
+            ? afterData.items.map((i: any) => ({
               title: i.title || i.name || "Detailing Product",
               quantity: Number(i.quantity || 1),
               price: typeof i.price === "number" ? `$${i.price.toFixed(2)}` : String(i.price || "$0.00"),
             }))
-          : [];
+            : [];
 
-        const html = templates.orderDeliveredEmailTemplate({
-          orderId,
-          customerName,
-          items,
-          grandTotal: String(afterData.grandTotal || "0.00"),
-          shippingAddress: afterData.shippingAddress || afterData.deliveryAddress || "Customer Address",
-        });
+          const html = templates.orderDeliveredEmailTemplate({
+            orderId,
+            customerName,
+            items,
+            grandTotal: String(afterData.grandTotal || "0.00"),
+            shippingAddress: afterData.shippingAddress || afterData.deliveryAddress || "Customer Address",
+          });
 
-        await dispatchEmail({
-          to: recipientEmail,
-          subject: `Package Delivered: Bentley Detailing Products (#${orderId}) 📦🎉`,
-          html,
-        });
+          await dispatchEmail({
+            to: recipientEmail,
+            subject: `Delivered: Your Bentley Detailing Products (#${orderId}) 📦✨`,
+            html,
+          });
 
-        console.log(`[onOrderStatusUpdated] Delivery email dispatched to ${recipientEmail} for order #${orderId}`);
-      } catch (error) {
-        console.error(`[onOrderStatusUpdated] Error sending delivered email:`, error);
+          console.log(`[onOrderStatusUpdated] Delivered email sent to ${recipientEmail} for order #${orderId}`);
+        } catch (error) {
+          console.error(`[onOrderStatusUpdated] Error sending delivered email:`, error);
+        }
       }
     }
   });
 
 // ============================================================================
-// CALLABLE FUNCTIONS (NODEMAILER)
+// CALLABLE FUNCTIONS
 // ============================================================================
 
 /**
  * Callable Function: sendContactEmail
  */
 export const sendContactEmail = functions.https.onCall(async (data: any) => {
-  const { name, email, subject, message } = data || {};
+  const { name, email, phone, message } = data || {};
 
   if (!name || !email || !message) {
-    throw new functions.https.HttpsError("invalid-argument", "Name, email, and message are required.");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Name, email, and message are required."
+    );
   }
-
-  const adminEmail = process.env.SMTP_USER || "concierge@bentleycarwash.com";
-  const htmlBody = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; color: #1e293b;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">New Concierge Inquiry</h2>
-      <p><strong>Name:</strong> ${name}</p>
-      <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-      <p><strong>Subject:</strong> ${subject || "General Inquiry"}</p>
-      <div style="background-color: #f8fafc; border-left: 4px solid #D4AF37; padding: 12px 16px; margin-top: 16px; border-radius: 4px;">
-        <p style="white-space: pre-wrap; margin: 0; font-size: 14px;">${message}</p>
-      </div>
-    </div>
-  `;
 
   try {
     await dispatchEmail({
-      to: adminEmail,
-      subject: `[Bentley Concierge] ${subject || "Inquiry from " + name}`,
-      html: htmlBody,
-      replyTo: email,
+      to: ADMIN_EMAIL,
+      subject: `New Inquiry from ${name} - Bentley Mobile Car Wash`,
+      text: `Customer Name: ${name}\nEmail: ${email}\nPhone: ${phone || "Not provided"}\n\nMessage:\n${message}`,
     });
 
     await dispatchEmail({
@@ -283,6 +331,7 @@ export const sendContactEmail = functions.https.onCall(async (data: any) => {
 
 /**
  * Callable Function: sendBookingConfirmationEmail
+ * Dispatches confirmation to customer and notification to admin
  */
 export const sendBookingConfirmationEmail = functions.https.onCall(async (data: any) => {
   const { recipientEmail, booking } = data || {};
@@ -290,16 +339,40 @@ export const sendBookingConfirmationEmail = functions.https.onCall(async (data: 
     throw new functions.https.HttpsError("invalid-argument", "recipientEmail and booking object are required.");
   }
 
+  const tasks: Promise<any>[] = [];
+
+  // 1. Customer email
   const html = templates.bookingConfirmationEmailTemplate(booking);
-  return await dispatchEmail({
-    to: recipientEmail,
-    subject: `Booking Confirmed: Bentley Mobile Detailing (#${booking.bookingId}) 🚗✨`,
-    html,
-  });
+  tasks.push(
+    dispatchEmail({
+      to: recipientEmail,
+      subject: `Booking Confirmed: Bentley Mobile Detailing (#${booking.bookingId}) 🚗✨`,
+      html,
+    })
+  );
+
+  // 2. Admin notification
+  if (ADMIN_EMAIL) {
+    const adminHtml = templates.adminBookingNotificationEmailTemplate({
+      ...booking,
+      customerEmail: recipientEmail,
+    });
+    tasks.push(
+      dispatchEmail({
+        to: ADMIN_EMAIL,
+        subject: `🚨 New Booking: ${booking.serviceTitle || "Detailing"} (#${booking.bookingId}) - ${booking.customerName}`,
+        html: adminHtml,
+      })
+    );
+  }
+
+  const results = await Promise.allSettled(tasks);
+  return { success: true, results };
 });
 
 /**
  * Callable Function: sendOrderNotificationEmail
+ * Dispatches confirmation to customer and notification to admin
  */
 export const sendOrderNotificationEmail = functions.https.onCall(async (data: any) => {
   const { recipientEmail, order } = data || {};
@@ -307,12 +380,35 @@ export const sendOrderNotificationEmail = functions.https.onCall(async (data: an
     throw new functions.https.HttpsError("invalid-argument", "recipientEmail and order are required.");
   }
 
+  const tasks: Promise<any>[] = [];
+
+  // 1. Customer email
   const html = templates.orderConfirmationEmailTemplate(order);
-  return await dispatchEmail({
-    to: recipientEmail,
-    subject: `Order Confirmation: Bentley Detailing Products (#${order.orderId}) 🛍️`,
-    html,
-  });
+  tasks.push(
+    dispatchEmail({
+      to: recipientEmail,
+      subject: `Order Confirmation: Bentley Detailing Products (#${order.orderId}) 🛍️`,
+      html,
+    })
+  );
+
+  // 2. Admin notification
+  if (ADMIN_EMAIL) {
+    const adminHtml = templates.adminOrderNotificationEmailTemplate({
+      ...order,
+      customerEmail: recipientEmail,
+    });
+    tasks.push(
+      dispatchEmail({
+        to: ADMIN_EMAIL,
+        subject: `🛍️ New Sale: Store Order (#${order.orderId}) - $${order.grandTotal} CAD (${order.customerName})`,
+        html: adminHtml,
+      })
+    );
+  }
+
+  const results = await Promise.allSettled(tasks);
+  return { success: true, results };
 });
 
 /**
@@ -325,7 +421,7 @@ export const sendCustomPasswordResetEmail = functions.https.onCall(async (data: 
   }
 
   try {
-    const targetUrl = continueUrl || `${process.env.APP_URL || "http://localhost:5173"}/reset-password`;
+    const targetUrl = continueUrl || `${process.env.APP_URL || "https://bentleymobilecarwash.pages.dev"}/reset-password`;
     const actionCodeSettings = {
       url: targetUrl,
       handleCodeInApp: true,
@@ -371,9 +467,7 @@ export const deleteUserAccount = functions.https.onCall(async (data: any, contex
     throw new functions.https.HttpsError("invalid-argument", "targetUid is required.");
   }
 
-  // Ensure caller is either the user themselves or an admin
   if (context.auth && context.auth.uid !== targetUid) {
-    // Check if caller is admin, or allow caller if authorized
     console.log(`[deleteUserAccount] Authorized deletion requested for uid: ${targetUid}`);
   }
 

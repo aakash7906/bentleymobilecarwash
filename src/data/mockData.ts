@@ -207,11 +207,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Applying a car-specific soap to a wash or sponge, and begin washing the car from the top down. This will help prevent any dirt or grime from being pushed down onto lower parts of the car.',
     included: [
-      'Car-specific foaming soap application',
-      'Top-down gentle microfiber hand wash',
-      'Gentle dirt and road grime removal',
-      'Wheel, tire and rim cleaning',
-      'Streak-free chamois hand dry',
+   
     ],
   },
   {
@@ -226,11 +222,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Interior detailing involves thoroughly cleaning and restoring the interior surfaces of a car. Removing any trash or debris from the car, including floor mats and seat covers.',
     included: [
-      'Deep interior surface cleaning & restoration',
-      'Trash and debris complete removal',
-      'Floor mats and seat covers shampoo & extraction',
-      'Dashboard, vents, and console wipe-down',
-      'Odor elimination and interior refresh',
+     
     ],
   },
   {
@@ -245,11 +237,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Exterior detailing involves cleaning and restoring the exterior surfaces of a car. Interior detailing involves thoroughly cleaning and restoring the interior surfaces of a car.',
     included: [
-      'Complete exterior 2-bucket hand wash & dry',
-      'Full cabin vacuuming and crevice cleaning',
-      'Interior dashboard and trim conditioning',
-      'Crystal-clear window cleaning inside & out',
-      'Tire shine and protective wheel finish',
+
     ],
   },
   {
@@ -264,11 +252,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       "Interior vacuuming is an important step in keeping your car's interior clean and free of debris. Vacuum the dashboard, center console, door panels, and other hard surfaces. Use a soft-bristled brush attachment to avoid scratching any surfaces.",
     included: [
-      'High-power cabin and carpet vacuuming',
-      'Dashboard, center console and vent dusting',
-      'Door panels & seat crevice detailed suction',
-      'Soft-bristled delicate scratch-free brush technique',
-      'Trunk & rear cargo compartment vacuuming',
+      
     ],
   },
   {
@@ -283,11 +267,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'The underbody wash is an important part of a car wash that involves cleaning the underside of the vehicle, which is often exposed to road salt, dirt, and debris.',
     included: [
-      'High-pressure undercarriage chassis rinse',
-      'Road salt, mud, and road film removal',
-      'Wheel arch and suspension deep wash',
-      'Corrosion and rust prevention treatment',
-      'Complete undercarriage visual inspection',
+     
     ],
   },
   {
@@ -303,11 +283,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Fleet maintenance is a service provided by us to commercial vehicle owners and fleet managers. It involves the regular maintenance and cleaning of multiple vehicles in a fleet.',
     included: [
-      'Scheduled commercial multi-vehicle cleaning',
-      'Complete exterior wash and interior sanitation',
-      'Flexible on-site mobile wash service',
-      'Volume fleet discount rates',
-      'Dedicated fleet account manager & priority booking',
+     
     ],
   },
   {
@@ -323,11 +299,7 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       'Bentleymobilecarwash is proud to be an xpel certified installer of self healing paint protection film (PPF) mobile service in kelowna protect your entire vehicle or just its most vulnerable areas the choice is yours as xpel certified installers we provide industry leading paint protection film designed to shield your cars finish from chips scratches and environmental damage our team specializes in custom fitting PPF and window tinting to ensure maximum coverage for high impact areas like the hood bumper side mirrors and finders preserving your vehicles paint against rocks road debris and daily wear we us top -quality products and follow strict installation standards providing superior durability and clarity in every application xpel film are self healing which allows minor scratches to disappear over time with heat exposure keeping your vehicle looking freshly polished our PPF installations are nearly invisible giving you seamless protection without altering the aesthetics of your car bentleymobileautodetailcarwash offers a range of coverage options from partial to full vehicle wrap so you can choose the level of protection that suits your needs serving kelowna and the Okanagan valley',
     included: [
-      'XPEL certified self-healing PPF installation',
-      'Full hood, bumper, mirrors & fender coverage options',
-      'Protection against rock chips, scratches & environmental damage',
-      'Heat-activated self-healing clear coat technology',
-      'Precision custom computer-cut fitment with wrapped edges',
+
     ],
   },
   {
@@ -343,11 +315,6 @@ export const SERVICES_CATALOG: ServiceItem[] = [
     description:
       "Ceramic coating is a liquid polymer applied to a car's exterior to create a protective layer that bonds with the paint. It enhances the vehicle's shine while providing long-term protection against UV rays, oxidation, dirt, water spots, and minor scratches. Unlike traditional wax, which wears off over time, ceramic coatings are more durable and hydrophobic, making it easier to clean the car and maintain its glossy finish. Although it doesn't make a car completely scratch-proof, it significantly reduces the risk of swirl marks and chemical damage. While professional application offers the best results, DIY ceramic coating kits are also available for car enthusiasts looking to enhance their vehicle's longevity and appearance.",
     included: [
-      'Multi-year ultra-hydrophobic nano-ceramic polymer',
-      'Deep gloss and mirror-like shine enhancement',
-      'Superior UV ray, chemical, and bird-drop resistance',
-      'Significant reduction in swirl marks & water spots',
-      'Effortless maintenance washing surface',
     ],
   },
 ]
