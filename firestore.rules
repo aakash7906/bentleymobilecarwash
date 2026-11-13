@@ -12,18 +12,20 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isDriver() {
+    function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.role == 'driver' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email == 'bentleymobilecarwash@gmail.com' ||
+        request.auth.token.email == 'support@bentleycarwash.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver')
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
     // 1. Users & Customer Profiles
     match /users/{userId} {
-      // Users can only view and edit their own profile; drivers can view customer/partner details
-      allow read: if isOwner(userId) || isDriver();
+      // Users can only view and edit their own profile; admins can view customer details
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
@@ -36,10 +38,10 @@ service cloud.firestore {
 
     // 2. Bookings Collection (Zero Public Leaks)
     match /bookings/{bookingId} {
-      // Customers can ONLY read their own bookings. Drivers can view available requests & assigned jobs.
+      // Customers can ONLY read their own bookings. Admins can view available requests & assigned jobs.
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || 
-        isDriver() ||
+        isAdmin() ||
         resource.data.status == 'pending'
       );
       // Customers can create their own bookings
@@ -47,10 +49,10 @@ service cloud.firestore {
         !('userId' in request.resource.data) ||
         request.resource.data.userId == request.auth.uid
       );
-      // Customers can cancel/rate, Drivers can accept/update status & live GPS
+      // Customers can cancel/rate, Admins can accept/update status & live GPS
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || 
-        isDriver()
+        isAdmin()
       );
       // Allow account deletion cleanup for owner
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
@@ -58,16 +60,16 @@ service cloud.firestore {
 
     // 3. Shop Orders Collection
     match /orders/{orderId} {
-      // Customers can ONLY read their own orders. Drivers can view pending dispatches & assigned deliveries.
+      // Customers can ONLY read their own orders. Admins can view pending dispatches & assigned deliveries.
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || 
-        isDriver() ||
+        isAdmin() ||
         resource.data.status == 'pending'
       );
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || 
-        isDriver()
+        isAdmin()
       );
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
@@ -77,16 +79,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         !('userId' in resource.data) ||
         request.auth.uid == resource.data.userId ||
-        isDriver()
+        isAdmin()
       );
       allow create: if isAuthenticated();
-      allow update, delete: if isDriver();
+      allow update, delete: if isAdmin();
     }
 
     // 5. Contact Inquiries (Allows public to contact support without login)
     match /inquiries/{inquiryId} {
       allow create: if true;
-      allow read, update, delete: if isAuthenticated() && isDriver();
+      allow read, update, delete: if isAuthenticated() && isAdmin();
     }
   }
 }

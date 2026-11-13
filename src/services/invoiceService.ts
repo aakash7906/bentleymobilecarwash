@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/firebase'
-import { BookingRecord, DriverProfile, InvoiceRecord, InvoiceItem, PaymentCollectionData, ShopOrder } from '@/types'
+import { BookingRecord, AdminProfile, DriverProfile, InvoiceRecord, InvoiceItem, PaymentCollectionData, ShopOrder } from '@/types'
 
 /**
  * Remove undefined values from object before writing to Firestore
@@ -214,7 +214,7 @@ export async function createShopOrderInvoice(
     currency: 'CAD',
     paymentMethod: order.paymentMethod === 'cod' ? 'Cash on Delivery (Cash Collected)' : (order.paymentMethod || 'Cash on Delivery'),
     paymentStatus: 'paid',
-    paymentCollectedBy: driverProfile?.name || order.driverName || 'Delivery Driver',
+    paymentCollectedBy: driverProfile?.name || order.driverName || 'Bentley Admin',
     paymentCollectedAt: new Date().toISOString(),
     paymentCollectedMethod: order.paymentMethod === 'cod' ? 'Cash' : 'Prepaid',
     driverId: order.driverId || '',

@@ -28,8 +28,9 @@ interface BookingsTabProps {
   onViewServiceDetail: (service: ServiceItem) => void
   currentVehicle: string
   bookings?: BookingRecord[]
+  adminProfile?: DriverProfile
   driverProfile?: DriverProfile
-  onCancelBooking?: (bookingId: string, cancelledBy?: 'customer' | 'driver', reason?: string) => void
+  onCancelBooking?: (bookingId: string, cancelledBy?: 'customer' | 'admin' | 'driver', reason?: string) => void
   onRescheduleBooking?: (bookingId: string, newDate: string, newTime: string) => void
   onRateBooking?: (bookingId: string, rating: number, review: string) => void
 }
@@ -67,11 +68,13 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
   onViewServiceDetail,
   currentVehicle,
   bookings = [],
+  adminProfile,
   driverProfile,
   onCancelBooking,
   onRescheduleBooking,
   onRateBooking,
 }) => {
+  const activeProfile = adminProfile || driverProfile
   const [trackingModalOpen, setTrackingModalOpen] = useState(() => {
     try {
       return localStorage.getItem('bentley_customer_tracking_open') === 'true'
@@ -163,10 +166,10 @@ export const BookingsTab: React.FC<BookingsTabProps> = ({
     }
     if (
       (booking.status === 'accepted' || booking.status === 'en_route' || booking.status === 'in_progress') &&
-      driverProfile?.name &&
-      driverProfile.name.trim().toLowerCase() !== 'alex rivera'
+      activeProfile?.name &&
+      activeProfile.name.trim().toLowerCase() !== 'alex rivera'
     ) {
-      return driverProfile.name.trim()
+      return activeProfile.name.trim()
     }
     return ''
   }

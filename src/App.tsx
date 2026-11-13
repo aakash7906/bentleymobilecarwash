@@ -5,7 +5,7 @@ import { BottomNav } from '@/components/BottomNav'
 
 // Instant Frame-0 Shell Skeletons (Eagerly loaded for zero-blank-screen refresh)
 import { HomeTab } from '@/pages/Tabs/HomeTab'
-import { HomeTabSkeleton, DriverDashboardSkeleton } from '@/components/ui/skeleton'
+import { HomeTabSkeleton, AdminDashboardSkeleton, DriverDashboardSkeleton } from '@/components/ui/skeleton'
 
 // Lazy-Loaded Feature Slices & Modals for High-Performance Code Splitting
 const ServicesTab = lazy(() => import('@/pages/Tabs/ServicesTab').then(m => ({ default: m.ServicesTab })))
@@ -13,7 +13,8 @@ const NotificationsTab = lazy(() => import('@/pages/Tabs/NotificationsTab').then
 const BookingsTab = lazy(() => import('@/pages/Tabs/BookingsTab').then(m => ({ default: m.BookingsTab })))
 const ProfileTab = lazy(() => import('@/pages/Tabs/ProfileTab').then(m => ({ default: m.ProfileTab })))
 
-const DriverDashboard = lazy(() => import('@/pages/Driver/DriverDashboardPage').then(m => ({ default: m.DriverDashboard })))
+const AdminDashboard = lazy(() => import('@/pages/Admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboard })))
+const DriverDashboard = AdminDashboard
 const BookingPage = lazy(() => import('@/pages/Booking/BookingPage').then(m => ({ default: m.BookingPage })))
 const ServiceDetailModal = lazy(() => import('@/components/modals').then(m => ({ default: m.ServiceDetailModal })))
 const SavedVehiclesModal = lazy(() => import('@/components/modals').then(m => ({ default: m.SavedVehiclesModal })))
@@ -51,12 +52,14 @@ const AppContent: React.FC = () => {
     authMode,
     setAuthMode,
     userProfileData,
+    adminProfile,
     driverProfile,
     detectedAddress,
     detectedCity,
     detectedPostalCode,
     handleUpdateGlobalLocation,
     handleUpdateProfile,
+    handleUpdateAdminProfile,
     handleUpdateDriverProfile,
     handleLogout,
     handleDeleteAccount,
@@ -331,8 +334,8 @@ const AppContent: React.FC = () => {
       {/* 3. ZERO-DELAY FRAME-0 SKELETON (Renders instantly on refresh during Auth handshake) */}
       {!showSplash && !showOnboarding && isAuthResolving && (
         <div className="w-full min-h-[100dvh] bg-white flex flex-col animate-in fade-in duration-200">
-          {currentRole === 'driver' ? (
-            <DriverDashboardSkeleton />
+          {currentRole === 'admin' ? (
+            <AdminDashboardSkeleton />
           ) : (
             <main className="w-full max-w-full min-h-[100dvh] bg-white relative flex flex-col">
               <div className="flex-1 w-full">
@@ -356,12 +359,16 @@ const AppContent: React.FC = () => {
               } catch {}
             }}
             onLoginSuccess={(user) => {
-              if (user?.role === 'driver') {
-                setCurrentRole('driver')
+              if (user?.role === 'admin') {
+                setCurrentRole('admin')
                 try {
-                  localStorage.setItem('bentley_current_role', 'driver')
+                  localStorage.setItem('bentley_current_role', 'admin')
+                  localStorage.setItem('bentley_admin_current_tab', 'orders')
+                  localStorage.setItem('bentley_admin_orders_subtab', 'available')
                   localStorage.setItem('bentley_driver_current_tab', 'orders')
                   localStorage.setItem('bentley_driver_orders_subtab', 'available')
+                  localStorage.removeItem('bentley_admin_profile_open')
+                  localStorage.removeItem('bentley_admin_map_booking_id')
                   localStorage.removeItem('bentley_driver_profile_open')
                   localStorage.removeItem('bentley_driver_map_booking_id')
                 } catch {}
@@ -374,13 +381,7 @@ const AppContent: React.FC = () => {
               }
               window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
-            onSwitchToSignup={(role) => {
-              if (role) {
-                setCurrentRole(role)
-                try {
-                  localStorage.setItem('bentley_current_role', role)
-                } catch {}
-              }
+            onSwitchToSignup={() => {
               setCurrentTab('home')
               setAuthMode('signup')
             }}
@@ -399,12 +400,16 @@ const AppContent: React.FC = () => {
               } catch {}
             }}
             onSignupSuccess={(user) => {
-              if (user?.role === 'driver') {
-                setCurrentRole('driver')
+              if (user?.role === 'admin') {
+                setCurrentRole('admin')
                 try {
-                  localStorage.setItem('bentley_current_role', 'driver')
+                  localStorage.setItem('bentley_current_role', 'admin')
+                  localStorage.setItem('bentley_admin_current_tab', 'orders')
+                  localStorage.setItem('bentley_admin_orders_subtab', 'available')
                   localStorage.setItem('bentley_driver_current_tab', 'orders')
                   localStorage.setItem('bentley_driver_orders_subtab', 'available')
+                  localStorage.removeItem('bentley_admin_profile_open')
+                  localStorage.removeItem('bentley_admin_map_booking_id')
                   localStorage.removeItem('bentley_driver_profile_open')
                   localStorage.removeItem('bentley_driver_map_booking_id')
                 } catch {}
@@ -417,13 +422,7 @@ const AppContent: React.FC = () => {
               }
               window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
-            onSwitchToLogin={(role) => {
-              if (role) {
-                setCurrentRole(role)
-                try {
-                  localStorage.setItem('bentley_current_role', role)
-                } catch {}
-              }
+            onSwitchToLogin={() => {
               setCurrentTab('home')
               setAuthMode('login')
             }}
@@ -431,20 +430,20 @@ const AppContent: React.FC = () => {
         </Suspense>
       )}
 
-      {/* 5. Dedicated Driver Partner Portal */}
-      {isAppReady && currentRole === 'driver' && (
+      {/* 5. Dedicated Admin Operations & Dispatch Portal */}
+      {isAppReady && currentRole === 'admin' && (
         <div className="w-full min-h-[100dvh]">
-          <Suspense fallback={<DriverDashboardSkeleton />}>
-            <DriverDashboard
+          <Suspense fallback={<AdminDashboardSkeleton />}>
+            <AdminDashboard
               bookings={bookings}
               onAcceptOrder={handleAcceptOrder}
               onUpdateStatus={handleUpdateBookingStatus}
               onCancelBooking={handleCancelBooking}
               onLogout={handleLogout}
-              driverName={driverProfile.name}
-              driverEmail={driverProfile.email}
-              driverProfile={driverProfile}
-              onUpdateDriverProfile={handleUpdateDriverProfile}
+              adminName={adminProfile?.name || driverProfile?.name || 'Bentley Admin'}
+              adminEmail={adminProfile?.email || driverProfile?.email || 'bentleymobilecarwash@gmail.com'}
+              adminProfile={adminProfile || driverProfile}
+              onUpdateAdminProfile={handleUpdateAdminProfile}
               onDeleteAccount={handleDeleteAccount}
             />
           </Suspense>
@@ -532,7 +531,8 @@ const AppContent: React.FC = () => {
                   }}
                   currentVehicle={currentVehicle}
                   bookings={bookings}
-                  driverProfile={driverProfile}
+                  adminProfile={adminProfile || driverProfile}
+                  driverProfile={adminProfile || driverProfile}
                   onCancelBooking={handleCancelBooking}
                   onRescheduleBooking={handleRescheduleBooking}
                   onRateBooking={handleRateBooking}

@@ -13,21 +13,23 @@ import {
   serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '@/firebase'
-import { UserProfile, DriverProfile } from '@/types'
+import { UserProfile, AdminProfile, DriverProfile } from '@/types'
 import { useToast } from './ToastContext'
 
 export interface AuthContextType {
   currentUser: User | null
   isAuthLoading: boolean
   isResolvingRole: boolean
-  currentRole: 'customer' | 'driver'
-  setCurrentRole: (role: 'customer' | 'driver') => void
+  currentRole: 'customer' | 'admin'
+  setCurrentRole: (role: 'customer' | 'admin') => void
   authMode: 'login' | 'signup'
   setAuthMode: (mode: 'login' | 'signup') => void
   userProfileData: any
   setUserProfileData: React.Dispatch<React.SetStateAction<any>>
-  driverProfile: DriverProfile
-  setDriverProfile: React.Dispatch<React.SetStateAction<DriverProfile>>
+  adminProfile: AdminProfile
+  setAdminProfile: React.Dispatch<React.SetStateAction<AdminProfile>>
+  driverProfile: AdminProfile
+  setDriverProfile: React.Dispatch<React.SetStateAction<AdminProfile>>
   detectedAddress: string
   detectedCity: string
   detectedPostalCode: string
@@ -38,10 +40,21 @@ export interface AuthContextType {
     streetVal?: string
   ) => Promise<void>
   handleUpdateProfile: (updated: UserProfile) => Promise<void>
-  handleUpdateDriverProfile: (updated: DriverProfile) => Promise<void>
+  handleUpdateAdminProfile: (updated: AdminProfile) => Promise<void>
+  handleUpdateDriverProfile: (updated: AdminProfile) => Promise<void>
   handleLogout: () => Promise<void>
   handleDeleteAccount: () => Promise<boolean>
   isDeletingAccountRef: React.MutableRefObject<boolean>
+}
+
+export const ADMIN_EMAILS: string[] = [
+  'bentleymobilecarwash@gmail.com',
+  'support@bentleycarwash.com',
+]
+
+export const isAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase())
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -62,10 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isResolvingRole, setIsResolvingRole] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
 
-  const [currentRole, setCurrentRole] = useState<'customer' | 'driver'>(() => {
+  const [currentRole, setCurrentRole] = useState<'customer' | 'admin'>(() => {
     try {
       const stored = localStorage.getItem('bentley_current_role')
-      if (stored === 'driver' || stored === 'customer') return stored
+      if (stored === 'admin' || stored === 'driver') return 'admin'
+      if (stored === 'customer') return 'customer'
     } catch {}
     return 'customer'
   })
@@ -112,9 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
   }, [userProfileData, currentUser])
 
-  const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
     try {
-      const stored = localStorage.getItem('bentley_driver_profile')
+      const stored = localStorage.getItem('bentley_admin_profile') || localStorage.getItem('bentley_driver_profile')
       if (stored) {
         const parsed = JSON.parse(stored)
         if (parsed.avatar && parsed.avatar.includes('unsplash.com')) {
@@ -133,13 +147,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch {}
     return {
-      name: '',
-      email: '',
+      name: 'Bentley Admin',
+      email: 'bentleymobilecarwash@gmail.com',
       phone: '',
-      vanModel: 'Mobile Detailing Unit',
+      vanModel: 'Admin Mobile Unit',
       licensePlate: '',
       serviceArea: 'Ontario & Greater Toronto Area',
-      driverLicenseNumber: '',
+      adminLicenseNumber: '',
       bio: '',
       emergencyContact: '',
       avatar: '',
@@ -167,22 +181,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user)
         try {
           const userDocSnap = await getDoc(doc(db, 'users', user.uid))
+          let isAdmin = isAdminEmail(user.email)
           if (userDocSnap.exists()) {
             const data = userDocSnap.data()
-            if (data?.role === 'driver') {
-              setCurrentRole('driver')
-              try {
-                localStorage.setItem('bentley_current_role', 'driver')
-              } catch {}
-            } else if (data?.role === 'customer') {
-              setCurrentRole('customer')
-              try {
-                localStorage.setItem('bentley_current_role', 'customer')
-              } catch {}
+            if (data?.role === 'admin' || data?.role === 'driver') {
+              isAdmin = true
             }
+          }
+
+          if (isAdmin) {
+            setCurrentRole('admin')
+            try {
+              localStorage.setItem('bentley_current_role', 'admin')
+            } catch {}
+          } else {
+            setCurrentRole('customer')
+            try {
+              localStorage.setItem('bentley_current_role', 'customer')
+            } catch {}
           }
         } catch (err) {
           console.warn('Could not prefetch user role:', err)
+          if (isAdminEmail(user.email)) {
+            setCurrentRole('admin')
+            try {
+              localStorage.setItem('bentley_current_role', 'admin')
+            } catch {}
+          }
         } finally {
           setIsResolvingRole(false)
           setIsAuthLoading(false)
@@ -199,6 +224,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('bentley_current_tab')
           localStorage.removeItem('bentley_booking_open')
           localStorage.removeItem('bentley_booking_service')
+          localStorage.removeItem('bentley_admin_tab')
+          localStorage.removeItem('bentley_admin_current_tab')
+          localStorage.removeItem('bentley_admin_orders_subtab')
+          localStorage.removeItem('bentley_admin_map_booking_id')
+          localStorage.removeItem('bentley_admin_profile_open')
+          localStorage.removeItem('bentley_admin_profile')
           localStorage.removeItem('bentley_driver_tab')
           localStorage.removeItem('bentley_driver_current_tab')
           localStorage.removeItem('bentley_driver_orders_subtab')
@@ -231,18 +262,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (docSnap.exists()) {
           const data = docSnap.data() as any
           setUserProfileData(data)
-          if (data.role === 'driver') {
-            setCurrentRole('driver')
-            setDriverProfile((prev) => ({
+          const isAdmin =
+            data.role === 'admin' ||
+            isAdminEmail(currentUser.email) ||
+            isAdminEmail(data.email)
+
+          if (isAdmin) {
+            setCurrentRole('admin')
+            try {
+              localStorage.setItem('bentley_current_role', 'admin')
+            } catch {}
+            const adminEmail = data.email || currentUser.email || 'bentleymobilecarwash@gmail.com'
+            const adminName =
+              data.Name ||
+              data.name ||
+              data.fullName ||
+              (adminEmail === 'support@bentleycarwash.com' ? 'Bentley Support Admin' : 'Bentley Admin')
+            setAdminProfile((prev) => ({
               ...prev,
-              name: data.Name || data.name || data.fullName || prev.name,
-              email: data.email || prev.email,
+              name: adminName,
+              email: adminEmail,
               phone: data.driverPhone || data.phone || prev.phone,
               vanModel:
                 data.driverVan ||
                 data.driverDetails?.vehicle ||
                 data.driverDetails?.vanNumber ||
-                prev.vanModel,
+                'Admin Mobile Unit',
               licensePlate:
                 data.driverPlate || data.driverDetails?.licensePlate || prev.licensePlate,
               serviceArea: data.serviceArea || prev.serviceArea,
@@ -253,8 +298,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return raw && !raw.includes('unsplash.com') ? raw : ''
               })(),
             }))
-          } else if (data.role === 'customer') {
+          } else {
             setCurrentRole('customer')
+            try {
+              localStorage.setItem('bentley_current_role', 'customer')
+            } catch {}
           }
         } else {
           setUserProfileData(null)
@@ -349,10 +397,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  // Update driver profile
-  const handleUpdateDriverProfile = async (updated: DriverProfile) => {
-    setDriverProfile(updated)
+  // Update admin profile
+  const handleUpdateAdminProfile = async (updated: AdminProfile) => {
+    setAdminProfile(updated)
     try {
+      localStorage.setItem('bentley_admin_profile', JSON.stringify(updated))
       localStorage.setItem('bentley_driver_profile', JSON.stringify(updated))
     } catch {}
 
@@ -365,6 +414,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             Name: updated.name,
             name: updated.name,
             fullName: updated.name,
+            phone: updated.phone,
             driverPhone: updated.phone,
             driverVan: updated.vanModel,
             driverPlate: updated.licensePlate,
@@ -382,7 +432,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               },
             },
             serviceArea: updated.serviceArea,
-            driverLicenseNumber: updated.driverLicenseNumber || '',
+            adminLicenseNumber: updated.adminLicenseNumber || '',
             bio: updated.bio || '',
             avatar: updated.avatar,
             isAvailable: updated.isAvailable,
@@ -391,10 +441,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { merge: true }
         )
       } catch (err) {
-        console.error('Failed to update driver profile in Firestore:', err)
+        console.error('Failed to update admin profile in Firestore:', err)
       }
     }
   }
+
+  const handleUpdateDriverProfile = handleUpdateAdminProfile
 
   // Logout handler
   const handleLogout = async () => {
@@ -575,13 +627,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthMode,
         userProfileData,
         setUserProfileData,
-        driverProfile,
-        setDriverProfile,
+        adminProfile,
+        setAdminProfile,
+        driverProfile: adminProfile,
+        setDriverProfile: setAdminProfile,
         detectedAddress,
         detectedCity,
         detectedPostalCode,
         handleUpdateGlobalLocation,
         handleUpdateProfile,
+        handleUpdateAdminProfile,
         handleUpdateDriverProfile,
         handleLogout,
         handleDeleteAccount,

@@ -149,7 +149,7 @@ export interface ShopOrder {
   invoiceId?: string
   invoiceNumber?: string
   invoiceGeneratedAt?: any
-  cancelledBy?: 'customer' | 'driver' | string
+  cancelledBy?: 'customer' | 'admin' | string
   cancelledAt?: any
   cancelReason?: string
 }
@@ -167,13 +167,14 @@ export interface UserProfile {
   savedAddresses?: DeliveryAddress[]
 }
 
-export interface DriverProfile {
+export interface AdminProfile {
   name: string
   email: string
   phone: string
   vanModel: string
   licensePlate: string
   serviceArea: string
+  adminLicenseNumber?: string
   driverLicenseNumber?: string
   bio?: string
   avatar: string
@@ -183,7 +184,9 @@ export interface DriverProfile {
   emergencyContact?: string
 }
 
-export type UserRole = 'customer' | 'driver' | 'admin'
+export type DriverProfile = AdminProfile
+
+export type UserRole = 'customer' | 'admin'
 
 export type BookingStatus =
   | 'pending'
@@ -243,7 +246,7 @@ export interface BookingRecord {
   invoiceId?: string
   invoiceNumber?: string
   invoiceGeneratedAt?: any
-  cancelledBy?: 'customer' | 'driver' | string
+  cancelledBy?: 'customer' | 'admin' | string
   cancelledAt?: any
   cancelReason?: string
 }

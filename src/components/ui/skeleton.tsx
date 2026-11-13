@@ -135,12 +135,12 @@ export const HomeTabSkeleton: React.FC = () => {
 }
 
 /**
- * Full page skeleton matching Driver Dashboard (DriverDashboardPage.tsx)
+ * Full page skeleton matching Admin Dashboard
  */
-export const DriverDashboardSkeleton: React.FC = () => {
+export const AdminDashboardSkeleton: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-gray-50/70 pb-28 select-none animate-in fade-in duration-300">
-      {/* 1. Driver Header Skeleton */}
+      {/* 1. Admin Header Skeleton */}
       <div className="bg-white border-b border-gray-200/80 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5 sm:gap-3">
           <Skeleton className="h-9 sm:h-10 w-11 sm:w-12 rounded-xl" />
@@ -218,3 +218,6 @@ export const DriverDashboardSkeleton: React.FC = () => {
     </div>
   )
 }
+
+export const DriverDashboardSkeleton = AdminDashboardSkeleton
+

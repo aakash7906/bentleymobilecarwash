@@ -5,7 +5,7 @@
  */
 
 const LOGIN_URL = process.env.APP_URL || "https://bentleymobilecarwash.pages.dev";
-const SUPPORT_EMAIL = process.env.SMTP_USER || "aakashkumar10th@gmail.com";
+const SUPPORT_EMAIL = process.env.SMTP_USER || "bentleymobilecarwash@gmail.com";
 
 /**
  * Common HTML wrapper with a minimalist card layout:
@@ -381,7 +381,7 @@ export const orderDeliveredEmailTemplate = (order: {
 
 /**
  * 6. Admin Booking Notification Email Template
- * Sent to aakashkumar10th@gmail.com whenever a customer places a new booking.
+ * Sent to bentleymobilecarwash@gmail.com whenever a customer places a new booking.
  */
 export const adminBookingNotificationEmailTemplate = (booking: {
   bookingId: string;
@@ -483,7 +483,7 @@ export const adminBookingNotificationEmailTemplate = (booking: {
 
 /**
  * 7. Admin Order Notification Email Template
- * Sent to aakashkumar10th@gmail.com whenever a customer places an order for detailing products.
+ * Sent to bentleymobilecarwash@gmail.com whenever a customer places an order for detailing products.
  */
 export const adminOrderNotificationEmailTemplate = (order: {
   orderId: string;

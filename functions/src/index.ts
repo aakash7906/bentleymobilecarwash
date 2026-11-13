@@ -9,7 +9,7 @@ if (!admin.apps.length) {
 
 const databaseId = process.env.DATABASE_ID || "carwash";
 const projectId = process.env.PROJECT_ID || "nexen-platform";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aakashkumar10th@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "bentleymobilecarwash@gmail.com";
 
 const db = new admin.firestore.Firestore({
   databaseId,
@@ -46,7 +46,7 @@ async function resolveCustomerDetails(docData: any): Promise<{ email: string; na
 /**
  * 1. REAL-TIME TRIGGER: When a new car wash service is booked
  * Triggers instantly on document creation in 'bookings/{bookingId}'
- * Sends confirmation email to Customer & simultaneous notification to Admin (aakashkumar10th@gmail.com)
+ * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
  */
 export const onBookingCreated = functions.firestore
   .database(databaseId)
@@ -95,7 +95,7 @@ export const onBookingCreated = functions.firestore
       console.warn(`[onBookingCreated] No customer email found for booking #${bookingId}.`);
     }
 
-    // 2. Simultaneously send alert to Admin (aakashkumar10th@gmail.com)
+    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
     if (ADMIN_EMAIL) {
       const adminHtml = templates.adminBookingNotificationEmailTemplate(bookingPayload);
       tasks.push(
@@ -166,7 +166,7 @@ export const onBookingStatusUpdated = functions.firestore
 /**
  * 3. REAL-TIME TRIGGER: When a customer buys detailing supplies/products
  * Triggers instantly on document creation in 'orders/{orderId}'
- * Sends confirmation email to Customer & simultaneous notification to Admin (aakashkumar10th@gmail.com)
+ * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
  */
 export const onOrderCreated = functions.firestore
   .database(databaseId)
@@ -231,7 +231,7 @@ export const onOrderCreated = functions.firestore
       console.warn(`[onOrderCreated] No customer email found for order #${orderId}.`);
     }
 
-    // 2. Simultaneously send alert to Admin (aakashkumar10th@gmail.com)
+    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
     if (ADMIN_EMAIL) {
       const adminHtml = templates.adminOrderNotificationEmailTemplate(orderPayload);
       tasks.push(

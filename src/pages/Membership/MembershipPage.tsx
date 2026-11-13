@@ -293,7 +293,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                   <span>Call (250) 351-9155</span>
                 </a>
                 <a
-                  href="mailto:aakashkumar10th@gmail.com"
+                  href="mailto:bentleymobilecarwash@gmail.com"
                   className="flex-1 py-2.5 px-3 rounded-lg border border-gray-200 text-gray-800 hover:bg-gray-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Mail className="w-3.5 h-3.5 text-gray-600" />

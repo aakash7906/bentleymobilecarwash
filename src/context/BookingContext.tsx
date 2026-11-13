@@ -31,7 +31,7 @@ export interface BookingContextType {
   handleBookingComplete: (newBooking: BookingRecord) => Promise<void>
   handleCancelBooking: (
     bookingId: string,
-    cancelledBy?: 'customer' | 'driver',
+    cancelledBy?: 'customer' | 'admin' | 'driver',
     cancelReason?: string
   ) => Promise<void>
   handleRescheduleBooking: (
@@ -65,7 +65,8 @@ export const useBookings = (): BookingContextType => {
 }
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, currentRole, driverProfile } = useAuth()
+  const { currentUser, currentRole, adminProfile, driverProfile } = useAuth()
+  const activeProfile = adminProfile || driverProfile
   const { showToast } = useToast()
 
   const [bookings, setBookings] = useState<BookingRecord[]>(() => {
@@ -121,7 +122,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!currentUser) return
 
     const bookingsQuery =
-      currentRole === 'driver'
+      currentRole === 'admin'
         ? query(collection(db, 'bookings'))
         : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
 
@@ -201,7 +202,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Cancel booking
   const handleCancelBooking = async (
     bookingId: string,
-    cancelledBy: 'customer' | 'driver' = 'customer',
+    cancelledBy: 'customer' | 'admin' | 'driver' = 'customer',
     cancelReason?: string
   ) => {
     const existing = bookings.find((b) => b.id === bookingId)
@@ -210,16 +211,16 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       existing &&
       ((existing.status !== 'scheduled' && existing.status !== 'pending') || Boolean(existing.driverId))
     ) {
-      showToast('Cancellation not allowed once driver has accepted the booking.', 'error')
+      showToast('Cancellation not allowed once an administrator has dispatched/accepted the booking.', 'error')
       return
     }
 
     if (
-      cancelledBy === 'driver' &&
+      (cancelledBy === 'admin' || cancelledBy === 'driver') &&
       existing &&
       (existing.status === 'en_route' || existing.status === 'in_progress' || existing.status === 'completed')
     ) {
-      showToast('Cancellation not allowed once you are en route or service has started.', 'error')
+      showToast('Cancellation not allowed once en route or service has started.', 'error')
       return
     }
 
@@ -237,8 +238,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       )
     )
     showToast(
-      cancelledBy === 'driver'
-        ? `Booking #${bookingId.slice(0, 8)} has been cancelled by driver.`
+      cancelledBy === 'admin' || cancelledBy === 'driver'
+        ? `Booking #${bookingId.slice(0, 8)} has been cancelled by Admin.`
         : `Your booking #${bookingId.slice(0, 8)} has been cancelled.`,
       'info'
     )
@@ -349,18 +350,24 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? [target.customerCoords[0] - 0.015, target.customerCoords[1] + 0.012]
         : undefined)
 
+    const adminName = activeProfile.name || 'Bentley Admin'
+    const adminPhone = activeProfile.phone || ''
+    const adminVehicle = activeProfile.vanModel || 'Admin Mobile Unit'
+    const adminPlate = activeProfile.licensePlate || ''
+    const adminAvatar = activeProfile.avatar || ''
+
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId
           ? {
               ...b,
               status: 'accepted' as const,
-              driverId: currentUser?.uid || 'drv-partner',
-              driverName: driverProfile.name,
-              driverPhone: driverProfile.phone,
-              driverVehicle: driverProfile.vanModel,
-              driverVanNumber: driverProfile.licensePlate,
-              driverAvatar: driverProfile.avatar || '',
+              driverId: currentUser?.uid || 'admin-master',
+              driverName: adminName,
+              driverPhone: adminPhone,
+              driverVehicle: adminVehicle,
+              driverVanNumber: adminPlate,
+              driverAvatar: adminAvatar,
               ...(resolvedCoords ? { driverCoords: resolvedCoords } : {}),
             }
           : b
@@ -373,11 +380,11 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const updateData: Record<string, any> = {
           status: 'accepted',
           driverId: currentUser.uid,
-          driverName: driverProfile.name,
-          driverPhone: driverProfile.phone,
-          driverVehicle: driverProfile.vanModel,
-          driverVanNumber: driverProfile.licensePlate,
-          driverAvatar: driverProfile.avatar || '',
+          driverName: adminName,
+          driverPhone: adminPhone,
+          driverVehicle: adminVehicle,
+          driverVanNumber: adminPlate,
+          driverAvatar: adminAvatar,
           acceptedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }
@@ -392,10 +399,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
           const data = snap.data()
           if (data.status !== 'scheduled' && data.status !== 'pending') {
-            throw new Error('This booking has already been claimed by another technician.')
+            throw new Error('This booking has already been claimed.')
           }
           if (data.driverId && data.driverId !== currentUser.uid) {
-            throw new Error('This booking has already been assigned to another technician.')
+            throw new Error('This booking has already been assigned to another administrator.')
           }
           transaction.update(bookingDocRef, updateData)
         })

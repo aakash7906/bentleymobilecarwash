@@ -1,34 +1,29 @@
 ﻿import React, { useState } from 'react'
-import { Eye, EyeOff, Check, Loader2, Truck, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { useToast } from '@/context/ToastContext'
-// STEP 1 INTEGRATION: Import Firebase auth & Firestore instances and methods
+import { isAdminEmail } from '@/context/AuthContext'
 import { auth, db } from '@/firebase'
 import {
   signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
   sendPasswordResetEmail,
+  User,
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 export interface LoginProps {
-  onLoginSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'driver' }) => void
-  onSwitchToSignup?: (role?: 'customer' | 'driver') => void
-  onRoleChange?: (role: 'customer' | 'driver') => void
-  initialRole?: 'customer' | 'driver'
+  onLoginSuccess: (user: { name: string; email: string; uid?: string; role?: 'customer' | 'admin' }) => void
+  onSwitchToSignup?: () => void
+  onRoleChange?: (role: 'customer' | 'admin') => void
+  initialRole?: 'customer' | 'admin'
 }
 
 export const Login: React.FC<LoginProps> = ({
   onLoginSuccess,
   onSwitchToSignup,
   onRoleChange,
-  initialRole = 'customer',
 }) => {
-  // Global Toast Hook
   const { showToast } = useToast()
-  // Role State (Customer vs Driver)
-  const [selectedRole, setSelectedRole] = useState<'customer' | 'driver'>(initialRole)
 
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('')
@@ -43,19 +38,14 @@ export const Login: React.FC<LoginProps> = ({
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({})
 
-  // -------------------------------------------------------------
-  // VALIDATION HELPER: Standard Email Regex Pattern
-  // -------------------------------------------------------------
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/
     return emailRegex.test(email.trim())
   }
 
-  // STEP 1 INTEGRATION: Real Firebase Email & Password Sign-in handler with Validation & Toasters
   const handleLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
-    // Mark all as touched on submit
     setTouched({ email: true, password: true })
 
     const newErrors: { email?: string; password?: string } = {}
@@ -73,7 +63,6 @@ export const Login: React.FC<LoginProps> = ({
 
     setErrors(newErrors)
 
-    // 1. Check if any errors
     if (newErrors.email) {
       showToast(newErrors.email, 'error')
       return
@@ -84,53 +73,78 @@ export const Login: React.FC<LoginProps> = ({
     }
 
     setLoading(true)
-    onRoleChange?.(selectedRole)
+
+    const cleanEmail = loginEmail.trim().toLowerCase()
+    const isAdminAccount = isAdminEmail(cleanEmail)
+
+    const ADMIN_NAMES: Record<string, string> = {
+      'bentleymobilecarwash@gmail.com': 'Bentley Admin',
+      'support@bentleycarwash.com': 'Bentley Support Admin',
+    }
 
     try {
-      // Authenticate with Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword)
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, loginPassword)
       const user = userCredential.user
 
-      // Retrieve actual registered role from Firestore
-      let resolvedRole: 'customer' | 'driver' = selectedRole
+      let resolvedRole: 'customer' | 'admin' = isAdminAccount ? 'admin' : 'customer'
+
       try {
         const userDocRef = doc(db, 'users', user.uid)
         const userDoc = await getDoc(userDocRef)
         if (userDoc.exists()) {
           const data = userDoc.data()
-          if (data?.role === 'driver' || data?.role === 'customer') {
-            resolvedRole = data.role
+          if (data?.role === 'admin' || isAdminAccount) {
+            resolvedRole = 'admin'
           }
         } else {
-          // Self-heal: Ensure user document exists in Firestore
-          await setDoc(userDocRef, {
-            uid: user.uid,
-            Name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
-            name: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
-            fullName: user.displayName || user.email?.split('@')[0] || (selectedRole === 'driver' ? 'Driver Partner' : 'Member'),
-            email: user.email || loginEmail.trim(),
-            role: selectedRole,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          }, { merge: true })
+          await setDoc(
+            userDocRef,
+            {
+              uid: user.uid,
+              Name: user.displayName || (isAdminAccount ? (ADMIN_NAMES[cleanEmail] || 'Bentley Admin') : cleanEmail.split('@')[0]),
+              name: user.displayName || (isAdminAccount ? (ADMIN_NAMES[cleanEmail] || 'Bentley Admin') : cleanEmail.split('@')[0]),
+              fullName: user.displayName || (isAdminAccount ? (ADMIN_NAMES[cleanEmail] || 'Bentley Admin') : cleanEmail.split('@')[0]),
+              email: cleanEmail,
+              role: resolvedRole,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          )
         }
       } catch (err) {
-        console.warn('Could not read user role from Firestore, defaulting to selected tab:', err)
+        console.warn('Could not read user role from Firestore:', err)
       }
 
-      // Success Toast Notification
-      showToast('Login successful! Welcome back.', 'success')
+      try {
+        localStorage.setItem('bentley_current_role', resolvedRole)
+        if (resolvedRole === 'admin') {
+          localStorage.setItem('bentley_admin_current_tab', 'orders')
+          localStorage.setItem('bentley_admin_orders_subtab', 'available')
+          localStorage.setItem('bentley_driver_current_tab', 'orders')
+          localStorage.setItem('bentley_driver_orders_subtab', 'available')
+        }
+      } catch {}
 
-      // Notify parent immediately on successful login with real Firebase User data & role
+      if (resolvedRole === 'admin') {
+        showToast('Admin login successful! Welcome to the Operations Dashboard.', 'success')
+      } else {
+        showToast('Login successful! Welcome back.', 'success')
+      }
+
+      onRoleChange?.(resolvedRole)
       onLoginSuccess({
-        name: user.displayName || user.email?.split('@')[0] || (resolvedRole === 'driver' ? 'Driver Partner' : 'Member'),
-        email: user.email || loginEmail,
+        name:
+          user.displayName ||
+          (resolvedRole === 'admin'
+            ? ADMIN_NAMES[cleanEmail] || 'Bentley Admin'
+            : cleanEmail.split('@')[0] || 'Member'),
+        email: cleanEmail,
         uid: user.uid,
         role: resolvedRole,
       })
     } catch (err: any) {
       console.error('Firebase Login Error:', err)
-      // User-friendly error message mapping with Toaster AND inline input warning
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         const errorMsg = 'Invalid email or password. Please verify and try again.'
         setErrors({
@@ -154,93 +168,39 @@ export const Login: React.FC<LoginProps> = ({
     }
   }
 
-  // STEP 1 INTEGRATION: Real Firebase Google Sign-In with popup
-  const handleGoogleSignIn = async () => {
-    setLoading(true)
-    onRoleChange?.(selectedRole)
-    try {
-      const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
-      const user = result.user
-
-      // Retrieve actual registered role from Firestore
-      let resolvedRole: 'customer' | 'driver' = selectedRole
-      try {
-        const userDocRef = doc(db, 'users', user.uid)
-        const userDoc = await getDoc(userDocRef)
-        if (userDoc.exists()) {
-          const data = userDoc.data()
-          if (data?.role === 'driver' || data?.role === 'customer') {
-            resolvedRole = data.role
-          }
-        } else {
-          // Self-heal: Ensure user document exists in Firestore
-          await setDoc(userDocRef, {
-            uid: user.uid,
-            Name: user.displayName || 'Member',
-            name: user.displayName || 'Member',
-            fullName: user.displayName || 'Member',
-            email: user.email || '',
-            role: selectedRole,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          }, { merge: true })
-        }
-      } catch (err) {
-        console.warn('Could not read user role from Firestore:', err)
-      }
-
-      showToast('Google sign-in successful!', 'success')
-      onLoginSuccess({
-        name: user.displayName || 'Google User',
-        email: user.email || '',
-        uid: user.uid,
-        role: resolvedRole,
-      })
-    } catch (err: any) {
-      console.error('Firebase Google Sign-In Error:', err)
-      if (err.code !== 'auth/popup-closed-by-user') {
-        showToast(err.message || 'Google sign-in failed. Please try again.', 'error')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // STEP 1 INTEGRATION: Real Firebase Password Reset Email with Toasters
   const handleForgotPassword = async () => {
     if (!loginEmail.trim()) {
-      showToast('Please enter your email address to reset password.', 'error')
+      setTouched((prev) => ({ ...prev, email: true }))
+      setErrors((prev) => ({ ...prev, email: 'Please enter your email to reset password' }))
+      showToast('Please enter your email address first.', 'error')
       return
     }
 
     if (!isValidEmail(loginEmail)) {
-      showToast('Please enter a valid email address to receive reset link.', 'error')
+      setTouched((prev) => ({ ...prev, email: true }))
+      setErrors((prev) => ({ ...prev, email: 'Please enter a valid email address' }))
+      showToast('Please enter a valid email address.', 'error')
       return
     }
 
-    setLoading(true)
     try {
       await sendPasswordResetEmail(auth, loginEmail.trim())
-      showToast('Password reset link sent to your email! Check your inbox.', 'success')
+      showToast(`Password reset link sent to ${loginEmail}. Check your inbox!`, 'success')
     } catch (err: any) {
+      console.error('Password Reset Error:', err)
       if (err.code === 'auth/user-not-found') {
-        showToast('No registered account found with this email address.', 'error')
+        showToast('No account found with this email.', 'error')
       } else {
-        showToast(err.message || 'Failed to send password reset email.', 'error')
+        showToast(err.message || 'Could not send reset email. Try again.', 'error')
       }
-    } finally {
-      setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--bg-app)] overflow-y-auto selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)] flex justify-center items-center py-6 sm:py-10 px-4 sm:px-6">
-      <div className="w-full max-w-[420px] sm:max-w-md md:max-w-lg lg:max-w-xl flex flex-col justify-between py-2 sm:py-6 bg-[var(--bg-app)] my-auto">
-
+    <div className="min-h-[100dvh] w-full bg-[var(--bg-app)] flex flex-col items-center justify-center screen-padding py-6 sm:py-8 md:py-12">
+      <div className="w-full max-w-[420px] sm:max-w-[440px] md:max-w-[480px] flex flex-col items-center">
         {/* Top Section with Mascot Logo */}
         <div className="flex flex-col items-center w-full">
-          {/* Bentley Mascot Logo */}
           <div className="w-28 h-20 min-[380px]:w-36 min-[380px]:h-24 sm:w-40 sm:h-28 md:w-44 md:h-32 flex items-center justify-center mb-3 sm:mb-4">
             <img
               src={logoBentley}
@@ -253,12 +213,10 @@ export const Login: React.FC<LoginProps> = ({
           <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
             {/* Header Titles */}
             <h1 className="text-xl min-[380px]:text-2xl sm:text-[26px] md:text-3xl font-extrabold text-[var(--text-main)] text-center tracking-tight">
-              {selectedRole === 'driver' ? 'Driver Partner Login' : 'Log in to your Account'}
+              Log in to your Account
             </h1>
             <p className="text-xs sm:text-sm md:text-base text-[var(--text-muted)] font-normal text-center mt-1.5 mb-4 sm:mb-6">
-              {selectedRole === 'driver'
-                ? 'Sign in to access live car wash requests.'
-                : 'Welcome back, please enter your details.'}
+              Welcome back, please enter your details.
             </p>
 
             {/* Login Form */}
@@ -266,7 +224,7 @@ export const Login: React.FC<LoginProps> = ({
               {/* Email Address */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs sm:text-sm md:text-sm font-semibold text-[var(--text-main)]">
-                  {selectedRole === 'driver' ? 'Driver Email Address' : 'Email Address'}
+                  Email Address
                 </label>
                 <input
                   type="email"
@@ -297,11 +255,12 @@ export const Login: React.FC<LoginProps> = ({
                       setErrors((prev) => ({ ...prev, email: undefined }))
                     }
                   }}
-                  placeholder={selectedRole === 'driver' ? 'driver@bentleycarwash.com' : 'Enter your email'}
-                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${errors.email
+                  placeholder="Enter your email"
+                  className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors ${
+                    errors.email
                       ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                       : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                    }`}
+                  }`}
                 />
                 {errors.email && (
                   <p className="text-xs sm:text-sm text-[var(--primary)] font-normal mt-1 animate-in fade-in duration-150">
@@ -346,10 +305,11 @@ export const Login: React.FC<LoginProps> = ({
                       }
                     }}
                     placeholder="Enter password"
-                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors tracking-widest ${errors.password
+                    className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 md:py-3.5 pr-11 rounded-[var(--radius-input)] border text-sm md:text-base text-[var(--text-main)] bg-[var(--bg-app)] placeholder-[var(--text-light)] focus:outline-none transition-colors tracking-widest ${
+                      errors.password
                         ? 'border-[var(--primary)] focus:border-[var(--primary)]'
                         : 'border-[var(--border-light)] focus:border-[var(--primary)]'
-                      }`}
+                    }`}
                   />
                   <button
                     type="button"
@@ -373,23 +333,22 @@ export const Login: React.FC<LoginProps> = ({
 
               {/* Remember Me & Forgot Password Row */}
               <div className="flex items-center justify-between pt-1">
-                {/* Remember Me Checkbox */}
                 <label
                   onClick={() => setRememberMe(!rememberMe)}
                   className="flex items-center gap-2 cursor-pointer select-none"
                 >
                   <div
-                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors ${rememberMe
+                    className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-colors ${
+                      rememberMe
                         ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
                         : 'border border-[var(--border-light)] bg-[var(--bg-app)]'
-                      }`}
+                    }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <span className="text-xs sm:text-sm font-semibold text-[var(--text-main)]">Remember me</span>
                 </label>
 
-                {/* Forgot Password */}
                 <button
                   type="button"
                   onClick={handleForgotPassword}
@@ -410,54 +369,21 @@ export const Login: React.FC<LoginProps> = ({
               </button>
             </form>
 
-            {/* Bottom Switch Link */}
+            {/* Bottom Switch Link to Signup */}
             {onSwitchToSignup && (
               <div className="mt-6 text-xs sm:text-sm text-[var(--text-main)] text-center font-medium">
-                <span>{selectedRole === 'driver' ? 'New driver partner? ' : 'Don’t have an account? '}</span>
+                <span>Don’t have an account? </span>
                 <button
                   type="button"
-                  onClick={() => onSwitchToSignup(selectedRole)}
+                  onClick={() => onSwitchToSignup()}
                   className="text-[var(--primary)] font-bold hover:underline cursor-pointer ml-0.5"
                 >
-                  {selectedRole === 'driver' ? 'Register as Driver' : 'Sign Up'}
+                  Sign Up
                 </button>
               </div>
-            )}
-
-            {/* Quick Driver Portal Switcher Link (Visible in Customer mode) */}
-            {selectedRole === 'customer' ? (
-              <div className="w-full mt-6 flex flex-col items-center">
-                {/* <p className="text-xs sm:text-sm text-slate-500 font-medium text-center mb-2">
-                  Are you a driver?
-                </p> */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRole('driver')
-                    onRoleChange?.('driver')
-                  }}
-                  className="w-full py-2.5 sm:py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80 text-slate-700 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all active:scale-[0.99] cursor-pointer"
-                >
-                  <span>Continue as Driver</span>
-                  <ArrowRight className="w-4 h-4 text-slate-600 stroke-[2]" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRole('customer')
-                  onRoleChange?.('customer')
-                }}
-                className="mt-5 text-xs sm:text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer py-1"
-              >
-                ← Back to Customer Login
-              </button>
             )}
           </div>
         </div>
-
-
       </div>
     </div>
   )
@@ -465,4 +391,3 @@ export const Login: React.FC<LoginProps> = ({
 
 export const LoginScreen = Login
 export const LoginPage = Login
-export default Login
