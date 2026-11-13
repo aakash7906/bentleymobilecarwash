@@ -9,7 +9,7 @@ if (!admin.apps.length) {
 
 const databaseId = process.env.DATABASE_ID || "carwash";
 const projectId = process.env.PROJECT_ID || "nexen-platform";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "bentleymobilecarwash@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aakashkumar10th@gmail.com";
 
 const db = new admin.firestore.Firestore({
   databaseId,
@@ -46,7 +46,7 @@ async function resolveCustomerDetails(docData: any): Promise<{ email: string; na
 /**
  * 1. REAL-TIME TRIGGER: When a new car wash service is booked
  * Triggers instantly on document creation in 'bookings/{bookingId}'
- * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
+ * Sends confirmation email to Customer & simultaneous notification to Admin (aakashkumar10th@gmail.com)
  */
 export const onBookingCreated = functions.firestore
   .database(databaseId)
@@ -95,7 +95,7 @@ export const onBookingCreated = functions.firestore
       console.warn(`[onBookingCreated] No customer email found for booking #${bookingId}.`);
     }
 
-    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
+    // 2. Simultaneously send alert to Admin (aakashkumar10th@gmail.com)
     if (ADMIN_EMAIL) {
       const adminHtml = templates.adminBookingNotificationEmailTemplate(bookingPayload);
       tasks.push(
@@ -166,7 +166,7 @@ export const onBookingStatusUpdated = functions.firestore
 /**
  * 3. REAL-TIME TRIGGER: When a customer buys detailing supplies/products
  * Triggers instantly on document creation in 'orders/{orderId}'
- * Sends confirmation email to Customer & simultaneous notification to Admin (bentleymobilecarwash@gmail.com)
+ * Sends confirmation email to Customer & simultaneous notification to Admin (aakashkumar10th@gmail.com)
  */
 export const onOrderCreated = functions.firestore
   .database(databaseId)
@@ -179,11 +179,23 @@ export const onOrderCreated = functions.firestore
     const { email: recipientEmail, name: customerName, phone: customerPhone } = await resolveCustomerDetails(order);
 
     const items = Array.isArray(order.items)
-      ? order.items.map((i: any) => ({
-        title: i.title || i.name || "Detailing Product",
-        quantity: Number(i.quantity || 1),
-        price: typeof i.price === "number" ? `$${i.price.toFixed(2)}` : String(i.price || "$0.00"),
-      }))
+      ? order.items.map((i: any) => {
+        const prod = i.product || {};
+        const title = prod.title || i.title || i.name || "Detailing Product";
+        const rawPrice = prod.price || i.price;
+        const numericPrice = typeof prod.priceNumeric === "number" ? prod.priceNumeric : typeof i.price === "number" ? i.price : null;
+        const formattedPrice = rawPrice
+          ? String(rawPrice).startsWith("$") ? String(rawPrice) : `$${rawPrice}`
+          : numericPrice !== null
+            ? `$${numericPrice.toFixed(2)}`
+            : "$0.00";
+
+        return {
+          title,
+          quantity: Number(i.quantity || 1),
+          price: formattedPrice,
+        };
+      })
       : [];
 
     const orderPayload = {
@@ -219,7 +231,7 @@ export const onOrderCreated = functions.firestore
       console.warn(`[onOrderCreated] No customer email found for order #${orderId}.`);
     }
 
-    // 2. Simultaneously send alert to Admin (bentleymobilecarwash@gmail.com)
+    // 2. Simultaneously send alert to Admin (aakashkumar10th@gmail.com)
     if (ADMIN_EMAIL) {
       const adminHtml = templates.adminOrderNotificationEmailTemplate(orderPayload);
       tasks.push(
@@ -263,11 +275,23 @@ export const onOrderStatusUpdated = functions.firestore
       } else {
         try {
           const items = Array.isArray(afterData.items)
-            ? afterData.items.map((i: any) => ({
-              title: i.title || i.name || "Detailing Product",
-              quantity: Number(i.quantity || 1),
-              price: typeof i.price === "number" ? `$${i.price.toFixed(2)}` : String(i.price || "$0.00"),
-            }))
+            ? afterData.items.map((i: any) => {
+              const prod = i.product || {};
+              const title = prod.title || i.title || i.name || "Detailing Product";
+              const rawPrice = prod.price || i.price;
+              const numericPrice = typeof prod.priceNumeric === "number" ? prod.priceNumeric : typeof i.price === "number" ? i.price : null;
+              const formattedPrice = rawPrice
+                ? String(rawPrice).startsWith("$") ? String(rawPrice) : `$${rawPrice}`
+                : numericPrice !== null
+                  ? `$${numericPrice.toFixed(2)}`
+                  : "$0.00";
+
+              return {
+                title,
+                quantity: Number(i.quantity || 1),
+                price: formattedPrice,
+              };
+            })
             : [];
 
           const html = templates.orderDeliveredEmailTemplate({

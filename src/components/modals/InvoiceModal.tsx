@@ -68,14 +68,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
     : 'REC'
   const invoiceNumber = booking.invoiceNumber || `INV-BW-${cleanId}-${invoiceYear}`
 
-  // Financial calculations: Canadian Standard 5% GST
-  const taxRate = 0.05
+  // Financial calculations: Tax removed
+  const taxRate = 0
   const total =
     booking.totalNumeric ||
     parseFloat(String(booking.price || '0').replace(/[^0-9.]/g, '')) ||
     0
-  const subtotal = total / (1 + taxRate)
-  const gst = total - subtotal
+  const subtotal = total
+  const gst = 0
 
   const shopItemsSum = React.useMemo(() => {
     if (!booking.shopItems || !Array.isArray(booking.shopItems)) return 0
@@ -512,18 +512,29 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
 
               {/* 4. TOTALS SUMMARY */}
               <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                <div className="flex justify-between text-xs sm:text-sm text-gray-500">
-                  <span>Subtotal (Net of Taxes)</span>
-                  <span className="font-semibold font-mono text-gray-800">
-                    ${subtotal.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm text-gray-500">
-                  <span>Federal GST (5.0%)</span>
-                  <span className="font-semibold font-mono text-gray-800">
-                    ${gst.toFixed(2)}
-                  </span>
-                </div>
+                {gst > 0 ? (
+                  <>
+                    <div className="flex justify-between text-xs sm:text-sm text-gray-500">
+                      <span>Subtotal (Net of Taxes)</span>
+                      <span className="font-semibold font-mono text-gray-800">
+                        ${subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs sm:text-sm text-gray-500">
+                      <span>Federal GST (5.0%)</span>
+                      <span className="font-semibold font-mono text-gray-800">
+                        ${gst.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-xs sm:text-sm text-gray-500">
+                    <span>Subtotal</span>
+                    <span className="font-semibold font-mono text-gray-800">
+                      ${subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                   <div className="flex flex-col">
                     <span className="font-black text-sm sm:text-base text-gray-900">

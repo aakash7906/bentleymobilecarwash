@@ -61,10 +61,12 @@ export const BookingPriceBreakdown: React.FC<BookingPriceBreakdownProps> = ({
         <span className="font-semibold text-emerald-600">Free</span>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-600">
-        <span>GST (5%)</span>
-        <span className="font-mono">${tax}</span>
-      </div>
+      {tax > 0 && (
+        <div className="flex items-center justify-between text-xs text-gray-600">
+          <span>GST (5%)</span>
+          <span className="font-mono">${tax}</span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
         <span className="text-sm font-bold text-gray-900">Total Amount</span>

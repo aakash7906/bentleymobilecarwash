@@ -466,8 +466,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   const preDiscountSubtotal = basePrice + vehicleSizeSurcharge
   const mobileFee = 0 // Free mobile dispatch in service area
   const subtotal = Math.max(0, preDiscountSubtotal + mobileFee)
-  const tax = Number((subtotal * 0.05).toFixed(2)) // 5% GST
-  const grandTotal = (subtotal + tax).toFixed(2)
+  const tax = 0 // Tax removed
+  const grandTotal = subtotal.toFixed(2)
 
   // Mobile dispatch minimum order requirement ($60 CAD)
   const MOBILE_MINIMUM_DISPATCH_AMOUNT = 60

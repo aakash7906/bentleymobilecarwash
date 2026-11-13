@@ -222,10 +222,10 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({
                   E-mail
                 </span>
                 <a
-                  href="mailto:bentleymobilecarwash@gmail.com"
+                  href="mailto:aakashkumar10th@gmail.com"
                   className="text-xs sm:text-sm font-extrabold text-gray-900 hover:text-primary tracking-tight mt-0.5 truncate select-all transition-colors"
                 >
-                  bentleymobilecarwash@gmail.com
+                  aakashkumar10th@gmail.com
                 </a>
               </div>
             </div>
@@ -233,7 +233,7 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => handleCopy('bentleymobilecarwash@gmail.com', 'Email')}
+                onClick={() => handleCopy('aakashkumar10th@gmail.com', 'Email')}
                 className="w-9 h-9 rounded-xl border border-gray-200/90 hover:bg-gray-50 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer active:scale-95"
                 title="Copy Email"
               >

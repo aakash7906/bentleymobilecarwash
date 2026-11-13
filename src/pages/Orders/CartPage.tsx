@@ -105,8 +105,8 @@ export const CartPage: React.FC<CartPageProps> = ({
   const freeShippingThreshold = 50
   const isFreeShipping = itemsSubtotal >= freeShippingThreshold || items.length === 0
   const shippingFee = isFreeShipping ? 0 : 5.99
-  const taxFee = Number((itemsSubtotal * 0.05).toFixed(2))
-  const grandTotal = Math.max(0, itemsSubtotal + shippingFee + taxFee).toFixed(2)
+  const taxFee = 0
+  const grandTotal = Math.max(0, itemsSubtotal + shippingFee).toFixed(2)
 
   const progressPercentage = Math.min(
     100,
@@ -412,10 +412,12 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </span>
               </div>
 
-              <div className="flex justify-between text-gray-600">
-                <span>Estimated Taxes (5%)</span>
-                <span className="font-mono">${taxFee.toFixed(2)}</span>
-              </div>
+              {taxFee > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span>Estimated Taxes (5%)</span>
+                  <span className="font-mono">${taxFee.toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="pt-2.5 mt-1 border-t border-gray-200 flex justify-between font-extrabold text-sm sm:text-base text-gray-900">
                 <span>Total Amount</span>

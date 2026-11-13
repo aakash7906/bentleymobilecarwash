@@ -702,10 +702,12 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                     {Number(selectedOrder.shippingFee || 0) === 0 ? 'FREE' : `$${Number(selectedOrder.shippingFee).toFixed(2)}`}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Taxes (5% GST)</span>
-                  <span className="font-mono">${Number(selectedOrder.taxFee || 0).toFixed(2)}</span>
-                </div>
+                {Number(selectedOrder.taxFee || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span>Taxes (5% GST)</span>
+                    <span className="font-mono">${Number(selectedOrder.taxFee || 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="pt-2 border-t border-gray-200 flex justify-between font-extrabold text-sm text-gray-900">
                   <span>Total Due (COD)</span>
                   <span className="font-mono text-primary text-base">

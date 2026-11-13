@@ -93,8 +93,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const unitPrice = product.priceNumeric
   const subtotal = (unitPrice * quantity).toFixed(2)
   const shippingFee = unitPrice * quantity >= 50 ? 0 : 5.99
-  const taxFee = ((unitPrice * quantity) * 0.05).toFixed(2)
-  const grandTotal = (unitPrice * quantity + shippingFee + parseFloat(taxFee)).toFixed(2)
+  const taxFee = '0.00'
+  const grandTotal = (unitPrice * quantity + shippingFee).toFixed(2)
 
   const handleDecreaseQty = () => {
     if (quantity > 1) setQuantity((prev) => prev - 1)
@@ -608,10 +608,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <span>Items Subtotal</span>
                     <span className="font-mono">${subtotal}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Estimated Tax (5%)</span>
-                    <span className="font-mono">${taxFee}</span>
-                  </div>
+                  {parseFloat(taxFee) > 0 && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Estimated Tax (5%)</span>
+                      <span className="font-mono">${taxFee}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-600">
                     <span>Mobile Dispatch Delivery</span>
                     <span className="font-semibold text-emerald-600">

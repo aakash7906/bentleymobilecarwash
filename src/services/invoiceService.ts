@@ -55,8 +55,8 @@ export async function createBookingInvoice(
     booking.totalNumeric ||
     parseFloat(String(booking.price || '0').replace(/[^0-9.]/g, '')) ||
     0
-  const subtotal = Number((total / 1.05).toFixed(2))
-  const taxAmount = Number((total - subtotal).toFixed(2))
+  const subtotal = total
+  const taxAmount = 0
 
   // Build itemized invoice lines
   const items: InvoiceItem[] = []
@@ -177,8 +177,8 @@ export async function createShopOrderInvoice(
   const invoiceNumber = `INV-SH-${cleanId}-${invoiceYear}`
 
   const grandTotal = Number(order.grandTotal) || 0
-  const subtotal = Number((grandTotal / 1.05).toFixed(2))
-  const taxAmount = Number((grandTotal - subtotal).toFixed(2))
+  const subtotal = grandTotal
+  const taxAmount = 0
 
   const items: InvoiceItem[] = []
   if (Array.isArray(order.items)) {
