@@ -9,13 +9,16 @@ export interface SelectOption {
 
 export interface SelectProps {
   value: string
-  onValueChange: (val: string) => void
+  onValueChange?: (val: string) => void
+  onChange?: (val: string) => void
   children?: React.ReactNode
   placeholder?: string
   className?: string
   triggerClassName?: string
   contentClassName?: string
   icon?: React.ReactNode
+  triggerPrefix?: React.ReactNode
+  size?: 'sm' | 'md' | 'lg' | string
   disabled?: boolean
   options: SelectOption[]
 }
@@ -23,16 +26,19 @@ export interface SelectProps {
 export const Select: React.FC<SelectProps> = ({
   value,
   onValueChange,
+  onChange,
   placeholder = 'Select an option',
   className,
   triggerClassName,
   contentClassName,
   icon,
+  triggerPrefix,
   disabled = false,
   options = [],
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const resolvedIcon = icon || triggerPrefix
 
   // Close on outside click
   React.useEffect(() => {
@@ -72,17 +78,17 @@ export const Select: React.FC<SelectProps> = ({
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'flex h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-[var(--surface-alt,#f8fafc)] px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 shadow-xs transition-all hover:border-gray-300 focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
-          icon ? 'pl-10' : 'pl-3.5',
+          'flex h-10 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 text-xs font-semibold text-gray-800 shadow-2xs transition-all hover:border-gray-300 focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
+          resolvedIcon ? 'pl-9' : 'pl-3.5',
           isOpen && 'border-primary bg-white ring-2 ring-primary/15',
           triggerClassName
         )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        {icon && (
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-            {icon}
+        {resolvedIcon && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            {resolvedIcon}
           </div>
         )}
         <span className={cn('truncate text-left', !selectedOption && 'text-gray-400 font-normal')}>
@@ -117,7 +123,8 @@ export const Select: React.FC<SelectProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => {
-                    onValueChange(opt.value)
+                    if (onValueChange) onValueChange(opt.value)
+                    else if (onChange) onChange(opt.value)
                     setIsOpen(false)
                   }}
                   className={cn(

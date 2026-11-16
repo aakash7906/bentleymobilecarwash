@@ -16,6 +16,7 @@ import {
   Package,
   ShoppingBag,
   Ban,
+  User,
 } from 'lucide-react'
 import logoBentley from '@/assets/Logo_Bentley.png'
 import { getSafeProductImage } from '@/data/productsData'
@@ -24,13 +25,15 @@ import { computeEstimatedArrivalTime } from '@/services/dispatchService'
 import { createShopOrderInvoice } from '@/services/invoiceService'
 import { auth, db } from '@/firebase'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
-import { AdminMapView } from './AdminMapView'
-import { AdminProfilePage } from './AdminProfilePage'
+import { MapView } from './MapView'
+import { ProfilePage } from './ProfilePage'
+import { CustomersView } from './CustomerManagementPage'
 import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
 import { CodPaymentModal } from '@/components/modals'
 import { AdminBottomNav, AdminTabType } from '@/components/AdminBottomNav'
 import { AdminDashboardSkeleton } from '@/components/ui/skeleton'
+import { Pagination } from '@/components/ui/pagination'
 
 export interface AdminDashboardProps {
   isLoading?: boolean
@@ -101,17 +104,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const externalProfile = externalAdminProfile || externalDriverProfile
   const handleUpdateProfile = onUpdateAdminProfile || onUpdateDriverProfile
 
-  // 1. PRIMARY ADMIN NAVIGATION TABS: 'orders' (Requests) | 'my_jobs' (Active Jobs) | 'history' | 'profile'
+  // 1. PRIMARY ADMIN NAVIGATION TABS: 'orders' | 'my_jobs' | 'history' | 'customers' | 'profile'
   // Always default to 'orders' on fresh load or login so admin lands directly on Active Requests
   const [adminTab, setAdminTab] = useState<AdminTabType>(() => {
     try {
       const stored = localStorage.getItem('bentley_admin_current_tab') || localStorage.getItem('bentley_driver_current_tab')
-      if (stored === 'orders' || stored === 'my_jobs' || stored === 'history') {
+      if (stored === 'orders' || stored === 'my_jobs' || stored === 'history' || stored === 'customers') {
         return stored as AdminTabType
       }
-    } catch {}
+    } catch { }
     return 'orders'
   })
+
+  // Track previous tab before opening Profile modal
+  const [prevAdminTab, setPrevAdminTab] = useState<AdminTabType>('orders')
 
   const [selectedBookingForMap, setSelectedBookingForMap] = useState<BookingRecord | null>(() => {
     try {
@@ -122,7 +128,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           return found
         }
       }
-    } catch {}
+    } catch { }
     return null
   })
 
@@ -137,7 +143,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       localStorage.setItem('bentley_admin_current_tab', adminTab)
       localStorage.setItem('bentley_driver_current_tab', adminTab)
-    } catch {}
+    } catch { }
   }, [adminTab])
 
   // Persist admin map view state
@@ -150,7 +156,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         localStorage.removeItem('bentley_admin_map_booking_id')
         localStorage.removeItem('bentley_driver_map_booking_id')
       }
-    } catch {}
+    } catch { }
   }, [selectedBookingForMap])
 
   // Restore admin map view if bookings load asynchronously after reload
@@ -167,7 +173,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             localStorage.removeItem('bentley_driver_map_booking_id')
           }
         }
-      } catch {}
+      } catch { }
     }
   }, [bookings, selectedBookingForMap])
 
@@ -176,7 +182,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       localStorage.removeItem('bentley_admin_profile_open')
       localStorage.removeItem('bentley_driver_profile_open')
-    } catch {}
+    } catch { }
   }, [])
 
   const sanitizeAvatar = (url?: string) => {
@@ -204,7 +210,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           day: 'numeric',
         })
       }
-    } catch {}
+    } catch { }
     return 'Completed'
   }
 
@@ -225,7 +231,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           avatar: sanitizeAvatar(parsed.avatar),
         }
       }
-    } catch {}
+    } catch { }
     return {
       ...DEFAULT_ADMIN_PROFILE,
       name: resolvedAdminName,
@@ -348,6 +354,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ),
     [shopOrders, profile.name, profile.phone]
   )
+
+  // Pagination states for Incoming Requests ("All Jobs") and Completed History
+  const [ordersPage, setOrdersPage] = useState<number>(1)
+  const [ordersPageSize, setOrdersPageSize] = useState<number>(10)
+  const [historyPage, setHistoryPage] = useState<number>(1)
+  const [historyPageSize, setHistoryPageSize] = useState<number>(10)
+
+  // Reset pagination on filter or tab changes
+  useEffect(() => {
+    setOrdersPage(1)
+  }, [jobCategoryFilter, adminTab, ordersPageSize])
+
+  useEffect(() => {
+    setHistoryPage(1)
+  }, [historyCategoryFilter, adminTab, historyPageSize])
+
+  // Unified Incoming Requests ("All Jobs" in orders tab)
+  const allIncomingJobs = useMemo(() => {
+    const list: Array<
+      | { kind: 'wash'; data: BookingRecord }
+      | { kind: 'delivery'; data: ShopOrder }
+    > = []
+
+    if (jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') {
+      availableOrders.forEach((b) => list.push({ kind: 'wash', data: b }))
+    }
+    if (jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') {
+      availableShopOrders.forEach((o) => list.push({ kind: 'delivery', data: o }))
+    }
+    return list
+  }, [jobCategoryFilter, availableOrders, availableShopOrders])
+
+  const paginatedIncomingJobs = useMemo(() => {
+    const start = (ordersPage - 1) * ordersPageSize
+    return allIncomingJobs.slice(start, start + ordersPageSize)
+  }, [allIncomingJobs, ordersPage, ordersPageSize])
+
+  // Unified Completed History
+  const allHistoryJobs = useMemo(() => {
+    const list: Array<
+      | { kind: 'wash'; data: BookingRecord }
+      | { kind: 'delivery'; data: ShopOrder }
+    > = []
+
+    if (historyCategoryFilter === 'all' || historyCategoryFilter === 'washes') {
+      completedOrders.forEach((b) => list.push({ kind: 'wash', data: b }))
+    }
+    if (historyCategoryFilter === 'all' || historyCategoryFilter === 'deliveries') {
+      completedShopOrders.forEach((o) => list.push({ kind: 'delivery', data: o }))
+    }
+    return list
+  }, [historyCategoryFilter, completedOrders, completedShopOrders])
+
+  const paginatedHistoryJobs = useMemo(() => {
+    const start = (historyPage - 1) * historyPageSize
+    return allHistoryJobs.slice(start, start + historyPageSize)
+  }, [allHistoryJobs, historyPage, historyPageSize])
 
   // Handle Driver Accepting Shop Delivery with atomic transaction
   const handleAcceptShopOrder = async (order: ShopOrder) => {
@@ -496,7 +559,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setProfile(cleaned)
     try {
       localStorage.setItem('bentley_driver_profile', JSON.stringify(cleaned))
-    } catch {}
+    } catch { }
 
     if (onUpdateDriverProfile) {
       onUpdateDriverProfile(cleaned)
@@ -553,9 +616,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="w-full min-h-screen bg-canvas flex flex-col selection:bg-primary selection:text-primary-foreground">
       {/* 1. ADMIN PROFILE PAGE / MODAL */}
-      <AdminProfilePage
+      <ProfilePage
         isOpen={adminTab === 'profile'}
-        onClose={() => setAdminTab('orders')}
+        onClose={() => setAdminTab(prevAdminTab || 'orders')}
         profile={profile}
         onSave={handleSaveProfile}
         onLogout={onLogout}
@@ -572,7 +635,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           : bookings.find((b) => b.id === selectedBookingForMap.id) || selectedBookingForMap
 
         return (
-          <AdminMapView
+          <MapView
             booking={targetBooking}
             onBack={() => setSelectedBookingForMap(null)}
             onUpdateStatus={(id: string, status: BookingStatus, coords?: [number, number], paymentData?: PaymentCollectionData, trackingData?: any) => {
@@ -581,8 +644,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   status === 'completed'
                     ? 'delivered'
                     : status === 'in_progress' || status === 'en_route'
-                    ? 'en_route'
-                    : 'accepted'
+                      ? 'en_route'
+                      : 'accepted'
                 handleUpdateShopOrderStatus(id, shopStatus, coords, trackingData)
                 if (status === 'completed') {
                   setSelectedBookingForMap(null)
@@ -728,7 +791,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="mt-5 flex gap-2">
               {selectedDetailBooking.status === 'pending' ||
-              (selectedDetailBooking.status === 'scheduled' && !selectedDetailBooking.driverId) ? (
+                (selectedDetailBooking.status === 'scheduled' && !selectedDetailBooking.driverId) ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -1035,10 +1098,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             </div>
 
-            {/* Top Right: Live Status */}
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {/* Top Right: Live Status & Admin Profile Icon */}
+            <div className="flex items-center gap-3 sm:gap-4">
               <span className="text-xs font-bold text-gray-700 hidden sm:inline">Operations &amp; Dispatch</span>
+
+              {/* Relocated Admin Profile Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPrevAdminTab(adminTab === 'profile' ? 'orders' : adminTab)
+                  setAdminTab('profile')
+                }}
+                className={`flex items-center gap-2 pl-2 sm:pl-3 pr-1.5 sm:pr-2 py-1 rounded-full transition-all cursor-pointer border shadow-2xs group active:scale-95 ${adminTab === 'profile'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-white hover:bg-gray-100 border-gray-200/90 text-gray-800'
+                  }`}
+                title="Admin Profile & Settings"
+                aria-label="Admin Profile"
+              >
+                <div className="flex flex-col text-right hidden sm:flex leading-tight">
+                  <span className={`text-xs font-black truncate max-w-[120px] transition-colors ${adminTab === 'profile' ? 'text-white' : 'text-gray-900 group-hover:text-primary'
+                    }`}>
+                    {profile.name || resolvedAdminName || 'Admin'}
+                  </span>
+                  <span className={`text-[10px] font-semibold transition-colors ${adminTab === 'profile' ? 'text-white/80' : 'text-gray-400'
+                    }`}>
+                    Profile &amp; Settings
+                  </span>
+                </div>
+
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-all overflow-hidden ${adminTab === 'profile'
+                    ? 'bg-white text-primary'
+                    : 'bg-secondary text-white group-hover:bg-primary shadow-xs'
+                  }`}>
+                  {profile.avatar ? (
+                    <img src={profile.avatar} alt="Admin" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                </div>
+              </button>
             </div>
           </div>
         </header>
@@ -1054,33 +1153,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'all'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'all'
                         ? 'bg-white text-gray-900 shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     All Jobs ({availableOrders.length + availableShopOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('washes')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'washes'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'washes'
                         ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Washes ({availableOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('deliveries')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'deliveries'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'deliveries'
                         ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Shop Deliveries ({availableShopOrders.length})
                   </button>
@@ -1092,149 +1188,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {jobCategoryFilter === 'all'
                       ? availableOrders.length + availableShopOrders.length
                       : jobCategoryFilter === 'washes'
-                      ? availableOrders.length
-                      : availableShopOrders.length}{' '}
+                        ? availableOrders.length
+                        : availableShopOrders.length}{' '}
                     incoming customer requests
                   </span>
                 </div>
               </div>
-                <>
-                  {((jobCategoryFilter === 'washes' && availableOrders.length === 0) ||
-                    (jobCategoryFilter === 'deliveries' && availableShopOrders.length === 0) ||
-                    (jobCategoryFilter === 'all' && availableOrders.length === 0 && availableShopOrders.length === 0)) ? (
-                    <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
-                      <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
-                      <span className="text-base font-bold text-gray-800">
-                        {jobCategoryFilter === 'deliveries'
-                          ? 'No pending shop deliveries right now'
-                          : jobCategoryFilter === 'washes'
+              <>
+                {allIncomingJobs.length === 0 ? (
+                  <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
+                    <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
+                    <span className="text-base font-bold text-gray-800">
+                      {jobCategoryFilter === 'deliveries'
+                        ? 'No pending shop deliveries right now'
+                        : jobCategoryFilter === 'washes'
                           ? 'No pending car washes right now'
                           : 'No pending orders right now'}
-                      </span>
-                      <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                        {jobCategoryFilter === 'deliveries'
-                          ? 'Real-time customer shop product orders will appear here automatically.'
-                          : 'New customer car wash and detailing requests will appear here in real-time.'}
-                      </p>
-                    </div>
-                  ) : (
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                      {jobCategoryFilter === 'deliveries'
+                        ? 'Real-time customer shop product orders will appear here automatically.'
+                        : 'New customer car wash and detailing requests will appear here in real-time.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                      {/* Available Washes */}
-                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') &&
-                        availableOrders.map((booking) => (
-                          <div
-                            key={booking.id}
-                            className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                                  {booking.customerName.charAt(0)}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                    {booking.customerName}
-                                  </span>
-                                  <span className="text-[11px] text-gray-500 font-medium">
-                                    {booking.vehicle} ({booking.vehicleType || 'Vehicle'})
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end">
-                                <span className="text-sm sm:text-base font-black text-primary font-mono">
-                                  {booking.price}
-                                </span>
-                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
-                                  {booking.distanceKm ? `${booking.distanceKm} km away` : 'Available'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                                <span className="truncate">{booking.address}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-gray-500 text-[11px]">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="w-3 h-3 text-gray-400" />
-                                  <span>{booking.date} at {booking.time}</span>
-                                </span>
-                                <span className="font-semibold text-gray-700">{booking.title}</span>
-                              </div>
-                            </div>
-
-                            {booking.shopItems && booking.shopItems.length > 0 && (
-                              <div className="px-2.5 py-1 bg-amber-50 border border-amber-200/80 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
-                                <span className="flex items-center gap-1.5">
-                                  <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>Includes {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
-                                </span>
-                                <span className="font-mono text-amber-800">
-                                  +${booking.shopItems.reduce((s, i) => s + (i.product?.priceNumeric || 0) * (i.quantity || 1), 0).toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedDetailBooking(booking)}
-                                className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                                title="View Order Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Details</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleAccept(booking)}
-                                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>Accept Request</span>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-
-                      {/* Available Shop Deliveries */}
-                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') &&
-                        availableShopOrders.map((order) => {
-                          const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                      {paginatedIncomingJobs.map((item) => {
+                        if (item.kind === 'wash') {
+                          const booking = item.data
                           return (
                             <div
-                              key={order.id}
-                              className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                              key={`wash-${booking.id}`}
+                              className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5"
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-3">
                                   <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                                    <Package className="w-5 h-5" />
+                                    {booking.customerName.charAt(0)}
                                   </div>
                                   <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                        {order.recipientName || order.customerName || 'Customer'}
-                                      </span>
-                                      <span className="px-2 py-0.2 rounded-full bg-primary-light text-primary border border-primary-border/60 text-[10px] font-bold uppercase tracking-wider">
-                                        Shop Delivery
-                                      </span>
-                                    </div>
+                                    <span className="text-xs sm:text-sm font-bold text-gray-900">
+                                      {booking.customerName}
+                                    </span>
                                     <span className="text-[11px] text-gray-500 font-medium">
-                                      {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
+                                      {booking.vehicle} ({booking.vehicleType || 'Vehicle'})
                                     </span>
                                   </div>
                                 </div>
 
                                 <div className="flex flex-col items-end">
                                   <span className="text-sm sm:text-base font-black text-primary font-mono">
-                                    ${Number(order.grandTotal).toFixed(2)}
+                                    {booking.price}
                                   </span>
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
-                                    {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
+                                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
+                                    {booking.distanceKm ? `${booking.distanceKm} km away` : 'Available'}
                                   </span>
                                 </div>
                               </div>
@@ -1242,30 +1250,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
                                 <div className="flex items-center gap-2">
                                   <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                                  <span className="truncate">
-                                    {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
-                                  </span>
+                                  <span className="truncate">{booking.address}</span>
                                 </div>
-
-                                <div className="mt-1 pt-1.5 border-t border-gray-200/60 flex items-center gap-1.5 overflow-x-auto py-0.5">
-                                  {order.items?.slice(0, 3).map((item, idx) => (
-                                    <span key={idx} className="inline-flex items-center gap-1 text-[11px] bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 font-medium shrink-0">
-                                      <span className="font-bold text-primary">{item.quantity}x</span>
-                                      <span className="truncate max-w-[110px]">{item.product?.title || 'Product'}</span>
-                                    </span>
-                                  ))}
-                                  {(order.items?.length || 0) > 3 && (
-                                    <span className="text-[10px] text-gray-400 font-bold shrink-0">
-                                      +{order.items.length - 3} more
-                                    </span>
-                                  )}
+                                <div className="flex items-center justify-between text-gray-500 text-[11px]">
+                                  <span className="flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3 text-gray-400" />
+                                    <span>{booking.date} at {booking.time}</span>
+                                  </span>
+                                  <span className="font-semibold text-gray-700">{booking.title}</span>
                                 </div>
                               </div>
+
+                              {booking.shopItems && booking.shopItems.length > 0 && (
+                                <div className="px-2.5 py-1 bg-amber-50 border border-amber-200/80 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
+                                  <span className="flex items-center gap-1.5">
+                                    <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <span>Includes {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
+                                  </span>
+                                  <span className="font-mono text-amber-800">
+                                    +${booking.shopItems.reduce((s, i) => s + (i.product?.priceNumeric || 0) * (i.quantity || 1), 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              )}
 
                               <div className="flex items-center gap-2 pt-1">
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedDetailShopOrder(order)}
+                                  onClick={() => setSelectedDetailBooking(booking)}
                                   className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                                   title="View Order Details"
                                 >
@@ -1275,19 +1286,116 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                 <button
                                   type="button"
-                                  onClick={() => handleAcceptShopOrder(order)}
+                                  onClick={() => handleAccept(booking)}
                                   className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span>Accept Delivery</span>
+                                  <span>Accept Request</span>
                                 </button>
                               </div>
                             </div>
                           )
-                        })}
+                        }
+
+                        const order = item.data
+                        const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                        return (
+                          <div
+                            key={`delivery-${order.id}`}
+                            className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary-light border border-primary-border/60 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                                  <Package className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs sm:text-sm font-bold text-gray-900">
+                                      {order.recipientName || order.customerName || 'Customer'}
+                                    </span>
+                                    <span className="px-2 py-0.2 rounded-full bg-primary-light text-primary border border-primary-border/60 text-[10px] font-bold uppercase tracking-wider">
+                                      Shop Delivery
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] text-gray-500 font-medium">
+                                    {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end">
+                                <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                  ${Number(order.grandTotal).toFixed(2)}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 mt-0.5">
+                                  {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 text-xs text-gray-600 bg-surface-subtle p-3 rounded-2xl border border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="truncate">
+                                  {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
+                                </span>
+                              </div>
+
+                              <div className="mt-1 pt-1.5 border-t border-gray-200/60 flex items-center gap-1.5 overflow-x-auto py-0.5">
+                                {order.items?.slice(0, 3).map((itemProduct, idx) => (
+                                  <span key={idx} className="inline-flex items-center gap-1 text-[11px] bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 font-medium shrink-0">
+                                    <span className="font-bold text-primary">{itemProduct.quantity}x</span>
+                                    <span className="truncate max-w-[110px]">{itemProduct.product?.title || 'Product'}</span>
+                                  </span>
+                                ))}
+                                {(order.items?.length || 0) > 3 && (
+                                  <span className="text-[10px] text-gray-400 font-bold shrink-0">
+                                    +{order.items.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailShopOrder(order)}
+                                className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                title="View Order Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Details</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptShopOrder(order)}
+                                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Accept Delivery</span>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  )}
-                </>
+
+                    {/* Pagination Controls (Centered Editorial) */}
+                    <Pagination
+                      currentPage={ordersPage}
+                      totalPages={Math.max(1, Math.ceil(allIncomingJobs.length / ordersPageSize))}
+                      totalItems={allIncomingJobs.length}
+                      pageSize={ordersPageSize}
+                      onPageChange={(p) => {
+                        setOrdersPage(p)
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             </div>
           )}
 
@@ -1300,33 +1408,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'all'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'all'
                         ? 'bg-white text-gray-900 shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     All Jobs ({myActiveOrders.length + myActiveShopOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('washes')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'washes'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'washes'
                         ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Washes ({myActiveOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setJobCategoryFilter('deliveries')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      jobCategoryFilter === 'deliveries'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${jobCategoryFilter === 'deliveries'
                         ? 'bg-white text-primary shadow-2xs font-black'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Shop Deliveries ({myActiveShopOrders.length})
                   </button>
@@ -1336,8 +1441,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {jobCategoryFilter === 'all'
                     ? myActiveOrders.length + myActiveShopOrders.length
                     : jobCategoryFilter === 'washes'
-                    ? myActiveOrders.length
-                    : myActiveShopOrders.length}{' '}
+                      ? myActiveOrders.length
+                      : myActiveShopOrders.length}{' '}
                   orders currently assigned to you
                 </div>
               </div>
@@ -1351,8 +1456,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {jobCategoryFilter === 'deliveries'
                       ? 'No active shop deliveries in progress'
                       : jobCategoryFilter === 'washes'
-                      ? 'No active washes in progress'
-                      : 'No active jobs in progress'}
+                        ? 'No active washes in progress'
+                        : 'No active jobs in progress'}
                   </span>
                   <p className="text-xs text-gray-400 mt-1 max-w-sm mb-4">
                     Accept incoming customer requests from the Requests tab to start your delivery route.
@@ -1369,250 +1474,248 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <span>Browse Requests ({availableOrders.length + availableShopOrders.length})</span>
                   </button>
                 </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                      {/* Active Washes */}
-                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') &&
-                        myActiveOrders.map((booking) => (
-                          <div
-                            key={booking.id}
-                            className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                  {/* Active Washes */}
+                  {(jobCategoryFilter === 'all' || jobCategoryFilter === 'washes') &&
+                    myActiveOrders.map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200 uppercase flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                              <span>{booking.status.replace('_', ' ')}</span>
+                            </span>
+                          </div>
+                          <span className="text-sm sm:text-base font-black text-primary font-mono">
+                            {booking.price}
+                          </span>
+                        </div>
+
+                        <div className="flex items-start justify-between">
+                          <div className="w-full">
+                            <h3 className="text-sm font-bold text-gray-900">{booking.customerName}</h3>
+                            <p className="text-xs text-gray-500 font-medium">{booking.vehicle}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                              {booking.address}
+                            </p>
+                          </div>
+                        </div>
+
+                        {booking.shopItems && booking.shopItems.length > 0 && (
+                          <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
+                            <span className="flex items-center gap-1.5">
+                              <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Hand-Deliver {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
+                            </span>
+                            <span className="text-[10px] bg-amber-200 px-1.5 py-0.2 rounded font-extrabold uppercase">
+                              With Wash
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Progress Flow Actions */}
+                        <div className="flex flex-col gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBookingForMap(booking)}
+                            className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                           >
-                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200 uppercase flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                  <span>{booking.status.replace('_', ' ')}</span>
-                                </span>
-                              </div>
-                              <span className="text-sm sm:text-base font-black text-primary font-mono">
-                                {booking.price}
-                              </span>
-                            </div>
+                            <Navigation className="w-3.5 h-3.5 fill-white" />
+                            <span>Open Live Map & Route</span>
+                          </button>
 
-                            <div className="flex items-start justify-between">
-                              <div className="w-full">
-                                <h3 className="text-sm font-bold text-gray-900">{booking.customerName}</h3>
-                                <p className="text-xs text-gray-500 font-medium">{booking.vehicle}</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
-                                  {booking.address}
-                                </p>
-                              </div>
-                            </div>
-
-                            {booking.shopItems && booking.shopItems.length > 0 && (
-                              <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-[11px] font-bold text-amber-950">
-                                <span className="flex items-center gap-1.5">
-                                  <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>Hand-Deliver {booking.shopItems.reduce((a, c) => a + (c.quantity || 1), 0)} Shop Products</span>
-                                </span>
-                                <span className="text-[10px] bg-amber-200 px-1.5 py-0.2 rounded font-extrabold uppercase">
-                                  With Wash
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Progress Flow Actions */}
-                            <div className="flex flex-col gap-2 pt-1">
+                          <div className="grid grid-cols-2 gap-2">
+                            {booking.status === 'accepted' && (
                               <button
                                 type="button"
-                                onClick={() => setSelectedBookingForMap(booking)}
-                                className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                onClick={() => onUpdateStatus(booking.id, 'en_route')}
+                                className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
                               >
-                                <Navigation className="w-3.5 h-3.5 fill-white" />
-                                <span>Open Live Map & Route</span>
+                                Mark En Route
                               </button>
+                            )}
 
-                              <div className="grid grid-cols-2 gap-2">
-                                {booking.status === 'accepted' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onUpdateStatus(booking.id, 'en_route')}
-                                    className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                  >
-                                    Mark En Route
-                                  </button>
-                                )}
+                            {booking.status === 'en_route' && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateStatus(booking.id, 'in_progress')}
+                                className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                              >
+                                Start Washing
+                              </button>
+                            )}
 
-                                {booking.status === 'en_route' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onUpdateStatus(booking.id, 'in_progress')}
-                                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                  >
-                                    Start Washing
-                                  </button>
-                                )}
+                            {booking.status === 'in_progress' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    !booking.paymentStatus ||
+                                    booking.paymentStatus !== 'paid' ||
+                                    booking.paymentMethod?.toLowerCase().includes('cash') ||
+                                    booking.paymentMethod?.toLowerCase().includes('delivery') ||
+                                    booking.paymentMethod?.toLowerCase().includes('completion')
+                                  ) {
+                                    setCodPaymentBooking(booking)
+                                  } else {
+                                    onUpdateStatus(booking.id, 'completed')
+                                    showToast('Service marked as completed!', 'success')
+                                  }
+                                }}
+                                className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer col-span-2 shadow-xs"
+                              >
+                                Complete Service & Collect COD
+                              </button>
+                            )}
 
-                                {booking.status === 'in_progress' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (
-                                        !booking.paymentStatus ||
-                                        booking.paymentStatus !== 'paid' ||
-                                        booking.paymentMethod?.toLowerCase().includes('cash') ||
-                                        booking.paymentMethod?.toLowerCase().includes('delivery') ||
-                                        booking.paymentMethod?.toLowerCase().includes('completion')
-                                      ) {
-                                        setCodPaymentBooking(booking)
-                                      } else {
-                                        onUpdateStatus(booking.id, 'completed')
-                                        showToast('Service marked as completed!', 'success')
-                                      }
-                                    }}
-                                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer col-span-2 shadow-xs"
-                                  >
-                                    Complete Service & Collect COD
-                                  </button>
-                                )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDetailBooking(booking)}
+                              className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${booking.status === 'in_progress' ? 'hidden' : ''
+                                }`}
+                            >
+                              Details
+                            </button>
+                          </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedDetailBooking(booking)}
-                                  className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${
-                                    booking.status === 'in_progress' ? 'hidden' : ''
-                                  }`}
-                                >
-                                  Details
-                                </button>
-                              </div>
+                          {booking.status === 'accepted' && (
+                            <button
+                              type="button"
+                              onClick={() => setDriverCancelBookingTarget(booking)}
+                              className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>Cancel Job</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
 
-                              {booking.status === 'accepted' && (
-                                <button
-                                  type="button"
-                                  onClick={() => setDriverCancelBookingTarget(booking)}
-                                  className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                                >
-                                  <Ban className="w-3 h-3" />
-                                  <span>Cancel Job</span>
-                                </button>
-                              )}
+                  {/* Active Shop Deliveries */}
+                  {(jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') &&
+                    myActiveShopOrders.map((order) => {
+                      const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
+                      return (
+                        <div
+                          key={order.id}
+                          className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 rounded-full bg-primary-light text-primary text-[10px] font-bold border border-primary-border/60 uppercase flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                                <span>Shop: {order.status.replace('_', ' ')}</span>
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-sm sm:text-base font-black text-primary font-mono">
+                                ${Number(order.grandTotal).toFixed(2)}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-500">
+                                {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
+                              </span>
                             </div>
                           </div>
-                        ))}
 
-                      {/* Active Shop Deliveries */}
-                      {(jobCategoryFilter === 'all' || jobCategoryFilter === 'deliveries') &&
-                        myActiveShopOrders.map((order) => {
-                          const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
-                          return (
-                            <div
-                              key={order.id}
-                              className="p-4 sm:p-5 rounded-3xl bg-white border-2 border-primary/20 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden"
-                            >
-                              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-primary-light text-primary text-[10px] font-bold border border-primary-border/60 uppercase flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                                    <span>Shop: {order.status.replace('_', ' ')}</span>
-                                  </span>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                  <span className="text-sm sm:text-base font-black text-primary font-mono">
-                                    ${Number(order.grandTotal).toFixed(2)}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-gray-500">
-                                    {order.paymentMethod === 'cod' ? 'Collect COD' : 'Prepaid'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-sm font-bold text-gray-900">
-                                      {order.recipientName || order.customerName || 'Customer'}
-                                    </h3>
-                                    {(order.recipientPhone || order.customerPhone) && (
-                                      <a
-                                        href={`tel:${order.recipientPhone || order.customerPhone}`}
-                                        className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-100 transition-colors"
-                                        title="Call recipient"
-                                      >
-                                        <Phone className="w-3 h-3 fill-emerald-600" />
-                                      </a>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                    {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
-                                  </p>
-                                  <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
-                                    {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Progress Flow Actions */}
-                              <div className="flex flex-col gap-2 pt-1">
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedBookingForMap(shopOrderToBookingRecord(order))}
-                                    className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-                                  >
-                                    <Navigation className="w-3.5 h-3.5 fill-white" />
-                                    <span>Live In-App Map</span>
-                                  </button>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-gray-900">
+                                  {order.recipientName || order.customerName || 'Customer'}
+                                </h3>
+                                {(order.recipientPhone || order.customerPhone) && (
                                   <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress || order.shippingAddress || '')}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                    href={`tel:${order.recipientPhone || order.customerPhone}`}
+                                    className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                    title="Call recipient"
                                   >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    <span>Google Maps</span>
+                                    <Phone className="w-3 h-3 fill-emerald-600" />
                                   </a>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                  {order.status === 'accepted' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdateShopOrderStatus(order.id, 'en_route')}
-                                      className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                    >
-                                      Mark En Route
-                                    </button>
-                                  )}
-
-                                  {order.status === 'en_route' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdateShopOrderStatus(order.id, 'delivered')}
-                                      className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
-                                    >
-                                      Delivered & Cash
-                                    </button>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedDetailShopOrder(order)}
-                                    className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${
-                                      order.status === 'en_route' ? 'col-span-1' : 'col-span-1'
-                                    }`}
-                                  >
-                                    Details
-                                  </button>
-                                </div>
-
-                                {order.status === 'accepted' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setDriverCancelShopTarget(order)}
-                                    className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                                  >
-                                    <Ban className="w-3 h-3" />
-                                    <span>Cancel Delivery</span>
-                                  </button>
                                 )}
                               </div>
+                              <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                {totalItems} {totalItems === 1 ? 'item' : 'items'} to deliver
+                              </p>
+                              <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                                {order.deliveryAddress}{order.deliveryCity ? `, ${order.deliveryCity}` : ''}
+                              </p>
                             </div>
-                          )
-                        })}
-                    </div>
-                  )}
+                          </div>
+
+                          {/* Progress Flow Actions */}
+                          <div className="flex flex-col gap-2 pt-1">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBookingForMap(shopOrderToBookingRecord(order))}
+                                className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                              >
+                                <Navigation className="w-3.5 h-3.5 fill-white" />
+                                <span>Live In-App Map</span>
+                              </button>
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress || order.shippingAddress || '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-full py-2.5 rounded-xl bg-secondary hover:bg-neutral-900 active:scale-98 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Google Maps</span>
+                              </a>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {order.status === 'accepted' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateShopOrderStatus(order.id, 'en_route')}
+                                  className="w-full py-2 rounded-xl bg-primary hover:bg-primary-hover active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                >
+                                  Mark En Route
+                                </button>
+                              )}
+
+                              {order.status === 'en_route' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateShopOrderStatus(order.id, 'delivered')}
+                                  className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-[11px] font-bold transition-all cursor-pointer"
+                                >
+                                  Delivered & Cash
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailShopOrder(order)}
+                                className={`py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 text-[11px] font-bold transition-all cursor-pointer ${order.status === 'en_route' ? 'col-span-1' : 'col-span-1'
+                                  }`}
+                              >
+                                Details
+                              </button>
+                            </div>
+
+                            {order.status === 'accepted' && (
+                              <button
+                                type="button"
+                                onClick={() => setDriverCancelShopTarget(order)}
+                                className="w-full py-1.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span>Cancel Delivery</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1649,33 +1752,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setHistoryCategoryFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      historyCategoryFilter === 'all'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${historyCategoryFilter === 'all'
                         ? 'bg-white text-gray-900 shadow-2xs'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     All ({completedOrders.length + completedShopOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setHistoryCategoryFilter('washes')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      historyCategoryFilter === 'washes'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${historyCategoryFilter === 'washes'
                         ? 'bg-white text-primary shadow-2xs'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Washes ({completedOrders.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setHistoryCategoryFilter('deliveries')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      historyCategoryFilter === 'deliveries'
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${historyCategoryFilter === 'deliveries'
                         ? 'bg-white text-primary shadow-2xs'
                         : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     Shop Deliveries ({completedShopOrders.length})
                   </button>
@@ -1686,23 +1786,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {historyCategoryFilter === 'all'
                     ? `${completedOrders.length + completedShopOrders.length} total fulfilled dispatches`
                     : historyCategoryFilter === 'washes'
-                    ? `${completedOrders.length} fulfilled car wash services`
-                    : `${completedShopOrders.length} delivered shop orders`}
+                      ? `${completedOrders.length} fulfilled car wash services`
+                      : `${completedShopOrders.length} delivered shop orders`}
                 </div>
               </div>
 
               {/* Empty state condition */}
-              {((historyCategoryFilter === 'washes' && completedOrders.length === 0) ||
-                (historyCategoryFilter === 'deliveries' && completedShopOrders.length === 0) ||
-                (historyCategoryFilter === 'all' && completedOrders.length === 0 && completedShopOrders.length === 0)) ? (
+              {allHistoryJobs.length === 0 ? (
                 <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-xs">
                   <CheckCircle2 className="w-12 h-12 text-gray-300 mb-2 stroke-[1.5]" />
                   <span className="text-base font-bold text-gray-800">
                     {historyCategoryFilter === 'deliveries'
                       ? 'No completed shop deliveries yet'
                       : historyCategoryFilter === 'washes'
-                      ? 'No completed car washes yet'
-                      : 'No completed jobs yet'}
+                        ? 'No completed car washes yet'
+                        : 'No completed jobs yet'}
                   </span>
                   <p className="text-xs text-gray-400 mt-1 max-w-sm">
                     {historyCategoryFilter === 'deliveries'
@@ -1711,67 +1809,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {/* 1. Washes */}
-                  {(historyCategoryFilter === 'all' || historyCategoryFilter === 'washes') &&
-                    completedOrders.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[180px]">
-                              {booking.title}
-                            </span>
-                          </div>
-                          <span className="text-xs sm:text-sm font-bold text-emerald-600 font-mono">
-                            +{booking.price}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-gray-500 bg-surface-subtle p-2.5 rounded-2xl">
-                          <span>Customer: <strong className="text-gray-800">{booking.customerName}</strong></span>
-                          <span className="truncate">{booking.vehicle}</span>
-                        </div>
-
-                        <div className="text-[11px] text-gray-400 truncate">
-                          {booking.address}
-                        </div>
-
-                        {booking.shopItems && booking.shopItems.length > 0 && (
-                          <div className="text-[11px] text-gray-700 bg-surface-subtle px-2.5 py-1.5 rounded-xl border border-gray-200/80 truncate flex items-center gap-1.5 font-medium">
-                            <Package className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span>Delivered {booking.shopItems.reduce((a, c) => a + c.quantity, 0)} shop items ({booking.shopItems.map(i => i.product?.title || 'Product').join(', ')})</span>
-                          </div>
-                        )}
-
-                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                          <span className="text-gray-400">Completed: {booking.date}</span>
-                          <div className="flex items-center gap-1.5">
-                            {booking.paymentStatus === 'paid' ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Paid ({booking.paymentCollectedMethod || 'Cash'}) ✓
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {paginatedHistoryJobs.map((item) => {
+                      if (item.kind === 'wash') {
+                        const booking = item.data
+                        return (
+                          <div
+                            key={`history-wash-${booking.id}`}
+                            className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[180px]">
+                                  {booking.title}
+                                </span>
+                              </div>
+                              <span className="text-xs sm:text-sm font-bold text-emerald-600 font-mono">
+                                +{booking.price}
                               </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                Payment Pending
-                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs text-gray-500 bg-surface-subtle p-2.5 rounded-2xl">
+                              <span>Customer: <strong className="text-gray-800">{booking.customerName}</strong></span>
+                              <span className="truncate">{booking.vehicle}</span>
+                            </div>
+
+                            <div className="text-[11px] text-gray-400 truncate">
+                              {booking.address}
+                            </div>
+
+                            {booking.shopItems && booking.shopItems.length > 0 && (
+                              <div className="text-[11px] text-gray-700 bg-surface-subtle px-2.5 py-1.5 rounded-xl border border-gray-200/80 truncate flex items-center gap-1.5 font-medium">
+                                <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span>Delivered {booking.shopItems.reduce((a, c) => a + c.quantity, 0)} shop items ({booking.shopItems.map(i => i.product?.title || 'Product').join(', ')})</span>
+                              </div>
                             )}
-                            <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
 
-                  {/* 2. Shop Product Deliveries */}
-                  {(historyCategoryFilter === 'all' || historyCategoryFilter === 'deliveries') &&
-                    completedShopOrders.map((order) => {
+                            <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                              <span className="text-gray-400">Completed: {booking.date}</span>
+                              <div className="flex items-center gap-1.5">
+                                {booking.paymentStatus === 'paid' ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Paid ({booking.paymentCollectedMethod || 'Cash'}) ✓
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    Payment Pending
+                                  </span>
+                                )}
+                                <span className="text-emerald-600 font-bold">Fulfilled ✓</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      const order = item.data
                       const totalItems = order.items?.reduce((s, i) => s + (i.quantity || 1), 0) || 0
                       return (
                         <div
-                          key={order.id}
+                          key={`history-delivery-${order.id}`}
                           className="p-4 sm:p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs flex flex-col justify-between gap-3 relative"
                         >
                           <div className="flex items-center justify-between">
@@ -1827,14 +1926,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       )
                     })}
+                  </div>
+
+                  {/* Pagination Controls (Centered Editorial) */}
+                  <Pagination
+                    currentPage={historyPage}
+                    totalPages={Math.max(1, Math.ceil(allHistoryJobs.length / historyPageSize))}
+                    totalItems={allHistoryJobs.length}
+                    pageSize={historyPageSize}
+                    onPageChange={(p) => {
+                      setHistoryPage(p)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  />
                 </div>
               )}
             </div>
           )}
+
+          {/* TAB 4: CUSTOMER PROFILES & ORDER HISTORY WORKSPACE */}
+          {adminTab === 'customers' && (
+            <CustomersView
+              bookings={bookings}
+              shopOrders={shopOrders}
+            />
+          )}
         </div>
       </main>
 
-      {/* 5. BOTTOM NAVIGATION TABS (Visible across Orders, History, and Profile) */}
+      {/* 5. BOTTOM NAVIGATION TABS (Visible across Orders, History, Customers, and Profile) */}
       {!selectedBookingForMap && (
         <AdminBottomNav
           currentTab={adminTab}
@@ -1845,6 +1965,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           ordersBadge={availableOrders.length + availableShopOrders.length}
           myJobsBadge={myActiveOrders.length + myActiveShopOrders.length}
           historyBadge={completedOrders.length + completedShopOrders.length}
+          customersBadge={0}
         />
       )}
 
@@ -1871,7 +1992,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   )
 }
 
+export const DashboardPage = AdminDashboard
 export const AdminDashboardPage = AdminDashboard
 export const DriverDashboard = AdminDashboard
 export const DriverDashboardPage = AdminDashboard
-export default AdminDashboard
+export default DashboardPage

@@ -55,7 +55,7 @@ function generateCurvedRoute(start: [number, number], end: [number, number]): [n
   return points
 }
 
-export interface AdminMapViewProps {
+export interface MapViewProps {
   booking: BookingRecord
   onBack: () => void
   onUpdateStatus: (
@@ -73,9 +73,10 @@ export interface AdminMapViewProps {
   driverProfile?: DriverProfile
 }
 
-export type DriverMapViewProps = AdminMapViewProps
+export type AdminMapViewProps = MapViewProps
+export type DriverMapViewProps = MapViewProps
 
-export const AdminMapView: React.FC<AdminMapViewProps> = ({
+export const MapView: React.FC<MapViewProps> = ({
   booking,
   onBack,
   onUpdateStatus,
@@ -1320,5 +1321,6 @@ export const AdminMapView: React.FC<AdminMapViewProps> = ({
   )
 }
 
-export const DriverMapView = AdminMapView
-export default AdminMapView
+export const AdminMapView = MapView
+export const DriverMapView = MapView
+export default MapView

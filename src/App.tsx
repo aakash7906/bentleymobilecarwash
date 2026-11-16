@@ -13,7 +13,7 @@ const NotificationsTab = lazy(() => import('@/pages/Tabs/NotificationsTab').then
 const BookingsTab = lazy(() => import('@/pages/Tabs/BookingsTab').then(m => ({ default: m.BookingsTab })))
 const ProfileTab = lazy(() => import('@/pages/Tabs/ProfileTab').then(m => ({ default: m.ProfileTab })))
 
-const AdminDashboard = lazy(() => import('@/pages/Admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboard })))
+const AdminDashboard = lazy(() => import('@/pages/Admin/DashboardPage').then(m => ({ default: m.AdminDashboard })))
 const DriverDashboard = AdminDashboard
 const BookingPage = lazy(() => import('@/pages/Booking/BookingPage').then(m => ({ default: m.BookingPage })))
 const ServiceDetailModal = lazy(() => import('@/components/modals').then(m => ({ default: m.ServiceDetailModal })))

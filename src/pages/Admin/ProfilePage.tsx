@@ -23,7 +23,7 @@ import { useToast } from '@/context/ToastContext'
 import { Dialog } from '@/components/ui/dialog'
 import { getLiveGPSLocation } from '@/services/locationService'
 
-export interface AdminProfilePageProps {
+export interface ProfilePageProps {
   isOpen: boolean
   onClose: () => void
   profile: AdminProfile
@@ -33,7 +33,8 @@ export interface AdminProfilePageProps {
   completedJobsCount?: number
 }
 
-export type DriverProfilePageProps = AdminProfilePageProps
+export type AdminProfilePageProps = ProfilePageProps
+export type DriverProfilePageProps = ProfilePageProps
 
 // Mobile phone number validation helper
 const validatePhone = (value: string): string | null => {
@@ -69,7 +70,7 @@ const validateEmergency = (value: string): string | null => {
   return null
 }
 
-export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
+export const ProfilePage: React.FC<ProfilePageProps> = ({
   isOpen,
   onClose,
   profile,
@@ -845,5 +846,6 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   )
 }
 
-export const DriverProfilePage = AdminProfilePage
-export default AdminProfilePage
+export const AdminProfilePage = ProfilePage
+export const DriverProfilePage = ProfilePage
+export default ProfilePage
