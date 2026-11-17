@@ -16,8 +16,10 @@ export interface CustomerDetailsViewProps {
   onBack?: () => void
 }
 
+
 export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
   customer,
+  onBack,
 }) => {
   // Accordion open/close state for Wash History and Shop Orders
   const [openSections, setOpenSections] = useState<{ washes: boolean; orders: boolean }>({
@@ -29,20 +31,28 @@ export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
-  // Format joined date helper
-  const formatJoinedDate = (val: any) => {
+  // Format date helper for human-readable uniform dates
+  const formatDisplayDate = (val: any) => {
     if (!val) return 'Registered'
     try {
       let d: Date | null = null
       if (typeof val?.toDate === 'function') d = val.toDate()
       else if (val?.seconds) d = new Date(val.seconds * 1000)
-      else if (typeof val === 'string' || typeof val === 'number') d = new Date(val)
+      else if (typeof val === 'string' || typeof val === 'number') {
+        const cleanStr = String(val).replace(/^(Today|Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s*/i, '')
+        d = new Date(cleanStr)
+      }
       if (d && !isNaN(d.getTime())) {
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       }
     } catch { }
-    return 'Registered'
+    return String(val)
   }
+
+  // Active status indicator (Active if activity in last 90 days or orders placed)
+  const isCustomerActive = Boolean(
+    customer.lastActiveDate || customer.totalWashes > 0 || customer.totalDeliveries > 0
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,35 +78,53 @@ export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
               <h3 className="text-lg font-bold text-gray-900 tracking-tight truncate">
                 {customer.name}
               </h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>Active</span>
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  isCustomerActive
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isCustomerActive ? 'bg-emerald-500' : 'bg-gray-400'
+                  }`}
+                />
+                <span>{isCustomerActive ? 'Active' : 'Inactive'}</span>
               </span>
             </div>
 
-            {/* Contact Details */}
+            {/* Clickable Contact Details */}
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-gray-600">
               {customer.email && customer.email !== '—' && (
-                <span className="flex items-center gap-1.5 truncate">
-                  <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span className="truncate">{customer.email}</span>
-                </span>
+                <a
+                  href={`mailto:${customer.email}`}
+                  className="flex items-center gap-1.5 truncate hover:text-primary transition-colors cursor-pointer group"
+                  title="Send email to client"
+                >
+                  <Mail className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary shrink-0 transition-colors" />
+                  <span className="truncate group-hover:underline">{customer.email}</span>
+                </a>
               )}
               {customer.phone && (
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span>{customer.phone}</span>
-                </span>
+                <a
+                  href={`tel:${customer.phone}`}
+                  className="flex items-center gap-1.5 font-mono hover:text-primary transition-colors cursor-pointer group"
+                  title="Call client"
+                >
+                  <Phone className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary shrink-0 transition-colors" />
+                  <span className="group-hover:underline">{customer.phone}</span>
+                </a>
               )}
             </div>
 
             {/* Membership & Activity Metadata */}
             <div className="flex items-center gap-2 text-[11px] text-gray-400 flex-wrap pt-0.5">
-              <span>Member since {formatJoinedDate(customer.createdAt)}</span>
+              <span>Member since {formatDisplayDate(customer.createdAt)}</span>
               {customer.lastActiveDate && (
                 <>
                   <span>•</span>
-                  <span>Last active {customer.lastActiveDate}</span>
+                  <span>Last active {formatDisplayDate(customer.lastActiveDate)}</span>
                 </>
               )}
             </div>
@@ -213,7 +241,7 @@ export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-gray-900 truncate">{b.title || 'Wash Service'}</span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase shrink-0">
-                            {String(b.status || 'confirmed').replace('_', ' ')}
+                            {String(b.status || 'confirmed').replace(/_/g, ' ')}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
@@ -313,7 +341,7 @@ export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
                               Order #{o.id ? o.id.slice(-6).toUpperCase() : 'ORDER'}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase shrink-0">
-                              {o.status || 'pending'}
+                              {String(o.status || 'pending').replace(/_/g, ' ')}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
@@ -330,11 +358,21 @@ export const CustomerDetailsView: React.FC<CustomerDetailsViewProps> = ({
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-600 line-clamp-1 mt-0.5">
-                            {o.items && o.items.length > 0
-                              ? o.items.map((i: any) => `${i?.product?.title || i?.title || i?.name || 'Item'} (x${i?.quantity || 1})`).join(', ')
-                              : 'Shop items'}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                            {o.items && o.items.length > 0 ? (
+                              o.items.map((i: any, itemIdx: number) => (
+                                <span
+                                  key={itemIdx}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100/90 border border-gray-200 text-[10px] font-medium text-gray-700"
+                                >
+                                  <span className="truncate max-w-[160px]">{i?.product?.title || i?.title || i?.name || 'Item'}</span>
+                                  <span className="text-gray-400 font-bold">×{i?.quantity || 1}</span>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-gray-400 italic">No item details</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
                           <span className="font-mono font-black text-sm text-primary">

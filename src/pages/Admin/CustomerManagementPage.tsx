@@ -73,33 +73,28 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [customerToDelete, setCustomerToDelete] = useState<CustomerItem | null>(null)
   const [isDeleting, setIsDeleting] = useState<boolean>(false)
 
-  // Mobile Inbuilt Back Navigation & Browser History Synchronization
-  useEffect(() => {
-    if (!selectedCustomer) return
-
-    const handlePopState = () => {
-      // Triggered by mobile inbuilt hardware/gesture back button or browser back
-      setSelectedCustomer(null)
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [selectedCustomer])
-
   const handleOpenCustomerDetails = (customer: CustomerItem) => {
     try {
-      window.history.pushState({ adminCustomerDetail: true, customerId: customer.id }, '')
+      const url = new URL(window.location.href)
+      url.searchParams.set('customer', customer.id)
+      window.history.pushState({ adminCustomerDetail: true, customerId: customer.id }, '', url.toString())
     } catch {}
     setSelectedCustomer(customer)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleBackFromDetails = () => {
-    if (window.history.state?.adminCustomerDetail) {
-      window.history.back()
-    } else {
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('customer')
+      url.searchParams.delete('customerId')
+      if (window.history.state?.adminCustomerDetail) {
+        window.history.back()
+      } else {
+        window.history.replaceState({}, '', url.toString())
+        setSelectedCustomer(null)
+      }
+    } catch {
       setSelectedCustomer(null)
     }
   }
@@ -171,6 +166,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   // Aggregate customer records from Firestore users, car wash bookings, and shop delivery orders
   const allCustomers = useMemo<CustomerItem[]>(() => {
     const customerMap = new Map<string, CustomerItem>()
+    const emailToKey = new Map<string, string>()
+    const phoneToKey = new Map<string, string>()
+
+    const registerKeyLookup = (key: string, email?: string, phone?: string) => {
+      if (email && email !== '—') {
+        const clean = email.toLowerCase().trim()
+        if (clean) emailToKey.set(clean, key)
+      }
+      if (phone) {
+        const cleanDigits = phone.replace(/\D/g, '')
+        if (cleanDigits.length >= 7) {
+          phoneToKey.set(cleanDigits, key)
+        }
+      }
+    }
 
     // 1. Seed from Firestore 'users' collection
     rawUsers.forEach((u, idx) => {
@@ -182,7 +192,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       const avatar = u.avatar || u.photoURL || ''
 
       customerMap.set(key, {
-        id: u.id,
+        id: u.id || key,
         name,
         email: u.email || '—',
         phone,
@@ -197,23 +207,23 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         bookingsList: [],
         ordersList: [],
       })
+
+      registerKeyLookup(key, u.email, phone)
     })
 
-    // Helper to find matching customer key
+    // Instant O(1) Helper to find matching customer key
     const findCustomerKey = (userId?: string, email?: string, phone?: string): string | null => {
       if (userId && customerMap.has(userId)) return userId
-      if (email) {
+      if (email && email !== '—') {
         const cleanEmail = email.toLowerCase().trim()
-        for (const [k, c] of customerMap.entries()) {
-          if (c.email.toLowerCase().trim() === cleanEmail) return k
-        }
+        const matched = emailToKey.get(cleanEmail)
+        if (matched) return matched
       }
       if (phone) {
         const cleanPhone = phone.replace(/\D/g, '')
         if (cleanPhone.length >= 7) {
-          for (const [k, c] of customerMap.entries()) {
-            if (c.phone && c.phone.replace(/\D/g, '') === cleanPhone) return k
-          }
+          const matched = phoneToKey.get(cleanPhone)
+          if (matched) return matched
         }
       }
       return null
@@ -240,6 +250,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           bookingsList: [],
           ordersList: [],
         })
+        registerKeyLookup(key, b.customerEmail, b.customerPhone)
       }
 
       const c = customerMap.get(key)!
@@ -277,6 +288,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           bookingsList: [],
           ordersList: [],
         })
+        registerKeyLookup(key, o.customerEmail, o.recipientPhone || o.customerPhone)
       }
 
       const c = customerMap.get(key)!
@@ -295,6 +307,40 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     return Array.from(customerMap.values())
   }, [rawUsers, bookings, shopOrders])
 
+  // Sync selected customer from URL search params on load, refresh, or customer list update
+  useEffect(() => {
+    if (allCustomers.length === 0) return
+    const params = new URLSearchParams(window.location.search)
+    const customerIdFromUrl = params.get('customer') || params.get('customerId')
+    if (customerIdFromUrl) {
+      const found = allCustomers.find((c) => c.id === customerIdFromUrl)
+      if (found && (!selectedCustomer || selectedCustomer.id !== found.id)) {
+        setSelectedCustomer(found)
+      }
+    }
+  }, [allCustomers])
+
+  // Mobile Inbuilt Back Navigation & Browser History Synchronization
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      const customerIdFromUrl = params.get('customer') || params.get('customerId')
+      if (customerIdFromUrl && allCustomers.length > 0) {
+        const found = allCustomers.find((c) => c.id === customerIdFromUrl)
+        if (found) {
+          setSelectedCustomer(found)
+          return
+        }
+      }
+      setSelectedCustomer(null)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [allCustomers])
+
   // Filter & Search
   const filteredCustomers = useMemo(() => {
     let list = allCustomers
@@ -310,6 +356,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       )
     }
 
+    // Safe timestamp parser helper for sorting
+    const parseSafeTime = (dateStr?: string) => {
+      if (!dateStr) return 0
+      const clean = String(dateStr).replace(/^(Today|Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s*/i, '')
+      const t = new Date(clean).getTime()
+      return isNaN(t) ? 0 : t
+    }
+
     // Sort
     return [...list].sort((a, b) => {
       let res = 0
@@ -320,9 +374,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       } else if (sortBy === 'washes') {
         res = (a.totalWashes + a.totalDeliveries) - (b.totalWashes + b.totalDeliveries)
       } else if (sortBy === 'recent') {
-        const dateA = a.lastActiveDate ? new Date(a.lastActiveDate).getTime() : 0
-        const dateB = b.lastActiveDate ? new Date(b.lastActiveDate).getTime() : 0
-        res = dateA - dateB
+        res = parseSafeTime(a.lastActiveDate) - parseSafeTime(b.lastActiveDate)
       }
       return sortOrder === 'desc' ? -res : res
     })
@@ -341,9 +393,17 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize))
 
-  // Metrics summary
+  // Metrics summary: Customers active within the last 90 days or with placed orders
   const activeCustomersCount = useMemo(() => {
-    return allCustomers.filter((c) => c.totalWashes > 0 || c.totalDeliveries > 0).length
+    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
+    return allCustomers.filter((c) => {
+      if (c.lastActiveDate) {
+        const clean = String(c.lastActiveDate).replace(/^(Today|Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s*/i, '')
+        const d = new Date(clean).getTime()
+        if (!isNaN(d) && d >= ninetyDaysAgo) return true
+      }
+      return c.totalWashes > 0 || c.totalDeliveries > 0
+    }).length
   }, [allCustomers])
 
   // If a customer is selected, render the dedicated Customer Details Page View
@@ -455,7 +515,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             options={[
               { value: 'recent', label: 'Most Recent' },
               { value: 'spent', label: 'Top Spenders' },
-              { value: 'washes', label: 'Most Wash Orders' },
+              { value: 'washes', label: 'Most Services (Washes + Shop)' },
               { value: 'name', label: 'Name (A-Z)' },
             ]}
             icon={<Filter className="w-3.5 h-3.5 text-primary shrink-0 stroke-[2.2]" />}
@@ -497,7 +557,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             <TableBody>
               {paginatedCustomers.map((customer, idx) => {
                 return (
-                  <TableRow key={customer.id}>
+                  <TableRow
+                    key={customer.id}
+                    onClick={() => handleOpenCustomerDetails(customer)}
+                    className="cursor-pointer hover:bg-gray-50/80 transition-colors group"
+                  >
                     {/* Customer Identity */}
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -513,7 +577,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                           )}
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-gray-900 text-xs truncate">
+                          <span className="font-bold text-gray-900 text-xs truncate group-hover:text-primary transition-colors">
                             {customer.name}
                           </span>
                           <span className="text-[11px] text-gray-500 truncate">
@@ -661,7 +725,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   Delete {customerToDelete.name}?
                 </h4>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  Are you sure you want to delete this customer account? This will permanently remove their profile ({customerToDelete.email}) from the database.
+                  {customerToDelete.id && customerToDelete.id.startsWith('cust-')
+                    ? `This is a guest record generated from orders/bookings (${customerToDelete.email}). Removing it will clear it from the active customer view.`
+                    : `Are you sure you want to delete this customer account? This will permanently remove their profile (${customerToDelete.email}) from the database.`}
                 </p>
               </div>
             </div>
