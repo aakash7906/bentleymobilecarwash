@@ -12,8 +12,9 @@ import {
   Trash2,
   AlertTriangle,
 } from 'lucide-react'
-import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
-import { db } from '@/firebase'
+import { collection, onSnapshot, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '@/firebase'
 import { BookingRecord, ShopOrder } from '@/types'
 import {
   Table,
@@ -72,6 +73,33 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [activeMenuCustomerId, setActiveMenuCustomerId] = useState<string | null>(null)
   const [customerToDelete, setCustomerToDelete] = useState<CustomerItem | null>(null)
   const [isDeleting, setIsDeleting] = useState<boolean>(false)
+  const [deletedCustomerKeys, setDeletedCustomerKeys] = useState<Set<string>>(new Set())
+
+  // Real-time listener for 'deleted_customers' tracking collection
+  useEffect(() => {
+    const deletedRef = collection(db, 'deleted_customers')
+    const unsub = onSnapshot(
+      deletedRef,
+      (snapshot) => {
+        const keys = new Set<string>()
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data()
+          keys.add(docSnap.id)
+          if (data?.email) keys.add(data.email.toLowerCase().trim())
+          if (data?.phone) {
+            const digits = String(data.phone).replace(/\D/g, '')
+            if (digits.length >= 7) keys.add(digits)
+          }
+        })
+        setDeletedCustomerKeys(keys)
+      },
+      (err) => {
+        console.warn('deleted_customers listener warning:', err)
+      }
+    )
+
+    return () => unsub()
+  }, [])
 
   const handleOpenCustomerDetails = (customer: CustomerItem) => {
     try {
@@ -124,9 +152,66 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     if (!customerToDelete) return
     try {
       setIsDeleting(true)
-      if (customerToDelete.id && !customerToDelete.id.startsWith('cust-')) {
-        await deleteDoc(doc(db, 'users', customerToDelete.id))
+      const targetId = customerToDelete.id
+      const targetEmail = customerToDelete.email && customerToDelete.email !== '—' ? customerToDelete.email.toLowerCase().trim() : ''
+      const targetPhone = customerToDelete.phone ? customerToDelete.phone.trim() : ''
+
+      // 1. Invoke Backend Cloud Function (Firebase Admin SDK: Deletes Auth, Firestore doc, vehicles & records deletion)
+      let cloudFnCompleted = false
+      try {
+        const deleteCustomerFn = httpsCallable(functions, 'adminDeleteCustomer')
+        const result = await deleteCustomerFn({
+          customerId: targetId,
+          email: targetEmail,
+          phone: targetPhone,
+        })
+        if ((result.data as any)?.success) {
+          cloudFnCompleted = true
+        }
+      } catch (cloudErr: any) {
+        console.warn('Backend Cloud Function call unhandled or not deployed yet, applying direct Firestore cleanup:', cloudErr)
       }
+
+      // 2. Direct Firestore synchronization & fallback
+      // Ensure record in deleted_customers collection so guest and aggregated records stay excluded immediately
+      try {
+        await setDoc(doc(db, 'deleted_customers', targetId), {
+          id: targetId,
+          email: targetEmail || null,
+          phone: targetPhone || null,
+          isGuest: targetId.startsWith('cust-'),
+          deletedAt: serverTimestamp(),
+        })
+      } catch (trackErr) {
+        console.warn('Could not record into deleted_customers collection:', trackErr)
+      }
+
+      // If registered user and cloud function was not run, delete Firestore user doc directly
+      if (!cloudFnCompleted && targetId && !targetId.startsWith('cust-')) {
+        try {
+          await deleteDoc(doc(db, 'users', targetId))
+        } catch (directDocErr) {
+          console.warn('Direct deleteDoc warning:', directDocErr)
+        }
+      }
+
+      // Optimistically update deleted keys in local state
+      setDeletedCustomerKeys((prev) => {
+        const next = new Set(prev)
+        next.add(targetId)
+        if (targetEmail) next.add(targetEmail)
+        if (targetPhone) {
+          const digits = targetPhone.replace(/\D/g, '')
+          if (digits.length >= 7) next.add(digits)
+        }
+        return next
+      })
+
+      // If detail view for this customer was open, close it
+      if (selectedCustomer?.id === targetId) {
+        handleBackFromDetails()
+      }
+
       showToast(`Customer "${customerToDelete.name}" deleted successfully.`, 'success')
       setCustomerToDelete(null)
     } catch (err: any) {
@@ -304,8 +389,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       }
     })
 
-    return Array.from(customerMap.values())
-  }, [rawUsers, bookings, shopOrders])
+    return Array.from(customerMap.values()).filter((c) => {
+      if (deletedCustomerKeys.has(c.id)) return false
+      if (c.email && c.email !== '—' && deletedCustomerKeys.has(c.email.toLowerCase().trim())) return false
+      if (c.phone) {
+        const cleanDigits = c.phone.replace(/\D/g, '')
+        if (cleanDigits.length >= 7 && deletedCustomerKeys.has(cleanDigits)) return false
+      }
+      return true
+    })
+  }, [rawUsers, bookings, shopOrders, deletedCustomerKeys])
 
   // Sync selected customer from URL search params on load, refresh, or customer list update
   useEffect(() => {
@@ -515,8 +608,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             options={[
               { value: 'recent', label: 'Most Recent' },
               { value: 'spent', label: 'Top Spenders' },
-              { value: 'washes', label: 'Most Services (Washes + Shop)' },
-              { value: 'name', label: 'Name (A-Z)' },
+              { value: 'washes', label: 'Most Services' },
+              { value: 'name', label: 'Name' },
             ]}
             icon={<Filter className="w-3.5 h-3.5 text-primary shrink-0 stroke-[2.2]" />}
             triggerClassName="h-10 bg-white border-gray-200 text-gray-800 text-xs font-semibold shadow-2xs hover:bg-gray-50/70"
@@ -727,7 +820,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {customerToDelete.id && customerToDelete.id.startsWith('cust-')
                     ? `This is a guest record generated from orders/bookings (${customerToDelete.email}). Removing it will clear it from the active customer view.`
-                    : `Are you sure you want to delete this customer account? This will permanently remove their profile (${customerToDelete.email}) from the database.`}
+                    : `Are you sure you want to delete this customer account?`}
                 </p>
               </div>
             </div>

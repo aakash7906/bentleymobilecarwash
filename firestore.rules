@@ -28,11 +28,11 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
 
       // Subcollection: Saved Vehicles
       match /vehicles/{vehicleId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
@@ -89,6 +89,11 @@ service cloud.firestore {
     match /inquiries/{inquiryId} {
       allow create: if true;
       allow read, update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    // 6. Deleted Customers (Admin Tracking for Customer Management)
+    match /deleted_customers/{customerId} {
+      allow read, write: if isAuthenticated() && isAdmin();
     }
   }
 }

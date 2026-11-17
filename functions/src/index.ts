@@ -481,23 +481,146 @@ export const sendCustomPasswordResetEmail = functions.https.onCall(async (data: 
 });
 
 /**
+ * Helper to check if caller has admin privileges
+ */
+async function verifyAdminPrivileges(context: functions.https.CallableContext): Promise<boolean> {
+  if (!context.auth) return false;
+  const callerUid = context.auth.uid;
+  const callerEmail = (context.auth.token.email || "").toLowerCase();
+
+  if (
+    callerEmail === ADMIN_EMAIL.toLowerCase() ||
+    callerEmail === "support@bentleycarwash.com" ||
+    context.auth.token.role === "admin"
+  ) {
+    return true;
+  }
+
+  try {
+    const userDoc = await db.collection("users").doc(callerUid).get();
+    if (userDoc.exists && userDoc.data()?.role === "admin") {
+      return true;
+    }
+  } catch (err) {
+    console.warn("[verifyAdminPrivileges] Could not check user role in Firestore:", err);
+  }
+
+  return false;
+}
+
+/**
+ * Callable Function: adminDeleteCustomer
+ * Securely deletes a customer account:
+ * 1. Verifies caller is an authenticated administrator
+ * 2. Deletes user from Firebase Authentication via Admin SDK
+ * 3. Deletes users/{customerId} doc and vehicles subcollection from Firestore
+ * 4. Records entry in deleted_customers collection to prevent ghost re-aggregation
+ */
+export const adminDeleteCustomer = functions.https.onCall(async (data: any, context: any) => {
+  const isAdmin = await verifyAdminPrivileges(context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Access denied: Only administrators are authorized to delete customer records."
+    );
+  }
+
+  const customerId = data?.customerId || data?.targetUid;
+  const email = (data?.email || "").toLowerCase().trim();
+  const phone = (data?.phone || "").trim();
+
+  if (!customerId) {
+    throw new functions.https.HttpsError("invalid-argument", "customerId is required.");
+  }
+
+  console.log(`[adminDeleteCustomer] Initiating deletion for customer ${customerId} (email: ${email}) by admin ${context.auth?.uid}`);
+
+  const isGuest = customerId.startsWith("cust-");
+
+  // 1. For registered users: Delete Firebase Auth account & Firestore user profile
+  if (!isGuest) {
+    // Delete from Firebase Auth
+    try {
+      await admin.auth().deleteUser(customerId);
+      console.log(`[adminDeleteCustomer] Successfully removed user ${customerId} from Firebase Authentication.`);
+    } catch (authError: any) {
+      if (authError?.code === "auth/user-not-found") {
+        console.log(`[adminDeleteCustomer] User ${customerId} was not present in Firebase Auth, proceeding.`);
+      } else {
+        console.warn(`[adminDeleteCustomer] Warning during Auth deletion for ${customerId}:`, authError?.message);
+      }
+    }
+
+    // Delete Firestore user doc & subcollections
+    try {
+      const vehiclesSnap = await db.collection("users").doc(customerId).collection("vehicles").get();
+      if (!vehiclesSnap.empty) {
+        const batch = db.batch();
+        vehiclesSnap.forEach((vDoc) => batch.delete(vDoc.ref));
+        await batch.commit();
+        console.log(`[adminDeleteCustomer] Cleaned up ${vehiclesSnap.size} vehicle subcollection documents.`);
+      }
+
+      await db.collection("users").doc(customerId).delete();
+      console.log(`[adminDeleteCustomer] Deleted users/${customerId} document from Firestore.`);
+    } catch (fsError: any) {
+      console.warn(`[adminDeleteCustomer] Error deleting Firestore user document ${customerId}:`, fsError?.message);
+    }
+  }
+
+  // 2. Track in deleted_customers collection so guest records & aggregated entries do not reappear
+  try {
+    await db.collection("deleted_customers").doc(customerId).set({
+      id: customerId,
+      email: email || null,
+      phone: phone || null,
+      isGuest,
+      deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+      deletedByUid: context.auth?.uid || "admin",
+      deletedByEmail: context.auth?.token?.email || ADMIN_EMAIL,
+    });
+    console.log(`[adminDeleteCustomer] Recorded ${customerId} in deleted_customers collection.`);
+  } catch (trackError: any) {
+    console.warn(`[adminDeleteCustomer] Could not record in deleted_customers:`, trackError?.message);
+  }
+
+  return { success: true, customerId };
+});
+
+/**
  * Callable Function: deleteUserAccount
- * Securely deletes a user account from Firebase Authentication (Admin SDK)
+ * Backward-compatible wrapper for user account deletion
  */
 export const deleteUserAccount = functions.https.onCall(async (data: any, context: any) => {
-  const targetUid = data?.targetUid || context.auth?.uid;
+  const targetUid = data?.targetUid || data?.customerId || context.auth?.uid;
 
   if (!targetUid) {
     throw new functions.https.HttpsError("invalid-argument", "targetUid is required.");
   }
 
-  if (context.auth && context.auth.uid !== targetUid) {
-    console.log(`[deleteUserAccount] Authorized deletion requested for uid: ${targetUid}`);
+  const isSelf = context.auth?.uid === targetUid;
+  const isAdmin = await verifyAdminPrivileges(context);
+
+  if (!isSelf && !isAdmin) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "You are not authorized to delete this user account."
+    );
   }
 
   try {
     await admin.auth().deleteUser(targetUid);
     console.log(`[deleteUserAccount] Successfully deleted user ${targetUid} from Firebase Auth.`);
+
+    // If deleted by admin, also remove user doc from Firestore
+    if (isAdmin) {
+      try {
+        await db.collection("users").doc(targetUid).delete();
+      } catch (err) {
+        console.warn(`[deleteUserAccount] Firestore doc cleanup warning:`, err);
+      }
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error(`[deleteUserAccount] Error deleting user ${targetUid}:`, error);

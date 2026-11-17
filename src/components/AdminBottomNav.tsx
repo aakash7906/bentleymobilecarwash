@@ -49,7 +49,10 @@ export const AdminBottomNav: React.FC<AdminBottomNavProps> = ({
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none select-none">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none select-none transform-gpu"
+      style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
+    >
       <div className="w-full pointer-events-auto">
         {/* Parabolic Top Edge SVG */}
         <div className="relative w-full">

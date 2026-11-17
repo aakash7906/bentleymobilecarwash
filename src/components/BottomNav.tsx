@@ -16,7 +16,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none transform-gpu"
+      style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
+    >
       <div className="w-full pointer-events-auto">
         {/* Parabolic Top Edge SVG */}
         <div className="relative w-full">

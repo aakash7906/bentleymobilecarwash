@@ -102,12 +102,12 @@ export const Select: React.FC<SelectProps> = ({
         />
       </button>
 
-      {/* Responsive Dropdown Popover (shadcn/ui style with rounded edges, shadow, and check marks) */}
+      {/* Responsive Dropdown Popover (anchored to right-0 to prevent viewport overflow on mobile) */}
       {isOpen && (
         <div
           role="listbox"
           className={cn(
-            'absolute z-50 mt-1.5 max-h-60 w-full min-w-[200px] overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-1.5 text-gray-900 shadow-2xl shadow-black/10 ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150',
+            'absolute right-0 z-50 mt-1.5 max-h-60 min-w-[210px] w-auto max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-1.5 text-gray-900 shadow-2xl shadow-black/10 ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150 origin-top-right',
             contentClassName
           )}
         >
